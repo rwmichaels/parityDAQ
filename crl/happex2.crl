@@ -11,11 +11,6 @@ maximum 10240,100
 vme readout
 /* All the memory maps of VME modules are defined in module_map.h  */
 include "../module_map.h"
-include "../globals.h"
-
-# Force DAC noise on all ADCs
-# (1=yes, 0=no, else use default configuration of HAPADC utilities)
-const ADD_DAC_NOISE = 0
 
 # default timing board DAC values
 const  DEF_DAC12   =    0       /* output voltage = 0 */
@@ -99,20 +94,14 @@ begin download
      tir[1] = (struct vme_tir *)laddr;
   }
 
-// ADC Setup
-//  initHAPADC();
-// override dac noise for all modules, if desired
-  if (ADD_DAC_NOISE!=-1) setAllDACBitHAPADC(ADD_DAC_NOISE);
+/* ADC Configuration */
 // show default configurations
   showHAPADC(-1);
 
-/* Timing Board initialization */
-//  initHAPTB();
+/* Timing Board configuration */
+// all timing configuration should be done in separate routines, to avoid ambiguity
   setDACHAPTB(1,DEF_DAC12);
   setDACHAPTB(2,DEF_DAC16);
-// all timing configuration should be done in separate routines, to avoid ambiguity
-//    setTimeHAPTB(DEF_RAMPDELAY,DEF_INTEGTIME);
-//    setOverSampleHAPTB(DEF_OVERSAMPLE);
   dumpRegHAPTB();
 
 
@@ -419,7 +408,7 @@ tir_dat = tir[1]->tir_dat;
 
 
 for (i = 0; i < ADC_NUMSLOTS; i++) {  
-  if (usesDACHAPADC(i)) {
+  if (usesDACHAPADC(i)==1) {
     // lookup table of random numbers
     rannum = ranny[rannyint];   /* rand goes from 0 to 32768 */
     rannyint++;

@@ -2,7 +2,7 @@
 
 GreenTB::GreenTB(Int_t crate_number, const char * crate_name,
 		 const TGWindow *p, UInt_t w, UInt_t h) :
-  TGCompositeFrame(p, w, h), crateNumber(crate_number),
+  TGCompositeFrame(p, w, h, kFixedSize), crateNumber(crate_number),
   CurrentRD(0), CurrentIT(0), CurrentOS(0) 
 {
   crateName = new TString(crate_name);
@@ -82,14 +82,16 @@ void GreenTB::Init(ULong_t backgrnd) {
   bt->Associate(this);
   bt->Resize(90, bt->GetDefaultHeight());
   bt->SetBackgroundColor(backgrnd);
+  bt->SetToolTipText("Display updated information for this timing board");
   tcf1b->AddFrame(bt = new TGTextButton(tcf1b,"Apply Settings",GM_TB_SET));
   bt->SetBackgroundColor(backgrnd);
   bt->Associate(this);
   bt->Resize(90, bt->GetDefaultHeight());
-  tcf1b->AddFrame(bt = new TGTextButton(tcf1b,"Cancel",23));
-  bt->SetBackgroundColor(backgrnd);
-  bt->Associate(this);
-  bt->Resize(90, bt->GetDefaultHeight());
+  bt->SetToolTipText("Apply these settings to this timing board");
+//    tcf1b->AddFrame(bt = new TGTextButton(tcf1b,"Cancel",23));
+//    bt->SetBackgroundColor(backgrnd);
+//    bt->Associate(this);
+//    bt->Resize(90, bt->GetDefaultHeight());
 
   tcf1b->Resize(tcf1b->GetDefaultSize());
 
@@ -161,7 +163,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
      sprintf(buff, "%i", par2);
      tentRD->SetText(buff);
    } else {
-     printf("ERROR accessing socket!");
+     cout << "ERROR accessing socket!" << endl;
    }
   
    command_type = COMMAND_HAPTB;    gRequest.command_type = command_type;
@@ -176,7 +178,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
      sprintf(buff, "%i", par2);
      tentIT->SetText(buff);
    } else {
-     printf("ERROR accessing socket!");
+     cout << "ERROR accessing socket!" << endl;
    }
   
    command_type = COMMAND_HAPTB;    gRequest.command_type = command_type;
@@ -192,7 +194,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
      sprintf(buff, "%i", par2);
      tentOS->SetText(buff);
    } else {
-     printf("ERROR accessing socket!");
+     cout << "ERROR accessing socket!" << endl;
    }
    return kTRUE;
  }
@@ -210,11 +212,11 @@ Bool_t GreenTB::setValsTB() {
   if (replyFlag==0) {
     CurrentRD=NewRD;
   } else if (replyFlag==2){
-    printf("Cannot set parameter, CODA run in progress");
+    cout << "Cannot set parameter, CODA run in progress" << endl;
     tentRD->SetText("RunInProgress");
     success = kFALSE;
   } else {
-    printf("Unknown error, cannot set TB parameter");
+    cout << "Unknown error, cannot set TB parameter" << endl;
     tentRD->SetText("ERROR");
     success = kFALSE;
   }
@@ -226,11 +228,11 @@ Bool_t GreenTB::setValsTB() {
   if (replyFlag==0) {
     CurrentIT=NewIT;
   } else if (replyFlag==2){
-    printf("Cannot set parameter, CODA run in progress");
+    cout << "Cannot set parameter, CODA run in progress" << endl;
     tentIT->SetText("RunInProgress");
     success = kFALSE;
   } else {
-    printf("Unknown error, cannot set TB parameter");
+    cout << "Unknown error, cannot set TB parameter" << endl;
     tentIT->SetText("ERROR");
     success = kFALSE;
   }
@@ -242,11 +244,11 @@ Bool_t GreenTB::setValsTB() {
   if (replyFlag==0) {
     CurrentOS=NewOS;
   } else if (replyFlag==2){
-    printf("Cannot set parameter, CODA run in progress");
+    cout << "Cannot set parameter, CODA run in progress" << endl;
     tentOS->SetText("RunInProgress");
     success = kFALSE;
   } else {
-    printf("Unknown error, cannot set TB parameter");
+    cout << "Unknown error, cannot set TB parameter" << endl;
     tentOS->SetText("ERROR");
     success = kFALSE;
   }
@@ -272,28 +274,27 @@ Int_t GreenTB::setParTB(const int parNum, const int value) {
   errFlag = GreenSockCommand(crateNumber,&gRequest);
   //  printf ("cfSockCommand returned :  %d \n",errFlag);
   if (errFlag == SOCK_OK) {
-    if(*reply=='Y' || *reply=='y') {
-      //printf ("GM: MESSAGE FROM SERVER:\n%s\n", msgReq);
-      if ((int) gRequest.command != 1) {
- 	printf("Error:Server replied with TB error code: %d \n",
- 	       (int) gRequest.command);
- 	replyFlag = 1;
+    //printf ("GM: MESSAGE FROM SERVER:\n%s\n", msgReq);
+    if ((int) gRequest.command != 1) {
+      if ((int) gRequest.command == -2) {
+	// this should be CODA running error
+	replyFlag = 2;
+      } else {
+	printf("Error:Server replied with TB error code: %d \n",
+	       (int) gRequest.command);
+	replyFlag = 1;
       }
+    } else {
       if (parNum != (int) gRequest.par1) {
- 	printf("Server replied with wrong TB number: %d  instead of %d \n",
- 	       (int) gRequest.par1, parNum);
- 	replyFlag = 1;
+	printf("Server replied with wrong TB number: %d  instead of %d \n",
+	       (int) gRequest.par1, parNum);
+	replyFlag = 1;
       }
       if (value != (int) gRequest.par2) {
- 	if ((int) gRequest.par2 == -1000) {
- 	  // this should be CODA running error
- 	  replyFlag = 2;
- 	}else{	     
- 	  printf("Server replied with wrong TB set value: %d instead of %d \n",
- 		 (int) gRequest.par2, value);
- 	  replyFlag = 1;
- 	}
-      }
+	printf("Server replied with wrong TB set value: %d instead of %d \n",
+	       (int) gRequest.par2, value);
+	replyFlag = 1;
+	}
     }
   } else {
     printf("setParTB:: ERROR accessing socket!");

@@ -9,3 +9,5 @@
 #define COMMAND_HAPTB         1000
 #define COMMAND_BMW           2000
 #define COMMAND_FDBK          3000
+#define COMMAND_HAPADC        4000
+

@@ -6,14 +6,9 @@ extern int CODA_RUN_IN_PROGRESS;
 
 // HAPPEX ADC utilities
 extern int ADC_NUMSLOTS;   // number of HAPPEX ADCs
-extern int initHAPADC();   // initialize all adcs
 extern int showHAPADC();   // dump registers of adcs
 extern unsigned long* readoutHAPADC(unsigned long*, int);  // readout adcs
 extern int setDACHAPADC(int, int);   // set noise dac value on adc
-extern int setAllDACBitHAPADC(int); 
-extern int setDACBitHAPADC(int,int);
-extern int setAllGainBitHAPADC(int); 
-extern int setGainBitHAPADC(int,int);
 
 // Timing Board utilities
 extern int InitHAPTB();

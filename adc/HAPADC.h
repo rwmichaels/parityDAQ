@@ -24,9 +24,9 @@
 #define DEF_DACVAL 3000  // dac value for non-dac noise adcs
 
 //   Relative Addresses of ADCs
-#define  ADC0 0x830000
-#define  ADC1 0x840000
-#define  ADC2 0x470000
+#define  ADC0 0x470000
+#define  ADC1 0x830000
+#define  ADC2 0x840000
 #define  ADC3 0x400000
 #define  ADC4 0x4d0000
 #define  ADC5 0x480000

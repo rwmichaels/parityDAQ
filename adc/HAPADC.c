@@ -85,6 +85,10 @@ int writeCSRverboseHAPADC(int ibrd, int newcsr)
 {
   int chkcsr,retry;
   if (ibrd>=NADC || ibrd<0) return -1;
+  if (CODA_RUN_IN_PROGRESS==1) {
+    printf("What, are you crazy?  There's a run in progress!");
+    return -2;
+  }
   chkcsr = -1;
   retry = -1;
   while (newcsr != chkcsr && retry<MAXRETRY) { 
@@ -117,6 +121,7 @@ LOCAL int writeCSRHAPADC(int ibrd, int newcsr)
   if (ibrd>=NADC || ibrd<0) return -1;
   chkcsr = -1;
   retry = -1;
+  if (CODA_RUN_IN_PROGRESS==1) return -2;
   while (newcsr != chkcsr && retry<MAXRETRY) { 
     // Make sure the correct CSR is written
     adcbrds[ibrd]->csr = newcsr;
@@ -224,16 +229,16 @@ unsigned long* readoutHAPADC(unsigned long* dabufp, int ibrd)
   int j;
   int timeout, donetest;
 
-  if (!(did_init[ibrd]==-1)) {
-    timeout = 0;
-    donetest = 0;
-    while ( donetest ) {
-      // CSRbit 1=>  1=not.done,0=done: this is opposite to description from 
-      // Wilson's thesis, so maybe this is just a timing thing.
-      donetest = (adcbrds[ibrd]->done & 2);  
-      if (timeout++ >= ADC_TIMEOUT) break;
-    }
-    if (timeout < ADC_TIMEOUT) {
+  if (did_init[ibrd]!=-1) {
+//    timeout = 0;
+//    donetest = 0;
+//      while ( donetest ) {
+//        // CSRbit 1=>  1=not.done,0=done: this is opposite to description from 
+//        // Wilson's thesis, so maybe this is just a timing thing.
+//        donetest = (adcbrds[ibrd]->done & 2);  
+//        if (timeout++ >= ADC_TIMEOUT) break;
+//      }
+//    if (timeout < ADC_TIMEOUT) {
       /* Reshuffle the ADC channels into a more logical order and remap to avoid the gap */
       *dabufp++ = (adcbrds[ibrd]->adcchan[0]+0x8000) & 0xffff;
       *dabufp++ = (adcbrds[ibrd]->adcchan[2]+0x8000) & 0xffff;
@@ -242,7 +247,7 @@ unsigned long* readoutHAPADC(unsigned long* dabufp, int ibrd)
       *dabufp++ = adcbrds[ibrd]->csr & 0xffff;
       *dabufp++ = dacvalue[ibrd] & 0xffff;       /* adc->dac is write only */
       return dabufp;
-    } 
+//    } 
   }
   // if haven't returned, then not initialized or timeout
   for (j = 0; j < 6; j++) *dabufp++ = -1;
@@ -260,13 +265,13 @@ int setDACHAPADC(int ibrd, int newval)
 {
   int shortdelay;
 
-  if (!(did_init[ibrd]==-1)) {
+  if (did_init[ibrd]==-1) {
     return -1;
   } 
   // if dac_noise is off, don't change the dac value
-  if (ADC_DACBIT[ibrd]==0) newval = DEF_DACVAL;  
-  adcbrds[ibrd]->dac = newval;
+  if (ADC_DACBIT[ibrd]==DAC_OFF) newval = DEF_DACVAL;  
   dacvalue[ibrd] = newval;
+  adcbrds[ibrd]->dac = dacvalue[ibrd];
   shortdelay = adcbrds[ibrd]->csr; // Need for DACnoise to work on ALL ADCs.
   // this is a curious thing.  It appears that the write buffer is not
   // necessarily flushed, but the READ forces a flush of the bus i/o buffer.
@@ -283,6 +288,7 @@ int setDACHAPADC(int ibrd, int newval)
 int setAllDACBitHAPADC(int flag)
 {
   int i;
+  if (CODA_RUN_IN_PROGRESS==1) return -2;
   for (i=0;i<NADC;i++) setDACBitHAPADC(i, flag);
   return 1;
 }      
@@ -298,6 +304,8 @@ int setAllDACBitHAPADC(int flag)
 int setDACBitHAPADC(int ibrd, int flag)
 {
   int csrval;
+  if (ibrd<0 || ibrd>=NADC) return -1;
+  if (CODA_RUN_IN_PROGRESS==1) return -2;
   if (flag==1)  ADC_DACBIT[ibrd] = DAC_ON;
   if (flag==0)  ADC_DACBIT[ibrd] = DAC_OFF;
   // create csr
@@ -305,6 +313,7 @@ int setDACBitHAPADC(int ibrd, int flag)
   csrval |= ADC_GAINBIT[ibrd];
   csrval |= ADC_MUXBIT[ibrd];     
   csrval |= ADC_DACBIT[ibrd];     
+  setDACHAPADC(ibrd,DEF_DACVAL);
   return writeCSRHAPADC(ibrd,csrval);
 }
 
@@ -317,6 +326,7 @@ int setDACBitHAPADC(int ibrd, int flag)
 ////////////////////////////////////////////////////////
 int usesDACHAPADC(int ibrd)
 {
+  if (ibrd<0 || ibrd>=NADC) return -1;
   if (ADC_DACBIT[ibrd]==DAC_ON) return 1;
   return 0;
 }
@@ -332,6 +342,8 @@ int usesDACHAPADC(int ibrd)
 int setGainBitHAPADC(int ibrd, int flag)
 {
   int csrval;
+  if (ibrd<0 || ibrd>=NADC) return -1;
+  if (CODA_RUN_IN_PROGRESS==1) return -2;
   if (flag==1)  ADC_GAINBIT[ibrd] = HI_GAIN;
   if (flag==0)  ADC_GAINBIT[ibrd] = LO_GAIN;
   // create csr
@@ -353,10 +365,37 @@ int setGainBitHAPADC(int ibrd, int flag)
 int setAllGainBitHAPADC(int ibrd, int flag)
 {
   int i;
+  if (CODA_RUN_IN_PROGRESS==1) return -2;
   for (i=0;i<NADC;i++) setGainBitHAPADC(i, flag);
   return 1;
 }      
 
+
+
+
+////////////////////////////////////////////////////////
+//  
+//    return csr of a specific adc, 
+//       necessary for config interface
+//       if ibrd = -1, dump all registers to screen
+// 
+////////////////////////////////////////////////////////
+long getCSRHAPADC(int ibrd)
+{
+  if (ibrd>=0 && ibrd<NADC && did_init[ibrd]!=-1 ) return adcbrds[ibrd]->csr;
+  return -1;
+}
+
+////////////////////////////////////////////////////////
+//  
+//    return number of ADCs
+//       necessary for config interface
+// 
+////////////////////////////////////////////////////////
+int getNumHAPADC()
+{
+  return NADC;
+}
 
 
 

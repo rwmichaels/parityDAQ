@@ -27,6 +27,7 @@ int           closeSocket = 0;  /* switch to close socket and terminate */
 void cfSockWorkTask (int task_sFd, char * address, u_short port);
 
 extern void taskHAPTB_CF(long*,long*,long*);
+extern void taskHAPADC_CF(long*,long*,long*);
 extern void task_BMW(long*,long*,long*);
 
 /****************************************************************************
@@ -200,6 +201,16 @@ void cfSockWorkTask
 	//	    perror ("taskSpawn");
 	//	  }
 	//	printf("HAPTB config utility returns:\n");
+	//	printf("  command: %d\n",clientRequest.command);
+	//	printf("  par1:    %d\n",clientRequest.par1);
+	//	printf("  par2:    %d\n",clientRequest.par2);
+      }
+
+
+      if (clientRequest.command_type==COMMAND_HAPADC) {
+	taskHAPADC_CF(&clientRequest.command,
+                     &clientRequest.par1,&clientRequest.par2);
+	//	printf("HAPADC config utility returns:\n");
 	//	printf("  command: %d\n",clientRequest.command);
 	//	printf("  par1:    %d\n",clientRequest.par1);
 	//	printf("  par2:    %d\n",clientRequest.par2);

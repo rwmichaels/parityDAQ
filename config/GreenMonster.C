@@ -63,8 +63,12 @@ void GreenMonster::InitGui() {
   //  bt->Resize(100,bt->GetDefaultHeight());
   sizebtn->AddFrame(bt,new TGLayoutHints(kLHintsBottom|kLHintsExpandX,5,10,4,2));
 
-  TGIcon *mike = new TGIcon(tf,gClient->GetPicture("config/gm.xpm"), 0,0);
+  TGPictureButton* mike = new TGPictureButton(tf,
+					      gClient->GetPicture("config/gm.xpm"));
+  //  TGIcon *mike = new TGIcon(tf,gClient->GetPicture("config/gm.xpm"), 0,0);
   mike->SetBackgroundColor(grnback);
+  mike->SetToolTipText("grrr...");
+  //  new TGToolTip(tf,mike,"grrr...",1000);
   tf->AddFrame(mike,new TGLayoutHints(kLHintsBottom|kLHintsLeft,5,10,4,2));
 
   bt->Resize(100,bt->GetDefaultHeight());
@@ -86,27 +90,30 @@ void GreenMonster::InitGui() {
 
   TGCompositeFrame* tfnocrate;
   TGCompositeFrame* tfnocrate2;
+  TGLayoutHints *addTBLayout = new TGLayoutHints(kLHintsTop | kLHintsExpandX | kLHintsExpandY, 5, 5, 5, 5);
   for (Int_t i=0; i<4; i++) {
     if (fUseCrate[i]) {
       fTimeBoard[i] = new GreenTB(fCrateNumbers[i],fCrateNames[i]->Data(),
 				 tf, 350, 200);
       fTimeBoard[i]->Init(grnback);
-      tf->AddFrame(fTimeBoard[i],framout);
+      tf->AddFrame(fTimeBoard[i],addTBLayout);
     } else {
-      tfnocrate = new TGCompositeFrame(tf,350,200);
+      tfnocrate = new TGCompositeFrame(tf,350,200,kFixedSize);
       tfnocrate->SetBackgroundColor(grnback);
-      tf->AddFrame(tfnocrate,framout);
+      tf->AddFrame(tfnocrate,addTBLayout);
       tfnocrate2 = new TGGroupFrame(tfnocrate,fCrateNames[i]->Data(),
-				   kHorizontalFrame);
+				   kHorizontalFrame | kFixedSize);
       tfnocrate2->SetBackgroundColor(grnback);
-      tfnocrate->AddFrame(tfnocrate2,framout);
+      tfnocrate->AddFrame(tfnocrate2,addTBLayout);
     }
   }  
   //
   //
 
 
-//    // create BMW page
+  //
+  // create BMW page
+  //
   tf = fTab->AddTab("BMW");
   fBMW_TABID = fTab->GetNumberOfTabs()-1;  // set tab index for later use
   tf->SetBackgroundColor(grnback);
@@ -118,8 +125,36 @@ void GreenMonster::InitGui() {
   tabel = fTab->GetTabTab(fBMW_TABID);
   tabel->ChangeBackground(grnback);
 
+
+  //
+  // create third page, ADCs
+  //
+  char buff[15];
+  for (Int_t i=0; i<4; i++) {
+    if (fUseCrate[i]) {
+      sprintf(buff,"ADC, Crate %d",i);
+      tf = fTab->AddTab(buff);
+      tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
+      tabel->ChangeBackground(grnback);
+      tf->SetBackgroundColor(grnback);
+      //  tf->SetLayoutManager(new TGMatrixLayout(tf, 2, 2, 10));
+      //      tf->SetLayoutManager(new TGVerticalLayout(tf));
+      fADC[i] = new GreenADC(fCrateNumbers[i],fCrateNames[i]->Data(),
+				 tf, 350, 200);
+      fADC[i]->Init(grnback);
+      tf->AddFrame(fADC[i],framout);
+    } 
+  }  
+  //
+  //
+
+
+  //
   // create server page
+  //
   tf = fTab->AddTab("VXWorks Server");
+  tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
+  tabel->ChangeBackground(grnback);
   tf->SetBackgroundColor(grnback);
   tf->SetLayoutManager(new TGHorizontalLayout(tf));
   TGLayoutHints *noex = new TGLayoutHints(kLHintsCenterX | kLHintsCenterY, 5, 5, 5, 5);
@@ -128,8 +163,6 @@ void GreenMonster::InitGui() {
   tcf4a->SetBackgroundColor(grnback);
   //tcf4a->SetBackgroundColor(dgreen);
   tf->AddFrame(tcf4a,noex);
-  tabel = fTab->GetTabTab(2);
-  tabel->ChangeBackground(grnback);
 
 //    // create test page
 //    tf = fTab->AddTab("Test Page");
@@ -186,6 +219,7 @@ void GreenMonster::InitGui() {
 		      fLayout);
       bt->SetBackgroundColor(grnback);
       bt->Associate(this);
+      bt->SetToolTipText("Kill the Socket Server running on this crate");
     }
   } 
 

@@ -36,7 +36,8 @@ ifdef PROFILE
   LDFLAGS += -pg
 endif
 
-SRC = config/GreenMonster.C config/GreenMonsterDict.C config/GreenTB.C
+SRC = config/GreenMonster.C config/GreenMonsterDict.C config/GreenTB.C \
+      config/GreenADC.C
 
 HEAD = $(SRC:.C=.h) cfSock/GreenSock.h config/GMSock.h
 DEPS = $(SRC:.C=.d)
@@ -46,7 +47,7 @@ OBJS = $(SRC:.C=.o) cfSock/cfSockCli.o
 PROGS = config/config
 SHLIB =
 #SHLIB = config/libGreenMonster.so
-ADC = adc/HAPADC.o
+ADC = adc/HAPADC.o adc/HAPADC_config.o
 BMW = bmw/bmwClient.o bmw/bmw_config.o 
 TB = timebrd/HAPTB_util.o timebrd/HAPTB_config.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
@@ -92,6 +93,10 @@ config/config: config/config.o $(OBJS) $(SRC) $(HEAD)
 adc/HAPADC.o : adc/HAPADC.c adc/HAPADC.h
 	rm -f $@
 	ccppc -o $@ $(CCVXFLAGS) adc/HAPADC.c
+
+adc/HAPADC_config.o : adc/HAPADC_config.c adc/HAPADC_cf_commands.h
+	cd adc; rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) adc/HAPADC_config.c
 
 bmw/bmwClient.o : bmw/bmwClient.c bmw/bmw.h
 	rm -f $@

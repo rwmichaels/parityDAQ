@@ -13,6 +13,7 @@ initHAPTB
 #  load adc routines
 #
 ld < /adaqfs/halla/apar/kent/devices/adc/HAPADC.o
+ld < /adaqfs/halla/apar/kent/devices/adc/HAPADC_config.o
 initHAPADC
 #
 #  load bmw routines

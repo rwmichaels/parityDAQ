@@ -35,4 +35,3 @@ struct greenRequest
    char message[GREEN_REQUEST_MSG_SIZE];     /* message buffer */
 };
 
-

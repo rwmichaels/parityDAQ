@@ -20,6 +20,7 @@
 #include "TGButton.h"
 #include "TGTextBuffer.h"
 #include "TGTextEntry.h"
+#include "TGToolTip.h"
 #include "TFile.h"
 #include "TTimer.h"
 #include "TQObject.h"
@@ -27,6 +28,7 @@
 #include "RQ_OBJECT.h"
 
 #include "GreenTB.h"
+#include "GreenADC.h"
 #include "../cfSock/cfSock_types.h"
 #include "../bmw/bmw_cf_commands.h"
 //#include "GMSock.h"
@@ -73,6 +75,8 @@ private:
   Int_t fCrateNumbers[4];
 
   GreenTB* fTimeBoard[4];
+
+  GreenADC* fADC[4];
 
   // objects for bmw tabpage
   Int_t fBMW_TABID;
