@@ -11,6 +11,8 @@ maximum 10240,100
 vme readout
 /* All the memory maps of VME modules are defined in module_map.h  */
 include "../module_map.h"
+/* User strings to control some readout */
+include "usrstrutils.c"
 
 # default timing board DAC values
 const  DEF_DAC12   =    0       /* output voltage = 0 */
@@ -34,6 +36,8 @@ const OPORT_BUSY = 1   /* bit 1 = busy output */
 const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
 int oport_state;   /* output port state (global variable) */
+
+static int noscaler, bmw, tbreadout;
 
 unsigned short ranny[65535];  /* array of random integers */
 
@@ -81,6 +85,31 @@ begin download
       printf("Assuming EB is on a Little-Endian cpu\n");      
       bigendian_out = 0;
   }
+init_strings();
+
+noscaler=0;bmw=0;tbreadout=0;
+noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
+bmw       = getflag(BMW);        /* Readout Beam Modulation Words */
+tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
+
+/* Printout User String Configuration */
+printf("*** User String Configuration ***\n");
+if(noscaler == 0) {
+  printf("WILL readout scaler: %d\n",noscaler);
+} else {
+  printf("Will NOT readout scaler: %d\n",noscaler);
+}
+if(bmw==1) {
+  printf("WILL readout Beam Modulation Words: %d\n",bmw);
+} else {
+  printf("Will NOT readout Beam Modulation Words: %d\n",bmw);
+}
+if(tbreadout==1) {
+  printf("WILL write timing board config to file: %d\n",tbreadout);
+} else {
+  printf("Will NOT write timing board config to file: %d\n",tbreadout);
+}
+
 
 /* Setup Device Pointers */
 
@@ -104,18 +133,18 @@ begin download
   setDACHAPTB(2,DEF_DAC16);
   dumpRegHAPTB();
 
-
-/* switch this, depending on which kind of scaler */
+if(noscaler == 0) {
+  /* switch this, depending on which kind of scaler */
 #ifdef TYPE_SIS3801
   res = sysBusToLocalAdrs(0x39,SCALER0,&laddr);
   if (res != 0) {
-     printf("Error in sysBusToLocalAdrs res=%d \n",res);
-     printf("ERROR:  SCALER POINTER NOT INITIALIZED");
+    printf("Error in sysBusToLocalAdrs res=%d \n",res);
+    printf("ERROR:  SCALER POINTER NOT INITIALIZED");
   } else {
-     printf("SIS3801 Scaler address = 0x%x\n",laddr);
-     pscaler[0] = (struct fifo_scaler *)laddr;
+    printf("SIS3801 Scaler address = 0x%x\n",laddr);
+    pscaler[0] = (struct fifo_scaler *)laddr;
   }
-
+  
   pscaler[0]->reset=1;
   pscaler[0]->csr=0xff00fc00;
   pscaler[0]->clear=1;
@@ -129,36 +158,37 @@ begin download
 #endif  
 #ifdef TYPE_SIS3800
   pscaler[0] = (struct SIS3800 *) SCALER0;
-   for (i=0; i < NSCALER; i++) {
-     pscaler[i]->reset = 1;
-     pscaler[i]->csr = 0x7000fd00;
-     pscaler[i]->clear = 1;
-     pscaler[i]->enclk = 1;
-     pscaler[i]->csr=0x00000C00;  /* clear Mode bits to Mode 0*/
-     mode = 1;
-     pscaler[i]->csr=(mode<<2);       /* set mode */
+  for (i=0; i < NSCALER; i++) {
+    pscaler[i]->reset = 1;
+    pscaler[i]->csr = 0x7000fd00;
+    pscaler[i]->clear = 1;
+    pscaler[i]->enclk = 1;
+    pscaler[i]->csr=0x00000C00;  /* clear Mode bits to Mode 0*/
+    mode = 1;
+    pscaler[i]->csr=(mode<<2);       /* set mode */
   }
 #endif
 #ifdef TYPE_LEC1151
-   pscaler[0] = (struct lecroy_1151_scaler *) SCALER0;
-   for (i=0; i < NSCALER; i++) {
-       pscaler[i]->reset = 0;
-   }
+  pscaler[0] = (struct lecroy_1151_scaler *) SCALER0;
+  for (i=0; i < NSCALER; i++) {
+    pscaler[i]->reset = 0;
+  }
 #endif
 #ifdef TYPE_CAEN560
-   pscaler[0] = (struct caen_v560_scaler *) SCALER0;
-   for (i=0; i < NSCALER; i++) {
-       pscaler[i]->ClrR = 0;
-       temp = pscaler[i]->clrVETOR;
-   }
+  pscaler[0] = (struct caen_v560_scaler *) SCALER0;
+  for (i=0; i < NSCALER; i++) {
+    pscaler[i]->ClrR = 0;
+    temp = pscaler[i]->clrVETOR;
+  }
 #endif
+}
 
-   srand(9421);       /* seed random num generator */
+srand(9421);       /* seed random num generator */
 /* Fill Random Integer Array */
-   for (j=0;j<65535;j++) {
-     /* Generate random integers from 2048 to 63488 */
-     ranny[j] = 2048 + (unsigned short) (61440.0*rand()/(32768+1.0));
-   }
+for (j=0;j<65535;j++) {
+  /* Generate random integers from 2048 to 63488 */
+  ranny[j] = 2048 + (unsigned short) (61440.0*rand()/(32768+1.0));
+}
 
 
 /* Clear TIR */
@@ -206,18 +236,19 @@ begin prestart
 
 %%
 
+  if(tbreadout==1) {
+    /* Send timing board information to ~apar/db/timebrd/timebrd.cfg */
+    
+    int fdbfile;
+    
+    fdbfile=fopen("~apar/db/timebrd/timebrd.cfg","w");
+    fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms, Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
+	    (double)getIntTimeHAPTB()*0.0025,
+	    (double)getRampDelayHAPTB()*2.5,
+	    (int)getOverSampleHAPTB()+1);
+    fclose(fdbfile);
+  }
 
-/* Send timing board information to ~apar/db/timebrd.cfg */
- 
-  int fdbfile;
- 
-fdbfile=fopen("~apar/db/timebrd.cfg","w");
-fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms, Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
-        (double)getIntTimeHAPTB()*0.0025,
-        (double)getRampDelayHAPTB()*2.5,
-        (int)getOverSampleHAPTB()+1);
-fclose(fdbfile);
- 
 %%
 
   log inform "User Prestart Executed"
@@ -256,8 +287,10 @@ begin go
 %% 
   int i;
   unsigned short temp;
+
+if(noscaler == 0) {
 #ifdef TYPE_SIS3801
-/* SIS3801 */
+  /* SIS3801 */
   for (i=0; i<NSCALER; i++) {
     pscaler[i]->csr = 0x1000000; /* disable LNE */
     pscaler[i]->clear = 1;
@@ -266,20 +299,20 @@ begin go
   }
 #endif
 #ifdef TYPE_SIS3800
-/* SIS3800 */
+  /* SIS3800 */
   for (i=0; i<NSCALER; i++) pscaler[i]->clear = 1;
 #endif
 #ifdef TYPE_LEC1151
-/* LeCroy 1151 */
+  /* LeCroy 1151 */
   for (i=0; i<NSCALER; i++) pscaler[i]->reset = 1;
 #endif
 #ifdef TYPE_CAEN560
-   for (i=0; i < NSCALER; i++) {
-       pscaler[i]->ClrR = 0;
-       temp = pscaler[i]->clrVETOR;
-   }
+  for (i=0; i < NSCALER; i++) {
+    pscaler[i]->ClrR = 0;
+    temp = pscaler[i]->clrVETOR;
+  }
 #endif
- 
+}
 
 /* remove the inhibit */
 %%  
@@ -304,7 +337,7 @@ variable i,j
 unsigned long ltest;
 static int dac16val=DEF_DAC16;
 static int dac12val=DEF_DAC12;
-static int maxdac16=63000;
+static int maxdac16=65535;
 static int maxdac12=4095;
 static int ncnt=0;
 int timeout;
@@ -331,77 +364,81 @@ open event type EVTYPE of BT_UI4
 ncnt++;
 
 %%
-//////////////////////////////////////////////////
-//
-// BMW: early in readout! (the bmw process in asynchronous,
-//      and we don't want nuthin' to change before we see it
-//
-//////////////////////////////////////////////////
-localBMWobj = bmw_object;
-localBMWval = bmw_value;
-localBMWcycnum = bmw_cycle_number;
+if(bmw==1) {
+  //////////////////////////////////////////////////
+  //
+  // BMW: early in readout! (the bmw process in asynchronous,
+  //      and we don't want nuthin' to change before we see it
+  //
+  //////////////////////////////////////////////////
+  localBMWobj = bmw_object;
+  localBMWval = bmw_value;
+  localBMWcycnum = bmw_cycle_number;
+  
+  //  record if event was unclean for any portion of pulse
+  pulseclean = bmw_clean_pulse;
+  
+  //  if pulse was at some point unclean, but ended clean, prepare
+  //  next pulse to be seen as clean
+  if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;
+}
 
-//  record if event was unclean for any portion of pulse
-pulseclean = bmw_clean_pulse;
-
-//  if pulse was at some point unclean, but ended clean, prepare
-//  next pulse to be seen as clean
-if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;
-
-//////////////////////////////////////////////////
-
-/* Put scalers at beginning of readout */
-
+if(noscaler == 0) {
+  //////////////////////////////////////////////////
+  
+  /* Put scalers at beginning of readout */
+  
 #ifdef TYPE_SIS3801
-errstat = 0;
-for (i = 0; i <NSCALER; i++) {
-  timeout = 0;
-  while ( (pscaler[i]->csr&FIFO_EMPTY) != FIFO_EMPTY && timeout++ < 10) {
-    for (j = 0; j < 32; j++) {
-      sdata[i*32+j] = ((int)pscaler[i]->fifo[0])&DATA_MASK;  
+  errstat = 0;
+  for (i = 0; i <NSCALER; i++) {
+    timeout = 0;
+    while ( (pscaler[i]->csr&FIFO_EMPTY) != FIFO_EMPTY && timeout++ < 10) {
+      for (j = 0; j < 32; j++) {
+	sdata[i*32+j] = ((int)pscaler[i]->fifo[0])&DATA_MASK;  
+      }
     }
   }
-}
-if (timeout > 1) errstat = 1;
-*rol->dabufp++ = 0xfffca000 + NSCALER + (errstat<<4);   /* Header for scaler */
-for (i = 0; i <NSCALER; i++){
-  for (j = 0; j < 32; j++) {
-    *rol->dabufp++ = sdata[i*32+j];
+  if (timeout > 1) errstat = 1;
+  *rol->dabufp++ = 0xfffca000 + NSCALER + (errstat<<4);   /* Header for scaler */
+  for (i = 0; i <NSCALER; i++){
+    for (j = 0; j < 32; j++) {
+      *rol->dabufp++ = sdata[i*32+j];
+    }
   }
-}
 #else 
-
-*rol->dabufp++ = 0xfffca000 + NSCALER;   /* Header for scaler */
-
+  
+  *rol->dabufp++ = 0xfffca000 + NSCALER;   /* Header for scaler */
+  
 #endif
 #ifdef TYPE_SIS3800
-/* SIS3800 scaler */
-for (i=0; i < NSCALER; i++) {
-  for (j=0; j < 32; j++) {
-    *rol->dabufp++ = pscaler[i]->readCounter[j];
+  /* SIS3800 scaler */
+  for (i=0; i < NSCALER; i++) {
+    for (j=0; j < 32; j++) {
+      *rol->dabufp++ = pscaler[i]->readCounter[j];
+    }
   }
-}
-/* FOR TESTING PURPOSES... clear scalers after counters are read out */
-for (i=0; i<NSCALER; i++) pscaler[i]->clear = 1; 
+  /* FOR TESTING PURPOSES... clear scalers after counters are read out */
+  for (i=0; i<NSCALER; i++) pscaler[i]->clear = 1; 
 #endif
 #ifdef TYPE_LEC1151
-/* LeCroy 1151 scaler */
-for (i=0; i < NSCALER; i++) {
-  for (j=0; j < 16; j++) {
-    *rol->dabufp++ = pscaler[i]->scaler[j];
+  /* LeCroy 1151 scaler */
+  for (i=0; i < NSCALER; i++) {
+    for (j=0; j < 16; j++) {
+      *rol->dabufp++ = pscaler[i]->scaler[j];
+    }
+    for (j=0; j < 16; j++) *rol->dabufp++ = 0;  
   }
-  for (j=0; j < 16; j++) *rol->dabufp++ = 0;  
-}
 #endif
 #ifdef TYPE_CAEN560
-/* CAEN model 560 scaler */
-for (i=0; i < NSCALER; i++) {
-  for (j=0; j < 16; j++) {
-    *rol->dabufp++ = pscaler[i]->CntR[j];
+  /* CAEN model 560 scaler */
+  for (i=0; i < NSCALER; i++) {
+    for (j=0; j < 16; j++) {
+      *rol->dabufp++ = pscaler[i]->CntR[j];
+    }
+    for (j=0; j < 16; j++) *rol->dabufp++ = 0;  
   }
-  for (j=0; j < 16; j++) *rol->dabufp++ = 0;  
-}
 #endif
+}  
 
 *rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
 //readoutHAPADC(rol->dabufp,ADC_NUMSLOTS-1);
@@ -420,18 +457,19 @@ tir_dat = tir[1]->tir_dat;
 *rol->dabufp++ = getDACHAPTB(2); /* DAC16 */
 *rol->dabufp++ = getDACHAPTB(1); /* DAC12 */
 
-*rol->dabufp++ = pulseclean;  //record in bmw says entire pulse was clean
-*rol->dabufp++ = localBMWobj; //record the last-moved object (from beginning of readout)
-*rol->dabufp++ = localBMWval; // record the value of the last-moved object
-*rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
-
+if(bmw==1) {
+  *rol->dabufp++ = pulseclean;  //record in bmw says entire pulse was clean
+  *rol->dabufp++ = localBMWobj; //record the last-moved object (from beginning of readout)
+  *rol->dabufp++ = localBMWval; // record the value of the last-moved object
+  *rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
+}
 
 for (i = 0; i < ADC_NUMSLOTS; i++) {  
   if (usesDACHAPADC(i)==1) {
     // lookup table of random numbers
     rannum = ranny[rannyint];   /* rand goes from 0 to 32768 */
     rannyint++;
-    if (rannyint>65535) rannyint=0;
+    if (rannyint>65534) rannyint=0;
     
     setDACHAPADC(i,rannum);
   
@@ -463,14 +501,19 @@ for (i = 0; i < ADC_NUMSLOTS; i++) {
 //  setDACHAPTB(2,dac16val);
 
 
-/* V/F and/or ADC test.  Increment dac12 every 10 events */
-  if(k==10) {
-    dac12val = dac12val + 10; 
-    k = 0;
-  } 
-  k = k + 1;
+/* V/F and/or ADC test.  Increment dacs after last sample in helicity window
+   recall: Last sample has OS=0 in these new timing boards */
+
+if(getOverSampleCurrentHAPTB()==0) {
+  dac12val = dac12val + 2; 
+  dac16val = dac16val + 10; 
+} 
   if (dac12val >= maxdac12) dac12val = 0;
   setDACHAPTB(1,dac12val);
+  getDACHAPTB(1);
+  if (dac16val >= maxdac16) dac16val = 32767;
+  setDACHAPTB(2,dac16val);
+  getDACHAPTB(2);
 
 /* Disable BUSY Flag */
 oport_state = oport_state & 0xfe;

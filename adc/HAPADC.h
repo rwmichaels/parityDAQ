@@ -22,10 +22,10 @@
 #define NADC 3    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  LEFTSPECT
-#define NADC 5    // must be <10, or requires changes to static arrays.
+#define NADC 4    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 5    // must be <10, or requires changes to static arrays.
+#define NADC 4    // must be <10, or requires changes to static arrays.
 #endif
 
 #define MAXRETRY 10   // max number of attempts to write csr
@@ -60,28 +60,28 @@
 #define  ADC9 0x490000
 #endif
 #ifdef   LEFTSPECT
-#define  ADC0 0x5F0000
-#define  ADC1 0x440000
-#define  ADC2 0x420000
-#define  ADC3 0x430000
-#define  ADC4 0x500000
-#define  ADC5 0x480000
-#define  ADC6 0x4c0000
-#define  ADC7 0x4b0000
-#define  ADC8 0x510000
-#define  ADC9 0x490000
+#define  ADC0 0x440000
+#define  ADC1 0x420000
+#define  ADC2 0x430000
+#define  ADC3 0x500000
+#define  ADC4 0x480000
+#define  ADC5 0x4c0000
+#define  ADC6 0x4b0000
+#define  ADC7 0x510000
+#define  ADC8 0x490000
+#define  ADC9 0x5F0000
 #endif
 #ifdef   RIGHTSPECT
-#define  ADC0 0x8F0000
-#define  ADC1 0x850000
-#define  ADC2 0x820000
-#define  ADC3 0x810000
-#define  ADC4 0x4B0700
-#define  ADC5 0x480000
-#define  ADC6 0x4c0000
-#define  ADC7 0x4b0000
-#define  ADC8 0x510000
-#define  ADC9 0x490000
+#define  ADC0 0x850000
+#define  ADC1 0x820000
+#define  ADC2 0x810000
+#define  ADC3 0x4B0700
+#define  ADC4 0x480000
+#define  ADC5 0x4c0000
+#define  ADC6 0x4b0000
+#define  ADC7 0x510000
+#define  ADC8 0x490000
+#define  ADC9 0x8F0000
 #endif
 
 // gain setting for each adc
