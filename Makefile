@@ -39,7 +39,7 @@ ifdef PROFILE
 endif
 
 SRC = config/GreenMonster.C config/GreenMonsterDict.C config/GreenTB.C \
-      config/GreenADC.C
+      config/GreenADC.C 
 
 HEAD = $(SRC:.C=.h) cfSock/GreenSock.h config/GMSock.h
 DEPS = $(SRC:.C=.d)
@@ -54,20 +54,24 @@ ADC = adc/HAPADC_ch.o adc/HAPADC_inj.o adc/HAPADC_lspec.o \
 BMW = bmw/bmwClient.o bmw/bmw_config.o 
 TB = timebrd/HAPTB_util.o timebrd/HAPTB_config.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
-CAFFB = caFFB/caFFB.o
+SCAN = scan/SCAN_util.o scan/SCAN_config.o
+#CAFFB = caFFB/caFFB.o
+CAFFB = 
 
 adc: $(ADC)
 timebrd: $(TB)
 bmw: $(BMW)
 socket: $(SOCK)
+scan: $(SCAN)
 caFFB: $(CAFFB)
-vxall: $(ADC) $(BMW) $(SOCK) $(TB) $(CAFFB)
-all:  $(ADC) $(BMW) $(SOCK) $(TB) $(CAFFB) $(PROGS) $(SHLIB)
+vxall: $(ADC) $(BMW) $(SOCK) $(TB)  $(SCAN) $(CAFFB)
+all:  $(ADC) $(BMW) $(SOCK) $(TB) $(SCAN) $(CAFFB) $(PROGS) $(SHLIB)
 dict:
 #dict: config/GreenMonsterDict.C
 
 config/libGreenMonster.so: $(OBJS) $(HEAD)
 	$(CXX) -shared -O -o config/libGreenMonster.so $(OBJS) $(ALL_LIBS)
+
 
 # The main code is config
 version: clean
@@ -85,6 +89,7 @@ clean:
 	rm -f bmw/core bmw/*.o bmw/*.d
 	rm -f cfSock/core cfSock/*.o cfSock/*.d
 	rm -f timebrd/core timebrd/*.o timebrd/*.d
+	rm -f scan/core scan/*.o scan/*.d
 	rm -f caFFB/core caFFB/*.o caFFB/*.d
 
 realclean:  clean
@@ -142,8 +147,16 @@ timebrd/HAPTB_config.o: timebrd/HAPTB_config.c timebrd/HAPTB_cf_commands.h
 	cd timebrd; rm -f $@; \
 	ccppc  -c $(CCVXFLAGS) HAPTB_config.c
 
-caFFB/caFFB.o: caFFB/caFFB.c caFFB/caFFB.h
-	ccppc  -c $(CCVXFLAGS) $(EPICS_INC) $< -o $@
+scan/SCAN_util.o: scan/SCAN_util.c  scan/SCAN_util.h
+	cd scan; rm -f $@; \
+	ccppc  -c $(CCVXFLAGS) SCAN_util.c
+
+scan/SCAN_config.o: scan/SCAN_config.c scan/SCAN_cf_commands.h
+	cd scan; rm -f $@; \
+	ccppc  -c $(CCVXFLAGS) SCAN_config.c
+
+#caFFB/caFFB.o: caFFB/caFFB.c caFFB/caFFB.h
+#	ccppc  -c $(CCVXFLAGS) $(EPICS_INC) $< -o $@
 
 #.SUFFIXES:
 #.SUFFIXES: .c .cc .cpp .C .o .d
@@ -155,6 +168,7 @@ config/GreenMonsterDict.C: config/GreenMonster.h config/GreenMonsterLinkDef.h
 
 config/%.o: %.C
 	$(CXX) $(CXXFLAGS) -c config/$<
+
 
 #%.d:	%.C
 #	@echo Creating dependencies for $<
