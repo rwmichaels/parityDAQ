@@ -31,9 +31,19 @@ extern int  bmw_value;
 extern int  bmw_cycle_number;
 
 
+/* Flexible VME Input/Output Module */
+struct vme_flex_io
+{ /*  register name              offset         description  (w-write, r-read, r/w-read/write)*/
+  volatile unsigned short csr1;  /* 00         - Control-Status Register for Port 1 */
+  volatile unsigned short data1; /* 02         - Data register for Port 1 */
+  volatile unsigned short csr2;  /* 04         - Control-Status Register for Port 2 */
+  volatile unsigned short data2; /* 06         - Data register for Port 2 */
+  volatile unsigned short irq;   /* 08         - Interrupt Register */
+};
+
 /* SISGmbH 3800 Scaler */
 struct SIS3800
-{ /*  register name              offset         description  (w-write, r-read, r/w-read/write)*/
+{ /*  register name                        offset     description  (w-write, r-read, r/w-read/write)*/
   volatile unsigned long csr             ; /* 00      - Status register(read)/Conrol register(write)  */
   volatile unsigned long IntVerR         ; /* 04      - VME IRQ control register and module identification (r/w) */
   unsigned long empty0          ; /* 08 not used */

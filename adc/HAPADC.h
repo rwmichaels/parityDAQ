@@ -22,10 +22,10 @@
 #define NADC 3    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  LEFTSPECT
-#define NADC 4    // must be <10, or requires changes to static arrays.
+#define NADC 3    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 0    // must be <10, or requires changes to static arrays.
+#define NADC 1    // must be <10, or requires changes to static arrays.
 #endif
 
 #define MAXRETRY 10   // max number of attempts to write csr
@@ -37,7 +37,7 @@
 //   Relative Addresses of ADCs
 #ifdef   COUNTINGHOUSE
 #define  ADC0 0x470000
-#define  ADC1 0x830000
+#define  ADC1 0x820000
 #define  ADC2 0x400000
 #define  ADC3 0x4d0000
 #define  ADC4 0x480000
@@ -46,18 +46,18 @@
 #define  ADC7 0x510000
 #define  ADC8 0x490000
 #define  ADC9 0x490000
-// #define  ADC2 0x840000   Removed March 25, 2003
-#define  ADCLAB0 40
-#define  ADCLAB1 41
-#define  ADCLAB2 42
-#define  ADCLAB3 43
-#define  ADCLAB4 44
-#define  ADCLAB5 45
-#define  ADCLAB6 46
-#define  ADCLAB7 47
-#define  ADCLAB8 48
-#define  ADCLAB9 49
+#define  ADCLAB0 2
+#define  ADCLAB1 27
+#define  ADCLAB2 23
+#define  ADCLAB3 22
+#define  ADCLAB4 15
+#define  ADCLAB5 13
+#define  ADCLAB6 7
+#define  ADCLAB7 12
+#define  ADCLAB8 14
+#define  ADCLAB9 14
 #endif
+
 #ifdef   INJECTOR
 #define  ADC0 0x4e0000
 #define  ADC1 0x980000
@@ -69,20 +69,21 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 10
-#define  ADCLAB1 11
-#define  ADCLAB2 12
-#define  ADCLAB3 13
-#define  ADCLAB4 14
-#define  ADCLAB5 15
-#define  ADCLAB6 16
-#define  ADCLAB7 17
-#define  ADCLAB8 81
-#define  ADCLAB9 19
+#define  ADCLAB0 26
+#define  ADCLAB1 32
+#define  ADCLAB2 1
+#define  ADCLAB3 23
+#define  ADCLAB4 24
+#define  ADCLAB5 25
+#define  ADCLAB6 26
+#define  ADCLAB7 27
+#define  ADCLAB8 21
+#define  ADCLAB9 29
 #endif
+
 #ifdef   LEFTSPECT
 #define  ADC0 0x850000
-#define  ADC1 0x820000
+#define  ADC1 0x830000
 #define  ADC2 0x8F0000
 #define  ADC3 0x840000
 #define  ADC4 0x480000
@@ -91,19 +92,20 @@
 #define  ADC7 0x510000
 #define  ADC8 0x490000
 #define  ADC9 0x5F0000
-#define  ADCLAB0 20
-#define  ADCLAB1 21
-#define  ADCLAB2 22
-#define  ADCLAB3 23
-#define  ADCLAB4 24
-#define  ADCLAB5 25
-#define  ADCLAB6 26
-#define  ADCLAB7 27
-#define  ADCLAB8 28
-#define  ADCLAB9 29
+#define  ADCLAB0 211
+#define  ADCLAB1 232
+#define  ADCLAB2 104
+#define  ADCLAB3 43
+#define  ADCLAB4 44
+#define  ADCLAB5 45
+#define  ADCLAB6 46
+#define  ADCLAB7 47
+#define  ADCLAB8 48
+#define  ADCLAB9 49
 #endif
+
 #ifdef   RIGHTSPECT
-#define  ADC0 0x850000
+#define  ADC0 0x840000
 #define  ADC1 0x820000
 #define  ADC2 0x8F0000
 #define  ADC3 0x810000
@@ -113,16 +115,16 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 30
-#define  ADCLAB1 31
-#define  ADCLAB2 32
-#define  ADCLAB3 33
-#define  ADCLAB4 34
-#define  ADCLAB5 35
-#define  ADCLAB6 36
-#define  ADCLAB7 37
-#define  ADCLAB8 38
-#define  ADCLAB9 39
+#define  ADCLAB0 29
+#define  ADCLAB1 61
+#define  ADCLAB2 62
+#define  ADCLAB3 63
+#define  ADCLAB4 64
+#define  ADCLAB5 65
+#define  ADCLAB6 66
+#define  ADCLAB7 67
+#define  ADCLAB8 68
+#define  ADCLAB9 69
 #endif
 
 // gain setting for each adc

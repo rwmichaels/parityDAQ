@@ -397,13 +397,14 @@ ncnt++;
 %%
 // Read out TIR inputs FIRST!  It contains helicity info. 
 *rol->dabufp++ = 0xffdaf000;    /* Header for TIR */
-tir_dat = tir[1]->tir_dat;
-*rol->dabufp++ = tir_dat & 0xfff;
 if(flexio==1) {
   *rol->dabufp++ = flex_io->data1;
   flex_io->csr1 = 0x100;
   flex_io->csr1 = 0x03;
   junk = flex_io->csr1;
+} else {
+  tir_dat = tir[1]->tir_dat;
+  *rol->dabufp++ = tir_dat & 0xfff;
 }
 
 if(bmw==1) {
