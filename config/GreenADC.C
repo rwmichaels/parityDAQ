@@ -373,6 +373,8 @@ Int_t GreenADC::getLabelADC(Int_t index) {
      command = gRequest.command;
      par1 = gRequest.par1;
      par2 = gRequest.par2;
+     //     cout << "Command: " << command << " " << msgReq << " par1: " 
+     //	  << par1 << " par2: " << par2 << endl;
    } else {
      printf("ERROR accessing socket!");
      return -1;

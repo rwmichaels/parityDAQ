@@ -47,16 +47,16 @@
 #define  ADC8 0x490000
 #define  ADC9 0x490000
 // #define  ADC2 0x840000   Removed March 25, 2003
-#define  ADCLAB0 0
-#define  ADCLAB1 1
-#define  ADCLAB2 2
-#define  ADCLAB3 3
-#define  ADCLAB4 4
-#define  ADCLAB5 5
-#define  ADCLAB6 6
-#define  ADCLAB7 7
-#define  ADCLAB8 8
-#define  ADCLAB9 9
+#define  ADCLAB0 40
+#define  ADCLAB1 41
+#define  ADCLAB2 42
+#define  ADCLAB3 43
+#define  ADCLAB4 44
+#define  ADCLAB5 45
+#define  ADCLAB6 46
+#define  ADCLAB7 47
+#define  ADCLAB8 48
+#define  ADCLAB9 49
 #endif
 #ifdef   INJECTOR
 #define  ADC0 0x4e0000

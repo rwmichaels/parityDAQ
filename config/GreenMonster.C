@@ -19,15 +19,15 @@ GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) :
   fCrateNames[0] = new TString("Counting House");
   fCrateNumbers[0] = Crate_CountingHouse;
 
-  fUseCrate[1]= kFALSE;
+  fUseCrate[1]= kTRUE;
   fCrateNames[1] = new TString("Injector");
   fCrateNumbers[1] = Crate_Injector;
 
-  fUseCrate[2]= kFALSE;
+  fUseCrate[2]= kTRUE;
   fCrateNames[2] = new TString("Left Spect");
   fCrateNumbers[2] = Crate_LeftSpect;
 
-  fUseCrate[3]= kFALSE;
+  fUseCrate[3]= kTRUE;
   fCrateNames[3] = new TString("Right Spect");
   fCrateNumbers[3] = Crate_RightSpect;
 
