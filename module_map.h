@@ -9,6 +9,7 @@ extern int ADC_NUMSLOTS;   // number of HAPPEX ADCs
 extern int showHAPADC();   // dump registers of adcs
 extern unsigned long* readoutHAPADC(unsigned long*, int);  // readout adcs
 extern int setDACHAPADC(int, int);   // set noise dac value on adc
+extern int usesDACHAPADC(int); // check that this adc uses dac noise
 
 // Timing Board utilities
 extern int InitHAPTB();
@@ -27,6 +28,7 @@ extern int  bmw_object;
 extern int  bmw_clean;
 extern int  bmw_clean_pulse;
 extern int  bmw_value;
+extern int  bmw_cycle_number;
 
 
 /* SISGmbH 3800 Scaler */

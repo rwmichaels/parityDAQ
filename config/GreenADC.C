@@ -173,7 +173,7 @@ Bool_t GreenADC::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	  }
 	break;
       case kCM_RADIOBUTTON:
-	//	cout << "Radio button pushed " << parm1 << endl;
+	// cout << "Radio button pushed " << parm1 << endl;
 	DoRadio(parm1);
 	break;
       default:

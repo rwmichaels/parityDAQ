@@ -69,6 +69,9 @@ BOOL  bmw_clean_pulse = TRUE;     /* TRUE if this object was
 int   bmw_value;                   /* Value object is set to */
 char  bmw_objname[MAX_NAMELENGTH]; /* Name of this object */
 
+int   bmw_cycle_count = 0;            // A running count of dithering cycles
+int   bmw_cycle_number;            // Holds cycle number, or zero if cycle is over
+
 /* This global flag is used to communicate a death-wish from users to
    the otherwise infinite bmw loop */
 BOOL  bmw_die_die_die = FALSE; 
@@ -78,6 +81,9 @@ BOOL  bmw_die_die_die = FALSE;
 int  bmw_status = 0; 
 int  bmw_alive = 0; 
 
+// globals used only to communicate with test2
+int bmw_test_object=1;
+int bmw_test_value =0;
 /* Modulation parameters */
 
 /* 
@@ -104,12 +110,12 @@ int bmw_steps_per_qcycle =    3; /* Number of steps per 1/4 cycle */
 int bmw_cycles_per_pulse =    1; /* Number of cycles per pulse */ 
 int bmw_steps_per_pause  =  192; /* Number of steps to rest after last object */ 
 int bmw_ticks_per_step   =   12; /* Clock ticks per step */ 
-int bmw_coil_amplitude   =   20; /* Half amplitude for coil modulation (milliamps) */ 
+int bmw_coil_amplitude   =  300; /* Half amplitude for coil modulation (milliamps)*/
 int bmw_coil_offset      =    0; /* DC offset for coil modulation (milliamps) */ 
 int bmw_e_amplitude      =    0; /* Half amplitude for energy modulation */
-/*                                 * (keV per pass) */ 
+//                                   (keV per pass) 
 int bmw_e_offset         =    0; /* DC offset for energy modulation */
-/*                                 * (keV per pass) */
+//                                 * (keV per pass)
 int bmw_starting_object  =    0; /* Which object to start with */ 
 int bmw_ending_object =       7; /* Which object to end with */ 
 
@@ -127,6 +133,15 @@ STATUS handleReplyBMW ( int server, struct reqreply *p_request );
 STATUS putObjlistBMW ( objlist *p_objs, int server );
 STATUS handleObjlistReplyBMW ( int server, objlist *p_objs, objlist *p_objreply );
 STATUS waitReplyBMW ( int server );
+
+STATUS bmwClient (int i) 
+{
+  if (i==1) return bmwClient_script();
+  if (i==2) return bmwClient_test();
+  if (i==3) return bmwClient_test2();
+  return (ERROR);
+}
+
 
 STATUS bmwClient_test ()
 {
@@ -178,8 +193,8 @@ STATUS bmwClient_test ()
 	return (ERROR);
       }
       // prompt for value
-      max = 0.3; setpnt = 0;
-      fprintf(stdout,"Input set point in mA (or eV).\n");
+      max = 0.5; setpnt = 0;
+      fprintf(stdout,"Input set point in mA (or keV).\n");
       if (read(fileno(stdin),instring,100)>1) 
 	{ 
 	  setpnt = atol(instring);
@@ -258,7 +273,8 @@ STATUS bmwClient_test ()
   return (OK);
 }
 
-STATUS bmwClient ()
+
+STATUS bmwClient_script ()
 {
   int i;
   int server;    /* server index */
@@ -267,7 +283,7 @@ STATUS bmwClient ()
   int objToServer[MAX_OBJS];   /* server index for each object */
   int modStat;   /* status returned by modulateObjectBMW */
   struct reqreply       request;    /* the request structure */
-  int icnt;
+  //  int icnt;  // used for limiting number of cycles
 
   if (bmw_status != 0) return (ERROR);
   bmw_status =1;
@@ -296,22 +312,23 @@ STATUS bmwClient ()
     if ( bmw_c_verbose || bmw_c_terse )
       fprintf ( stderr, "bmwClient::: Object %3d server %3d \n", object, objToServer[object] );
 
-  icnt = 0;
-  /*  while ( 1 ) */
-  while (icnt<2 && !bmw_die_die_die)
+  //  icnt = 0;
+  //  while (icnt<2 && !bmw_die_die_die)
+  while (!bmw_die_die_die)
     {
-      icnt = icnt +1;
+      bmw_cycle_number = ++bmw_cycle_count;
+      //      icnt = icnt +1;
       bmw_alive =1;
-      /* Loop over objects and modulate each */
+      // Loop over objects and modulate each
       for ( object = bmw_starting_object; 
 	    object<=bmw_ending_object && !bmw_die_die_die; ++object )
 	{
 	  bmw_alive =1;
-	  /* Find out which server to use; if < 0, no server wants it... */
+	  // Find out which server to use; if < 0, no server wants it...
 	  server = objToServer[object];
 	  if ( server >= 0 )
 	    {
-	      /* If the server gave an error last time, reconnect to it */
+	      // If the server gave an error last time, reconnect to it
 	      if ( !connected[server] )
 		{
 		  if ( bmw_c_verbose || bmw_c_terse )
@@ -322,11 +339,11 @@ STATUS bmwClient ()
 		  prepareBMW (server, connected, objToServer );
 		}
 
-	      /* If server is now connected, try modulating */
+	      // If server is now connected, try modulating
 	      if ( connected[server] )
 		{
-		  /* Modulate; if error occurs, tally it and mark server as
-		     disconnected */
+		  // Modulate; if error occurs, tally it and mark server as
+		  //   disconnected 
 		  modStat = modulateObjectBMW ( object, server );
 		  bmw_object = -1;
 		  if ( modStat == ERROR )
@@ -342,7 +359,7 @@ STATUS bmwClient ()
 	  else
 	    {
 	      bmw_alive =1;
-	      /* If no server wants this object, reconnect all servers */
+	      // If no server wants this object, reconnect all servers
 	      fprintf ( stderr, 
 			"bmwClient::: No server for object %d\n", object );
 	      for ( server=0; server<NUM_SERVERS; ++server )
@@ -352,22 +369,23 @@ STATUS bmwClient ()
 		}
 	    }
 	}
-      /* After last object (whether successful or not), take a break */
+      // After last object (whether successful or not), take a break
+      bmw_cycle_number =0;
       if ( bmw_c_verbose || bmw_c_terse )
 	fprintf ( stderr, "bmwClient::: starting rest period\n");
       fprintf ( stderr, "bmwClient::: Errors %d / vetoes %d / OKs %d\n", 
 		stats[0], stats[1], stats[2] );
-      /* Here is a kludge.  The server timeout is too short, so until
-       * that's fixed, we bother the server every 10 steps for a
-       * readback which we then ignore.  That should be frequent
-       * enough to keep from timing out.  Once the server is modified
-       * for a longer timeout we can replace this loop with:
-       
-       taskDelay ( bmw_ticks_per_step * bmw_steps_per_pause );
-       
-       * This kludge implicitly assumes there is in fact only one
-       * server for everything, so we only have to prod the server for
-       * object 0.  This should work under present circumstances.  */
+//         Here is a kludge.  The server timeout is too short, so until
+//          that's fixed, we bother the server every 10 steps for a
+//          readback which we then ignore.  That should be frequent
+//          enough to keep from timing out.  Once the server is modified
+//          for a longer timeout we can replace this loop with:
+//       
+//         taskDelay ( bmw_ticks_per_step * bmw_steps_per_pause );
+//       
+//         This kludge implicitly assumes there is in fact only one
+//         server for everything, so we only have to prod the server for
+//         object 0.  This should work under present circumstances.  */
       for ( i = 0; i < bmw_steps_per_pause && !bmw_die_die_die; ++i)
 	{
 	  bmw_alive =1;
@@ -381,6 +399,140 @@ STATUS bmwClient ()
 	    }
 	}
     }
+  bmw_status =0;
+  closeSocketBMW(server);
+  return (OK);
+}
+
+
+
+STATUS bmwClient_test2 ()
+{
+  int i;
+  int server;    /* server index */
+  int object;    /* object index */
+  int connected[NUM_SERVERS];  /* is server connected? */
+  int objToServer[MAX_OBJS];   /* server index for each object */
+  int modStat;   /* status returned by modulateObjectBMW */
+  struct reqreply       request;    /* the request structure */
+  float max;
+  double setpnt;
+  if (bmw_status != 0) return (ERROR);
+  bmw_status =1;
+  bmw_alive =1;
+
+  if ( bmw_test_server )
+    strcpy ( server_inet_addr[0], 
+	     "129.57.164.13" );  /* halladaq6 -- Dummy server */
+  else
+    strcpy ( server_inet_addr[0], 
+	     "129.57.236.67" );  /* iocsb4 -- A line coils, south linac
+				  * energy vernier */
+
+  bmw_alive =1;
+  for ( i = 0; i < 3; ++i)
+    stats[i] = 0;
+
+  bmw_alive =1;
+  if ( bmw_c_verbose )
+    fprintf(stderr,"bmwClient:preparing to PREPARE\n");
+  for ( server=0; server<NUM_SERVERS; ++server )
+    prepareBMW ( server, connected, objToServer );
+
+  bmw_alive =1;
+  for ( object = 0; object<MAX_OBJS; ++object )
+    if ( bmw_c_verbose || bmw_c_terse )
+      fprintf ( stderr, "bmwClient::: Object %3d server %3d \n", object, objToServer[object] );
+
+  while (!bmw_die_die_die)
+    {
+      bmw_alive =1;
+
+      object = bmw_test_object;
+      if (object<bmw_starting_object || object >bmw_ending_object) {
+	fprintf(stdout,"Invalid object number:%d (up to %d allowed).\n", object,
+		bmw_ending_object);
+	bmw_status=0;
+	closeSocketBMW(server);
+	return (ERROR);
+      }
+
+      // prompt for value
+      max = 0.5; setpnt = 0;
+      setpnt = bmw_test_value;
+      setpnt = setpnt/1000.;
+      fprintf(stdout,
+	      "  requesting setpoint of %f for %d (max magnitude = %f) \n",
+	      setpnt,object,max);
+      if (setpnt>max || setpnt<-max) 
+	{
+	  fprintf(stdout,"Evil! Setpoint out of range!\n");
+	  bmw_status=0;
+	  closeSocketBMW(server);
+	  return (ERROR);
+	}
+
+      // check for server, connect it if it isn't already
+      server = objToServer[object];
+      if ( server >= 0 )
+	{
+	  /* If the server gave an error last time, reconnect to it */
+	  if ( !connected[server] )
+	    {
+	      if ( bmw_c_verbose || bmw_c_terse )
+		fprintf ( stderr, 
+		    "bmwClient::: Reconnecting to server %d (IP address %s)\n", 
+		    server, server_inet_addr[server] );
+		  closeSocketBMW ( server );
+		  prepareBMW (server, connected, objToServer );
+	    }
+	  
+	  // set value for object
+
+	  if ( ( putReqBMW ( C_SET, object, setpnt, server, &request ) == ERROR ) ||
+	       ( handleReplyBMW ( server, &request ) == ERROR ) )
+	    {
+	      // if error received, reconnect and set it
+	      bmw_object = -1;
+	      connected[server] = 0;
+	      if ( bmw_c_verbose || bmw_c_terse ) {
+		fprintf ( stderr, 
+		   "bmwClient::: Reconnecting to server %d (IP address %s)\n", 
+		    server, server_inet_addr[server] );
+		closeSocketBMW ( server );
+		prepareBMW (server, connected, objToServer );
+	      }
+	      if ( ( putReqBMW ( C_SET, object, 
+				 setpnt, server, &request ) == ERROR ) ||
+		   ( handleReplyBMW ( server, &request ) == ERROR ) )
+		{
+		  bmw_object = -1;
+		  connected[server] = 0;
+		  fprintf ( stderr, 
+			    "bmwClient::: Error setting object %d \n", 
+			    object );
+		}
+	    }
+	  bmw_object = -1;
+	}
+      else
+	{
+	  /* If no server wants this object, reconnect all servers */
+	  fprintf ( stderr, 
+		    "bmwClient::: No server for object %d\n", object );
+	  for ( server=0; server<NUM_SERVERS; ++server )
+	    {
+	      closeSocketBMW ( server );
+	      prepareBMW (server, connected, objToServer );
+	    }
+	}
+      bmw_alive =1;
+      for (i = 0; i<10 && !bmw_die_die_die; i++) {
+	taskDelay ( bmw_ticks_per_step );
+      }
+    }
+  bmw_test_value = 0;
+  bmw_test_object =1;
   bmw_status =0;
   closeSocketBMW(server);
   return (OK);

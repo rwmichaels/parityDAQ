@@ -126,6 +126,7 @@ void GreenMonster::InitGui() {
   tabel->ChangeBackground(grnback);
 
 
+
   //
   // create third page, ADCs
   //
@@ -179,29 +180,99 @@ void GreenMonster::InitGui() {
   // add buttons to BMW page
   // tcfbmw has a matrix layout with 2 columns: put label and buttons
   // side by side...
-  TGMatrixLayout *fMatLay = new TGMatrixLayout(tcfbmw, 2, 3, 10, 10);
-  tcfbmw->SetLayoutManager(fMatLay);
 
-  switchLabelBMW = new TGLabel(tcfbmw,"Kill switch is OFF");
+  tcfbmw->SetLayoutManager(new TGVerticalLayout(tcfbmw));
+
+  TGCompositeFrame *tcfbmw1 = new TGGroupFrame(tcfbmw, "Beam Modulation Script", 
+					      kHorizontalFrame);
+  tcfbmw1->SetBackgroundColor(grnback);
+  tcfbmw->AddFrame(tcfbmw1,framout);
+
+  TGCompositeFrame *tcfbmw_t = new TGGroupFrame(tcfbmw, "Beam Modulation- TEST", 
+					      kVerticalFrame);
+  tcfbmw_t->SetBackgroundColor(grnback);
+  tcfbmw->AddFrame(tcfbmw_t,framout);
+
+
+
+  TGMatrixLayout *fMatLay = new TGMatrixLayout(tcfbmw1, 2, 3, 10, 10);
+  tcfbmw1->SetLayoutManager(fMatLay);
+
+  switchLabelBMW = new TGLabel(tcfbmw1,"Kill switch is OFF");
   switchLabelBMW->SetBackgroundColor(grnback);
-  tcfbmw->AddFrame(switchLabelBMW);
-  tcfbmw->AddFrame(checkStatusBtBMW = new TGTextButton(tcfbmw,"Check Status",
+  tcfbmw1->AddFrame(switchLabelBMW);
+  tcfbmw1->AddFrame(checkStatusBtBMW = new TGTextButton(tcfbmw1,"Check Status",
 							GM_BMW_CHECK));
   checkStatusBtBMW->Associate(this);
   checkStatusBtBMW->SetBackgroundColor(grnback);
 
-  tcfbmw->AddFrame(statusLabelBMW = 
-		   new TGLabel(tcfbmw,"Beam Modulation is OFF"));
+  tcfbmw1->AddFrame(statusLabelBMW = 
+		   new TGLabel(tcfbmw1,"Beam Modulation is OFF"));
   statusLabelBMW->SetBackgroundColor(grnback);
-  changeStatusBtBMW = new TGTextButton(tcfbmw,"Start Beam Modulation",
+  changeStatusBtBMW = new TGTextButton(tcfbmw1,"Start Beam Modulation",
   				       GM_BMW_CHANGE);
   changeStatusBtBMW->Associate(this);
   changeStatusBtBMW->SetBackgroundColor(grnback);
-  tcfbmw->AddFrame(changeStatusBtBMW);
+  tcfbmw1->AddFrame(changeStatusBtBMW);
 
-  activeLabelBMW = new TGLabel(tcfbmw,"Beam Modulation script is INACTIVE");
+  activeLabelBMW = new TGLabel(tcfbmw1,"Beam Modulation script is INACTIVE");
   activeLabelBMW->SetBackgroundColor(grnback);
-  tcfbmw->AddFrame(activeLabelBMW);
+  tcfbmw1->AddFrame(activeLabelBMW);
+
+  TGCompositeFrame *tmpfrmB = new TGHorizontalFrame(tcfbmw_t,500,100);
+  tmpfrmB->SetBackgroundColor(grnback);
+  tcfbmw_t->AddFrame(tmpfrmB);
+  tmpfrmB->SetLayoutManager(new TGMatrixLayout(tmpfrmB, 1, 0, 10));
+
+  tmpfrmB->AddFrame(enableTestBtBMW = 
+	       new TGTextButton(tmpfrmB,"Enable BMW Test",GM_BMW_TEST_ENABLE));
+  enableTestBtBMW->Associate(this);
+  enableTestBtBMW->SetBackgroundColor(grnback);
+  tmpfrmB->AddFrame(setKillBtBMW = 
+	       new TGTextButton(tmpfrmB,"Toggle Kill Switch",GM_BMW_SET_KILL));
+  setKillBtBMW->Associate(this);
+  setKillBtBMW->SetBackgroundColor(grnback);
+
+//    tmpfrmB->AddFrame(setValueBtBMW = 
+//  	       new TGTextButton(tmpfrmB,"Apply Value",GM_BMW_TEST_SET_VALUE));
+//    setValueBtBMW->Associate(this);
+//    setValueBtBMW->SetBackgroundColor(grnback);
+
+  TGCompositeFrame *tmpfrm = new TGHorizontalFrame(tcfbmw_t,500,100);
+  tmpfrm->SetLayoutManager(new TGMatrixLayout(tmpfrm, 0, 4));
+  tmpfrm->SetBackgroundColor(grnback);
+  tcfbmw_t->AddFrame(tmpfrm);
+  fTestObjRBtBMW[0] = new TGRadioButton(tmpfrm,"MAT1C01H ",BMW_OBJRADIO1);
+  fTestObjRBtBMW[1] = new TGRadioButton(tmpfrm,"MAT1C02V ",BMW_OBJRADIO2);
+  fTestObjRBtBMW[2] = new TGRadioButton(tmpfrm,"MAT1C03H ",BMW_OBJRADIO3);
+  fTestObjRBtBMW[3] = new TGRadioButton(tmpfrm,"MAT1C04H ",BMW_OBJRADIO4);
+  fTestObjRBtBMW[4] = new TGRadioButton(tmpfrm,"MAT1C05V ",BMW_OBJRADIO5);
+  fTestObjRBtBMW[5] = new TGRadioButton(tmpfrm,"MAT1C06H ",BMW_OBJRADIO6);
+  fTestObjRBtBMW[6] = new TGRadioButton(tmpfrm,"MAT1C07V ",BMW_OBJRADIO7);
+  fTestObjRBtBMW[7] = new TGRadioButton(tmpfrm,"SL Zone 20",BMW_OBJRADIO8);
+  for (Int_t ib = 0; ib<8; ib++) {
+    fTestObjRBtBMW[ib]->SetBackgroundColor(grnback);
+    fTestObjRBtBMW[ib]->Associate(this);
+    tmpfrm->AddFrame(fTestObjRBtBMW[ib]);
+  }
+  chosenObjBMW = 0;
+  fTestObjRBtBMW[0]->SetState(kButtonDown);
+
+  TGCompositeFrame *tmpfrmv = new TGHorizontalFrame(tcfbmw_t,500,100);
+  tmpfrmv->SetBackgroundColor(grnback);
+  tcfbmw_t->AddFrame(tmpfrmv);
+
+  //  tmpfrmv->SetLayoutManager(new TGMatrixLayout(tmpfrm, 0, 2));
+  sprintf(buff, "0");
+  TGTextBuffer *tbuf = new TGTextBuffer(6);
+  tbuf->AddText(0,buff);
+  tentSetPntBMW = new TGTextEntry(tmpfrmv, tbuf, 221);
+  tentSetPntBMW->Resize(60, tentSetPntBMW->GetDefaultHeight());
+  tentSetPntBMW->SetFont("-adobe-courier-bold-r-*-*-14-*-*-*-*-*-iso8859-1");
+  tmpfrmv->AddFrame(tentSetPntBMW);
+  TGLabel * lab= new TGLabel(tmpfrmv,new TGHotString("Set Point (mA or keV)"));
+  tmpfrmv->AddFrame(lab);
+  lab->SetBackgroundColor(grnback);
 
   BMWCheckStatus();
   BMWActiveProbe();
@@ -306,10 +377,20 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	      break;
 	    }
 	  case GM_BMW_CHECK:	
-    {
+	    {
 	      //	      printf("checking status of BMW \n");
 	      BMWCheckStatus();
 	      BMWActiveProbe();
+	      break;
+	    }
+	  case GM_BMW_SET_KILL:
+	    {
+	      BMWSetKill();
+	      break;
+	    }
+	  case GM_BMW_TEST_ENABLE:
+	    {
+	      BMWStartTest();
 	      break;
 	    }
 	  default:
@@ -318,6 +399,21 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	    break;
 	  }
 	break;
+      case kCM_RADIOBUTTON: {
+	  case BMW_OBJRADIO1:
+	  case BMW_OBJRADIO2:
+	  case BMW_OBJRADIO3:
+	  case BMW_OBJRADIO4:
+	  case BMW_OBJRADIO5:
+	  case BMW_OBJRADIO6:
+	  case BMW_OBJRADIO7:
+	  case BMW_OBJRADIO8:
+	    {
+	      //	      cout << "radio button pushed " << parm1 << endl;
+	      BMWDoRadio(parm1);
+	      break;
+	    }
+      }
       case kCM_TAB: {
 	if (parm1==fBMW_TABID) {
 	  // check status of BMW every time the tab is chosen
@@ -327,11 +423,6 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	}	  
 	break;
       }
-//       case kCM_CHECKBUTTON:
-// 	printf("check botton id %ld pressed\n",parm1);
-// 	break;
-//       case kCM_RADIOBUTTON:
-// 	break;
       default:
  	break;
       }
@@ -340,7 +431,113 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
     }
   return kTRUE;
 }
-    
+
+void GreenMonster::BMWDoRadio(Int_t id) {    
+  fTestObjRBtBMW[chosenObjBMW]->SetState(kButtonUp);
+  chosenObjBMW = id - BMW_OBJRADIO1;
+  fTestObjRBtBMW[chosenObjBMW]->SetState(kButtonDown);
+  //  cout << "New BMW test object chosen : " << chosenObjBMW << endl;
+  return;
+}
+
+void GreenMonster::BMWStartTest() {    
+  struct greenRequest gRequest;
+  int command, command_type, par1, par2;
+  char *msgReq = "BMW Start Test";
+  char *reply = "Y";
+
+  //
+  command_type = COMMAND_BMW;    gRequest.command_type = command_type;
+  command = BMW_TEST_START;      gRequest.command = command;
+  par1 = 0;                      gRequest.par1 = par1;
+  par2 = 0;                      gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+  } else {
+    printf("BMWStartTest::ERROR accessing socket!"); 
+    return;
+  }
+
+  // do first test step
+  BMWTestStep();
+
+}
+
+void GreenMonster::BMWTestStep() {    
+  int value;
+  Bool_t kill_switch;
+
+  struct greenRequest gRequest;
+  int command, command_type, par1, par2;
+  char *msgReq = "BW Test Set Data";
+  char *reply = "Y";
+
+  //
+  // get value from tent
+  //
+  value = atoi(tentSetPntBMW->GetText());
+  cout << " writing new set point " << value << " to " << chosenObjBMW << endl;
+  //
+  // send set message for obj, value
+  //
+  command_type = COMMAND_BMW;    gRequest.command_type = command_type;
+  command = BMW_TEST_SET_DATA;   gRequest.command = command;
+  par1 = chosenObjBMW;           gRequest.par1 = par1;
+  par2 = value;                  gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+    par1 = gRequest.par1;
+    par2 = gRequest.par2;
+    // par1 is kill switch!
+    if (par1 != 0) {
+      kill_switch = kTRUE;
+    } else {
+      kill_switch = kFALSE;
+    }
+  } else {
+    printf("ERROR accessing socket!"); 
+    return;
+  }
+  
+//    //
+//    // check for kill switch,
+//    //
+//    command_type = COMMAND_BMW;    gRequest.command_type = command_type;
+//    command = BMW_GET_STATUS;      gRequest.command = command;
+//    par1 = 0;                      gRequest.par1 = par1;
+//    par2 = 0;                      gRequest.par2 = par2;
+//    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+//    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+//      command = gRequest.command;
+//      par1 = gRequest.par1;
+//      par2 = gRequest.par2;
+//      if (par2 != 0) {
+//        kill_switch = kTRUE;
+//      } else { 
+//        kill_switch = kFALSE;
+//      }
+//    } else {
+//      printf("ERROR accessing socket!"); 
+//      return;
+//    }
+
+  //
+  //if none, set timer to self
+  //
+  if (!kill_switch) {    
+    TTimer* ctimer = new TTimer(4000,kTRUE);
+    TQObject::Connect(ctimer, "Timeout()", "GreenMonster", this, 
+		      "BMWTestStep");
+    ctimer->Start(4000, kTRUE);
+  }
+
+}
+
+
+
 void GreenMonster::BMWChangeStatus() {
   struct greenRequest gRequest;
   int command, par1, par2, command_type;
@@ -370,6 +567,75 @@ void GreenMonster::BMWChangeStatus() {
   }
   // check bmw status
     BMWCheckStatus();
+}
+
+
+void GreenMonster::BMWSetKill() {
+  struct greenRequest gRequest;
+  int command, par1, par2, command_type;
+  char *msgReq = "BMW status check";
+  char *reply = "Y";
+  Bool_t bmw_running,kill_switch;
+
+  // get bmw status
+  //  printf("BMW Status =");
+  command_type = COMMAND_BMW;    gRequest.command_type = command_type;
+  command = BMW_GET_STATUS;      gRequest.command = command;
+  par1 = 0;                      gRequest.par1 = par1;
+  par2 = 0;                      gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+    par1 = gRequest.par1;
+    par2 = gRequest.par2;
+    if (par1 != 0) {
+      bmw_running = kTRUE;
+    } else { 
+      bmw_running = kFALSE;
+    }
+    if (par2 != 0) {
+      kill_switch = kTRUE;
+    } else { 
+      kill_switch = kFALSE;
+    }
+  } else {
+    printf("ERROR accessing socket!"); 
+    return;
+ }
+
+  if (!kill_switch) {
+    command_type = COMMAND_BMW;   gRequest.command_type = command_type;
+    char *msgReq = "BMW set kill";
+    command = BMW_KILL;          gRequest.command = command;
+    printf("setting kill switch on bmw\n");
+    par1 = 0;                     gRequest.par1 = par1;
+    par2 = 0;                     gRequest.par2 = par2;
+    
+    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+      printf("bmw kill switch call is complete\n");
+    } else {
+      printf("ERROR accessing socket!");
+      return;
+    }
+  } else {
+    command_type = COMMAND_BMW;   gRequest.command_type = command_type;
+    char *msgReq = "BMW lift kill";
+    command = BMW_UNKILL;          gRequest.command = command;
+    printf("lifting kill switch on bmw\n");
+    par1 = 0;                     gRequest.par1 = par1;
+    par2 = 0;                     gRequest.par2 = par2;
+    
+    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+      printf("bmw un-kill switch call is complete\n");
+    } else {
+      printf("ERROR accessing socket!");
+      return;
+    }
+  }
+
+  BMWCheckStatus();  // check bmw status
 }
 
 Bool_t GreenMonster::BMWCheckStatus() {

@@ -9,12 +9,10 @@
 
 #include "bmw_cf_commands.h"
 
-/* Global HAPTB variables defined by HAPTB_util.  All timing parameters
-   are multiples of 2.5 microseconds */
 extern BOOL bmw_die_die_die;
 extern int bmw_status;
 extern int bmw_alive;
-
-
+extern int bmw_test_object;
+extern int bmw_test_value;
 
 

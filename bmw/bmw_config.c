@@ -30,6 +30,10 @@ void task_BMW(long* command, long *par1, long *par2)
       // set kill flag for bmw
       bmw_die_die_die = TRUE;
       return;
+    case BMW_UNKILL:
+      // set kill flag for bmw
+      bmw_die_die_die = FALSE;
+      return;
     case BMW_GET_STATUS:
       // return flag for status of bmw
       *par1=bmw_status;
@@ -45,7 +49,18 @@ void task_BMW(long* command, long *par1, long *par2)
       printf("starting bmwClient\n");
       bmw_die_die_die = FALSE;
       taskSpawn("bmwClient", SERVER_WORK_PRIORITY, 0, SERVER_STACK_SIZE,
-		bmwClient,0,0,0,0, 0, 0, 0, 0, 0, 0);      
+		bmwClient,1,0,0,0, 0, 0, 0, 0, 0, 0);      
+      return;
+    case BMW_TEST_START:
+      printf("starting bmwClient_test2\n");
+      bmw_die_die_die = FALSE;
+      taskSpawn("bmw_test", SERVER_WORK_PRIORITY, 0, SERVER_STACK_SIZE,
+		bmwClient,3,0,0,0, 0, 0, 0, 0, 0, 0);      
+      return;
+    case BMW_TEST_SET_DATA:
+      bmw_test_object = (int) *par1;
+      bmw_test_value  = (int) *par2;
+      *par1 = bmw_die_die_die;
       return;
     }
 

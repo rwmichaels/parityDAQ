@@ -37,6 +37,17 @@
 
 #define GM_BMW_CHANGE 2001
 #define GM_BMW_CHECK  2002
+#define GM_BMW_TEST_ENABLE 2005
+#define GM_BMW_TEST_SET_VALUE 2006
+#define GM_BMW_SET_KILL 2007
+#define BMW_OBJRADIO1 2101
+#define BMW_OBJRADIO2 2102
+#define BMW_OBJRADIO3 2103
+#define BMW_OBJRADIO4 2104
+#define BMW_OBJRADIO5 2105
+#define BMW_OBJRADIO6 2106
+#define BMW_OBJRADIO7 2107
+#define BMW_OBJRADIO8 2108
 
 #define KILL_SERVER_1 5001
 #define KILL_SERVER_2 5002
@@ -55,6 +66,7 @@ public:
 
   Bool_t ProcessMessage( Long_t msg, Long_t parm1, Long_t parm2);
   void BMWDelayCheck();
+  void BMWTestStep();
 
   void Init();
 
@@ -82,14 +94,27 @@ private:
   Int_t fBMW_TABID;
   TGTextButton *changeStatusBtBMW;
   TGTextButton *checkStatusBtBMW;
+  TGTextButton *enableTestBtBMW;
+  TGTextButton *setKillBtBMW;
+  TGTextButton *setValueBtBMW;
+
   TGLabel *switchLabelBMW;
   TGLabel *activeLabelBMW;
   TGLabel *statusLabelBMW;
+  TGRadioButton* fTestObjRBtBMW[8];
+  TGTextEntry  *tentSetPntBMW;
+  Int_t chosenObjBMW;
+  Int_t testSetpointBMW;
+
   TTimer* _ctimer;
+  void BMWDoRadio(Int_t);
   Bool_t BMWCheckStatus();
   void BMWChangeStatus();
   void BMWActiveProbe();
   void BMWCheckActiveFlag();
+  
+  void BMWSetKill();
+  void BMWStartTest();
 
   void InitGui();
 

@@ -204,6 +204,23 @@ begin prestart
 %%
   event type 1 then read VME 1
 
+%%
+
+
+/* Send timing board information to ~apar/db/timebrd.cfg */
+ 
+  int fdbfile;
+ 
+fdbfile=fopen("~apar/db/timebrd.cfg","w");
+fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms,
+Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
+        (double)getIntTimeHAPTB()*0.0025,
+        (double)getRampDelayHAPTB()*2.5,
+        ((int)getOverSampleHAPTB()));
+fclose(fdbfile);
+ 
+%%
+
   log inform "User Prestart Executed"
 
 end prestart
@@ -301,6 +318,7 @@ unsigned long sdata[NSCALER*32*12];
 int pulseclean;
 int localBMWobj;
 int localBMWval;
+int localBMWcycnum;
 
 int* intpointer;
 
@@ -322,6 +340,7 @@ ncnt++;
 //////////////////////////////////////////////////
 localBMWobj = bmw_object;
 localBMWval = bmw_value;
+localBMWcycnum = bmw_cycle_number;
 
 //  record if event was unclean for any portion of pulse
 pulseclean = bmw_clean_pulse;
@@ -405,6 +424,7 @@ tir_dat = tir[1]->tir_dat;
 *rol->dabufp++ = pulseclean;  //record in bmw says entire pulse was clean
 *rol->dabufp++ = localBMWobj; //record the last-moved object (from beginning of readout)
 *rol->dabufp++ = localBMWval; // record the value of the last-moved object
+*rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
 
 
 for (i = 0; i < ADC_NUMSLOTS; i++) {  

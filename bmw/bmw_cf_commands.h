@@ -12,4 +12,7 @@
 #define BMW_GET_STATUS    2002
 #define BMW_START   2003
 #define BMW_CHECK_ALIVE   2004
+#define BMW_TEST_START   2005
+#define BMW_TEST_SET_DATA   2006
+#define BMW_UNKILL    2007
 
