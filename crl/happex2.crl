@@ -212,8 +212,7 @@ begin prestart
   int fdbfile;
  
 fdbfile=fopen("~apar/db/timebrd.cfg","w");
-fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms,
-Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
+fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms, Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
         (double)getIntTimeHAPTB()*0.0025,
         (double)getRampDelayHAPTB()*2.5,
         ((int)getOverSampleHAPTB()));
