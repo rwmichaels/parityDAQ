@@ -141,7 +141,8 @@ void GreenMonster::InitGui() {
   char buff[15];
   for (Int_t i=0; i<4; i++) {
     if (fUseCrate[i]) {
-      sprintf(buff,"ADC, Crate %d",i);
+      //      sprintf(buff,"ADC, Crate %d",i);
+      sprintf(buff,"ADCs, %s",fCrateNames[i]->Data());
       tf = fTab->AddTab(buff);
       tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
       tabel->ChangeBackground(grnback);

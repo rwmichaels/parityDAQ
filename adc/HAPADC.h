@@ -22,10 +22,10 @@
 #define NADC 3    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  LEFTSPECT
-#define NADC 3    // must be <10, or requires changes to static arrays.
+#define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 1    // must be <10, or requires changes to static arrays.
+#define NADC 2    // must be <10, or requires changes to static arrays.
 #endif
 
 #define MAXRETRY 10   // max number of attempts to write csr
@@ -37,7 +37,7 @@
 //   Relative Addresses of ADCs
 #ifdef   COUNTINGHOUSE
 #define  ADC0 0x470000
-#define  ADC1 0x820000
+#define  ADC1 0x850000
 #define  ADC2 0x400000
 #define  ADC3 0x4d0000
 #define  ADC4 0x480000
@@ -47,7 +47,7 @@
 #define  ADC8 0x490000
 #define  ADC9 0x490000
 #define  ADCLAB0 2
-#define  ADCLAB1 27
+#define  ADCLAB1 26
 #define  ADCLAB2 23
 #define  ADCLAB3 22
 #define  ADCLAB4 15
@@ -69,9 +69,9 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 26
-#define  ADCLAB1 32
-#define  ADCLAB2 1
+#define  ADCLAB0 8
+#define  ADCLAB1 6
+#define  ADCLAB2 16
 #define  ADCLAB3 23
 #define  ADCLAB4 24
 #define  ADCLAB5 25
@@ -82,21 +82,21 @@
 #endif
 
 #ifdef   LEFTSPECT
-#define  ADC0 0x850000
-#define  ADC1 0x830000
-#define  ADC2 0x8F0000
-#define  ADC3 0x840000
-#define  ADC4 0x480000
+#define  ADC0 0x420000
+#define  ADC1 0x430000
+#define  ADC2 0x820000
+#define  ADC3 0x500000
+#define  ADC4 0x440000
 #define  ADC5 0x4c0000
 #define  ADC6 0x4b0000
 #define  ADC7 0x510000
 #define  ADC8 0x490000
 #define  ADC9 0x5F0000
-#define  ADCLAB0 211
-#define  ADCLAB1 232
-#define  ADCLAB2 104
-#define  ADCLAB3 43
-#define  ADCLAB4 44
+#define  ADCLAB0 18
+#define  ADCLAB1 19
+#define  ADCLAB2 27
+#define  ADCLAB3 9
+#define  ADCLAB4 20
 #define  ADCLAB5 45
 #define  ADCLAB6 46
 #define  ADCLAB7 47
@@ -106,7 +106,7 @@
 
 #ifdef   RIGHTSPECT
 #define  ADC0 0x840000
-#define  ADC1 0x820000
+#define  ADC1 0x8F0000
 #define  ADC2 0x8F0000
 #define  ADC3 0x810000
 #define  ADC4 0x4B0700
@@ -116,7 +116,7 @@
 #define  ADC8 0x510000
 #define  ADC9 0x490000
 #define  ADCLAB0 29
-#define  ADCLAB1 61
+#define  ADCLAB1 17
 #define  ADCLAB2 62
 #define  ADCLAB3 63
 #define  ADCLAB4 64
@@ -127,7 +127,9 @@
 #define  ADCLAB9 69
 #endif
 
+
 // gain setting for each adc
+#ifdef   COUNTINGHOUSE
 #define ADC0_DEF_GAINBIT LO_GAIN
 #define ADC1_DEF_GAINBIT LO_GAIN
 #define ADC2_DEF_GAINBIT LO_GAIN
@@ -138,6 +140,18 @@
 #define ADC7_DEF_GAINBIT LO_GAIN
 #define ADC8_DEF_GAINBIT LO_GAIN
 #define ADC9_DEF_GAINBIT LO_GAIN
+#else
+#define ADC0_DEF_GAINBIT LO_GAIN
+#define ADC1_DEF_GAINBIT LO_GAIN
+#define ADC2_DEF_GAINBIT LO_GAIN
+#define ADC3_DEF_GAINBIT LO_GAIN
+#define ADC4_DEF_GAINBIT LO_GAIN
+#define ADC5_DEF_GAINBIT LO_GAIN
+#define ADC6_DEF_GAINBIT LO_GAIN
+#define ADC7_DEF_GAINBIT LO_GAIN
+#define ADC8_DEF_GAINBIT LO_GAIN
+#define ADC9_DEF_GAINBIT LO_GAIN
+#endif
 	    
 // DAC noise settings for each adc
 #define ADC0_DEF_DACBIT DAC_ON 
