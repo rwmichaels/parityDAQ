@@ -6,6 +6,14 @@ ClassImp(GreenMonster)
 GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) : 
   TGMainFrame(p, w, h), mainWidth(w), mainHeight(h)
 {
+  //  grnback = gROOT->GetColor(31)->GetPixel();  // maybe try this if
+  // a modern version of root gets installed onto adaqcp
+
+  gClient->GetColorByName("darkseagreen",grnback);
+  ULong_t white;
+  gClient->GetColorByName("white",white);
+  if (grnback==white)   gClient->GetColorByName("green",grnback);
+
   this->SetBackgroundColor(grnback);
   fUseCrate[0]= kTRUE;
   fCrateNames[0] = new TString("Counting House");
@@ -64,7 +72,7 @@ void GreenMonster::InitGui() {
   sizebtn->AddFrame(bt,new TGLayoutHints(kLHintsBottom|kLHintsExpandX,5,10,4,2));
 
   TGPictureButton* mike = new TGPictureButton(tf,
-					      gClient->GetPicture("config/gm.xpm"));
+					      gClient->GetPicture("gm.xpm"));
   //  TGIcon *mike = new TGIcon(tf,gClient->GetPicture("config/gm.xpm"), 0,0);
   mike->SetBackgroundColor(grnback);
   mike->SetToolTipText("grrr...");

@@ -1,9 +1,10 @@
 // Necessary modifications:
 // 1) use array of modulation parameters, to allow different modulation
 //  amplitudes on different magnets.
-// 2) implement bmw killing from greenmonster, along with any other configuration
-//    selections.  A library of utilities will be needed for cfSockSer to call. 
-// 3) implement bmw modulation information in new crl code.
+// 2) have bmwClient_test put its data words in the data stream like the loop does
+// 3  bmwTest should make sure to set only one coil at a time (by unsetting when
+//    coil number changes
+// 4) greenmonster should allow changing the bmw words online.
 
 /* launch with:
 

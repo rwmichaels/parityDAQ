@@ -23,6 +23,7 @@
 #include "TGToolTip.h"
 #include "TFile.h"
 #include "TTimer.h"
+#include "TColor.h"
 #include "TQObject.h"
 #include "TRootHelpDialog.h"
 #include "RQ_OBJECT.h"
@@ -78,8 +79,10 @@ private:
   //  const static ULong_t grnback = 1029728;
   //  const static ULong_t grnback = 0x0fb660;
   //  const static ULong_t grnback = 0x80a080;
-  const static ULong_t grnback = 0x8fbc8f;  // darkseagreen
+  //  const static ULong_t grnback = 0x8fbc8f;  // darkseagreen
   //  const static ULong_t grnback = 0xbc8f8f;  // darkseagreen-mod1
+  //  const static ULong_t grnback = 2;  // darkseagreen
+  ULong_t grnback;
 
 
   Bool_t fUseCrate[4];
