@@ -19,8 +19,8 @@
 #include "../timebrd/HAPTB_cf_commands.h"
 
 #define GM_HAPTB   1000
-#define GM_TB_GET 1001
-#define GM_TB_SET 1002
+#define GM_TB_GET  1001
+#define GM_TB_SET  1002
 
 class GreenTB : public TGCompositeFrame {
 

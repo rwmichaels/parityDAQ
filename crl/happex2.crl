@@ -29,6 +29,7 @@ const SCALER0 = hex a40000
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
 const TRIG_ADDR = hex 0ad0
+const FLEXIO_ADDR = hex 0ed0
 
 const FIFO_EMPTY = hex 100
 
@@ -37,13 +38,15 @@ const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
 int oport_state;   /* output port state (global variable) */
 
-static int noscaler, bmw, tbreadout;
+static int noscaler, bmw, tbreadout, flexio;
 
 unsigned short ranny[65535];  /* array of random integers */
 
 extern int bigendian_out;
 static FUNCPTR handlerPtr;
 VOIDFUNCPTR isr;
+
+volatile struct vme_flex_io *flex_io;
 
 # Switch here if picking a different kind of scaler
 # Either TYPE_SIS3801, TYPE_SIS3800, TYPE_LEC1151, or TYPE_CAEN560 
@@ -87,10 +90,11 @@ begin download
   }
 init_strings();
 
-noscaler=0;bmw=0;tbreadout=0;
+noscaler=0;bmw=0;tbreadout=0;flexio=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 bmw       = getflag(BMW);        /* Readout Beam Modulation Words */
 tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
+flexio    = getflag(FLEXIO);     /* Readout Flexible I/O Module */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
@@ -109,6 +113,11 @@ if(tbreadout==1) {
 } else {
   printf("Will NOT write timing board config to file: %d\n",tbreadout);
 }
+if(flexio==1) {
+  printf("WILL readout Flexible IO Module: %d\n",flexio);
+} else {
+  printf("Will NOT readout Flexible IO Module: %d\n",flexio);
+}
 
 
 /* Setup Device Pointers */
@@ -122,6 +131,20 @@ if(tbreadout==1) {
      printf("Trigger Interface address = 0x%x\n",laddr);
      tir[1] = (struct vme_tir *)laddr;
   }
+
+if(flexio == 1) {
+  /* FlexIO Pointer */
+  res = sysBusToLocalAdrs(0x29,FLEXIO_ADDR,&laddr);
+  if (res != 0) {
+    printf("Error in sysBusToLocalAdrs res=%d \n",res);
+    printf("ERROR:  FlexIO POINTER NOT INITIALIZED");
+  } else {
+    printf("FlexIO address = 0x%x\n",laddr);
+    flex_io = (struct vme_flex_io *)laddr;
+  }
+  flex_io->csr1 = 0x8000; /* Reset Module */
+  flex_io->csr1 = 0x3;    /* Enable External Strobe and Latch Mode */
+}
 
 /* ADC Configuration */
 // show default configurations
@@ -314,10 +337,17 @@ if(noscaler == 0) {
 #endif
 }
 
+if(flexio == 1) {
+  flex_io->csr1 = 0x100; /* Re-Activate Strobe */
+  flex_io->csr1 = 0x03; /* Re-Activate Strobe */
+}
+
 /* remove the inhibit */
 %%  
+/* We dont actually use this anymore.. */
+/* But just in case, just comment out the taskDelay */
    log inform "wait... will remove inhibit"
-   taskDelay(600);
+   //   taskDelay(600);
    log inform "about to remove inhibit"
    oport_state = oport_state & 0xfd; 
    tir[1]->tir_oport=oport_state;
@@ -335,6 +365,7 @@ begin trigger partrig
 
 variable i,j
 unsigned long ltest;
+unsigned short junk;
 static int dac16val=DEF_DAC16;
 static int dac12val=DEF_DAC12;
 static int maxdac16=65535;
@@ -364,6 +395,17 @@ open event type EVTYPE of BT_UI4
 ncnt++;
 
 %%
+// Read out TIR inputs FIRST!  It contains helicity info. 
+*rol->dabufp++ = 0xffdaf000;    /* Header for TIR */
+tir_dat = tir[1]->tir_dat;
+*rol->dabufp++ = tir_dat & 0xfff;
+if(flexio==1) {
+  *rol->dabufp++ = flex_io->data1;
+  flex_io->csr1 = 0x100;
+  flex_io->csr1 = 0x03;
+  junk = flex_io->csr1;
+}
+
 if(bmw==1) {
   //////////////////////////////////////////////////
   //
@@ -446,9 +488,6 @@ for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
 //for (i=ADC_NUMSLOTS-1; i>=0; i--) rol->dabufp = readoutHAPADC(rol->dabufp,i);
 
 
-*rol->dabufp++ = 0xffdaf000;    /* Header for misc. info of event */
-tir_dat = tir[1]->tir_dat;
-*rol->dabufp++ = tir_dat & 0xfff;
 *rol->dabufp++ = 0xfffbd000;    /*  Header for timing board info */
 *rol->dabufp++ = getDataHAPTB();
 *rol->dabufp++ = getRampDelayHAPTB();
@@ -503,17 +542,18 @@ for (i = 0; i < ADC_NUMSLOTS; i++) {
 
 /* V/F and/or ADC test.  Increment dacs after last sample in helicity window
    recall: Last sample has OS=0 in these new timing boards */
-
-if(getOverSampleCurrentHAPTB()==0) {
+/*
+  if(getOverSampleCurrentHAPTB()==0) {
   dac12val = dac12val + 2; 
   dac16val = dac16val + 10; 
-} 
+  } 
   if (dac12val >= maxdac12) dac12val = 0;
   setDACHAPTB(1,dac12val);
   getDACHAPTB(1);
   if (dac16val >= maxdac16) dac16val = 32767;
   setDACHAPTB(2,dac16val);
   getDACHAPTB(2);
+*/
 
 /* Disable BUSY Flag */
 oport_state = oport_state & 0xfe;

@@ -88,10 +88,6 @@ void GreenTB::Init(ULong_t backgrnd) {
   bt->Associate(this);
   bt->Resize(90, bt->GetDefaultHeight());
   bt->SetToolTipText("Apply these settings to this timing board");
-//    tcf1b->AddFrame(bt = new TGTextButton(tcf1b,"Cancel",23));
-//    bt->SetBackgroundColor(backgrnd);
-//    bt->Associate(this);
-//    bt->Resize(90, bt->GetDefaultHeight());
 
   tcf1b->Resize(tcf1b->GetDefaultSize());
 

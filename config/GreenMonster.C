@@ -20,16 +20,17 @@ GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) :
   fCrateNumbers[0] = Crate_CountingHouse;
 
   fUseCrate[1]= kTRUE;
-  fCrateNames[1] = new TString("Left Spect");
-  fCrateNumbers[1] = Crate_LeftSpect;
+  fCrateNames[1] = new TString("Injector");
+  fCrateNumbers[1] = Crate_Injector;
 
   fUseCrate[2]= kTRUE;
-  fCrateNames[2] = new TString("Right Spect");
-  fCrateNumbers[2] = Crate_RightSpect;
+  fCrateNames[2] = new TString("Left Spect");
+  fCrateNumbers[2] = Crate_LeftSpect;
 
   fUseCrate[3]= kTRUE;
-  fCrateNames[3] = new TString("Injector");
-  fCrateNumbers[3] = Crate_Injector;
+  fCrateNames[3] = new TString("Right Spect");
+  fCrateNumbers[3] = Crate_RightSpect;
+
 
 }
 
@@ -746,7 +747,4 @@ void GreenMonster::BMWCheckActiveFlag() {
   }
   MapSubwindows();
 }
-
-
-
 
