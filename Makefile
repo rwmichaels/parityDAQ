@@ -116,7 +116,7 @@ cfSock/cfSockSer.o: cfSock/cfSockSer.c cfSock/cfSock.h  cfSock/cfSock_types.h \
 	ccppc -o $@ -c $(CCVXFLAGS) cfSock/cfSockSer.c
 
 timebrd/HAPTB_util.o: timebrd/HAPTB_util.c timebrd/HAPTB.h    \
-               timebrd/HAPTB_util.h
+              timebrd/HAPTB_util.h
 	cd timebrd; rm -f $@; \
 	ccppc  -c $(CCVXFLAGS) HAPTB_util.c
 

@@ -19,8 +19,8 @@ volatile struct vme_happex_tb *tboard;
 // LOCALS
 LOCAL int TB_DEF_DAC12   =    0;
 LOCAL int TB_DEF_DAC16   =    0;
-LOCAL int TB_DEF_RAMPDELAY =  200;   
-LOCAL int TB_DEF_INTEGTIME = 5000;
+LOCAL int TB_DEF_RAMPDELAY =  0;   
+LOCAL int TB_DEF_INTEGTIME = 13300;
 LOCAL int TB_DEF_OVERSAMPLE=    0;
 
 LOCAL int did_init_TB  = 0;

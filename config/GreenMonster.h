@@ -74,16 +74,8 @@ public:
 private:
   Int_t mainWidth;
   Int_t mainHeight;
-  //  const static ULong_t grnback = 1034848;
-  //  const static ULong_t grnback = 1032288;
-  //  const static ULong_t grnback = 1029728;
-  //  const static ULong_t grnback = 0x0fb660;
-  //  const static ULong_t grnback = 0x80a080;
   //  const static ULong_t grnback = 0x8fbc8f;  // darkseagreen
-  //  const static ULong_t grnback = 0xbc8f8f;  // darkseagreen-mod1
-  //  const static ULong_t grnback = 2;  // darkseagreen
   ULong_t grnback;
-
 
   Bool_t fUseCrate[4];
   TString* fCrateNames[4];

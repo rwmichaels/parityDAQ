@@ -109,9 +109,9 @@ int bmw_test_value =0;
 
 int bmw_steps_per_qcycle =    3; /* Number of steps per 1/4 cycle */ 
 int bmw_cycles_per_pulse =    1; /* Number of cycles per pulse */ 
-int bmw_steps_per_pause  =  192; /* Number of steps to rest after last object */ 
+int bmw_steps_per_pause  =   20; /* Number of steps to rest after last object */ 
 int bmw_ticks_per_step   =   12; /* Clock ticks per step */ 
-int bmw_coil_amplitude   =  300; /* Half amplitude for coil modulation (milliamps)*/
+int bmw_coil_amplitude   =  400; /* Half amplitude for coil modulation (milliamps)*/
 int bmw_coil_offset      =    0; /* DC offset for coil modulation (milliamps) */ 
 int bmw_e_amplitude      =    0; /* Half amplitude for energy modulation */
 //                                   (keV per pass) 

@@ -215,7 +215,7 @@ fdbfile=fopen("~apar/db/timebrd.cfg","w");
 fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms, Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
         (double)getIntTimeHAPTB()*0.0025,
         (double)getRampDelayHAPTB()*2.5,
-        ((int)getOverSampleHAPTB()));
+        (int)getOverSampleHAPTB()+1);
 fclose(fdbfile);
  
 %%
@@ -463,14 +463,14 @@ for (i = 0; i < ADC_NUMSLOTS; i++) {
 //  setDACHAPTB(2,dac16val);
 
 
-/* V/F - ADC timing test.  Increment dac12 every 10 events */
-//  if(k==10) {
-//    dac12val = dac12val + 10; 
-//    k = 0;
-//  } 
-//  k = k + 1;
-//  if (dac12val >= maxdac12) dac12val = 0;
-//  setDACHAPTB(1,dac12val);
+/* V/F and/or ADC test.  Increment dac12 every 10 events */
+  if(k==10) {
+    dac12val = dac12val + 10; 
+    k = 0;
+  } 
+  k = k + 1;
+  if (dac12val >= maxdac12) dac12val = 0;
+  setDACHAPTB(1,dac12val);
 
 /* Disable BUSY Flag */
 oport_state = oport_state & 0xfe;
