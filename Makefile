@@ -10,6 +10,7 @@ ROOTGLIBS  = $(shell root-config --glibs --new)
 #DCDIR      = $(HOME)/hana_decode_1.6
 #INCLUDES   = -I$(ROOTSYS)/include -I$(DCDIR) 
 INCLUDES   = -I$(ROOTSYS)/include
+EPICS_INC  = -I/adaqfs/halla/apar/bryan/epics/base/include
 CXX        = g++
 #CXXFLAGS   = -O -Wall -fno-rtti -fno-exceptions -fPIC $(INCLUDES) 
 CXXFLAGS   = -O -Wall -fno-exceptions -fPIC $(INCLUDES) 
@@ -53,13 +54,15 @@ ADC = adc/HAPADC_ch.o adc/HAPADC_inj.o adc/HAPADC_lspec.o \
 BMW = bmw/bmwClient.o bmw/bmw_config.o 
 TB = timebrd/HAPTB_util.o timebrd/HAPTB_config.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
+CAFFB = caFFB/caFFB.o
 
 adc: $(ADC)
 timebrd: $(TB)
 bmw: $(BMW)
 socket: $(SOCK)
-vxall: $(ADC) $(BMW) $(SOCK) $(TB)
-all:  $(ADC) $(BMW) $(SOCK) $(TB) $(PROGS) $(SHLIB)
+caFFB: $(CAFFB)
+vxall: $(ADC) $(BMW) $(SOCK) $(TB) $(CAFFB)
+all:  $(ADC) $(BMW) $(SOCK) $(TB) $(CAFFB) $(PROGS) $(SHLIB)
 dict:
 #dict: config/GreenMonsterDict.C
 
@@ -82,6 +85,7 @@ clean:
 	rm -f bmw/core bmw/*.o bmw/*.d
 	rm -f cfSock/core cfSock/*.o cfSock/*.d
 	rm -f timebrd/core timebrd/*.o timebrd/*.d
+	rm -f caFFB/core caFFB/*.o caFFB/*.d
 
 realclean:  clean
 	rm -f *.d
@@ -138,6 +142,8 @@ timebrd/HAPTB_config.o: timebrd/HAPTB_config.c timebrd/HAPTB_cf_commands.h
 	cd timebrd; rm -f $@; \
 	ccppc  -c $(CCVXFLAGS) HAPTB_config.c
 
+caFFB/caFFB.o: caFFB/caFFB.c caFFB/caFFB.h
+	ccppc  -c $(CCVXFLAGS) $(EPICS_INC) $< -o $@
 
 #.SUFFIXES:
 #.SUFFIXES: .c .cc .cpp .C .o .d

@@ -23,6 +23,10 @@ extern int setDACHAPTB(int, int);
 extern int setTimeHAPTB(int, int);
 extern int setOverSampleHAPTB(int);
 
+// EPICS Channel Access utilities
+extern int cagetFFB();
+extern int caputFFB(int);
+
 // global variables for bmw
 extern int  bmw_object;
 extern int  bmw_clean;
