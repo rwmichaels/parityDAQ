@@ -32,6 +32,7 @@
 #include "GreenADC.h"
 #include "../cfSock/cfSock_types.h"
 #include "../bmw/bmw_cf_commands.h"
+#include "../scan/SCAN_cf_commands.h"
 //#include "GMSock.h"
 
 #define GM_LOCAL     201
@@ -41,6 +42,7 @@
 #define GM_BMW_TEST_ENABLE 2005
 #define GM_BMW_TEST_SET_VALUE 2006
 #define GM_BMW_SET_KILL 2007
+// the relative value of these button id's labels each modulation object
 #define BMW_OBJRADIO1 2101
 #define BMW_OBJRADIO2 2102
 #define BMW_OBJRADIO3 2103
@@ -55,6 +57,15 @@
 #define KILL_SERVER_3 5003
 #define KILL_SERVER_4 5004
 
+
+#define GM_SCN_CHECK  6002
+#define GM_SCN_SET    6003
+#define SCN_RADIO_CLN 6101
+#define SCN_RADIO_NOT 6102
+#define SCN_RADIO_CLN_BT 0
+#define SCN_RADIO_NOT_BT 1
+#define SCN_INT_CLN 1
+#define SCN_INT_NOT 0
 
 class GreenMonster : public TGMainFrame {
   RQ_OBJECT()
@@ -111,6 +122,28 @@ private:
   void BMWSetKill();
   void BMWStartTest();
 
+  // objects for scan tabpage
+  Int_t fSCN_TABID;
+  TGTextButton *setValueBtSCN;
+  TGTextButton *checkStatusBtSCN;
+
+  Int_t statusSCN;
+  Int_t setpoint1SCN;
+  Int_t setpoint2SCN;
+  TGRadioButton* fStateRBtSCN[2];
+  TGTextEntry  *tentSetPnt1SCN;
+  TGTextEntry  *tentSetPnt2SCN;
+
+  void SCNDoRadio(Int_t);
+  void SCNUpdateStatus(Int_t);
+  Bool_t SCNCheckStatus();
+  void SCNSetValues();
+  void SCNSetValue(Int_t,Int_t);
+  void SCNCheckValues();
+  void SCNSetStatus(Int_t);
+  
+
+  //
   void InitGui();
 
 };

@@ -21,6 +21,11 @@ initHAPADC
 ld < /adaqfs/halla/apar/devices/bmw/bmwClient.o
 ld < /adaqfs/halla/apar/devices/bmw/bmw_config.o
 #
+#  load scan routines
+#
+ld < /adaqfs/halla/apar/devices/scan/SCAN_util.o
+ld < /adaqfs/halla/apar/devices/scan/SCAN_config.o
+#
 #  add route to bmw Server IOC
 #
 routeAdd "129.57.236.67","129.57.164.1"

@@ -36,6 +36,7 @@
 #define INJ "inj"
 #define EVTYPEFIX "evtypefix"
 #define NOSCALER "noscaler"
+#define SCAN "scan"
 #define BMW "bmw"
 #define TBREADOUT "tbreadout"
 #define FLEXIO "flexio"

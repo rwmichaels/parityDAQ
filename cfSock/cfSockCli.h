@@ -18,8 +18,10 @@
 #include "cfSock.h"
 
 /* Name or IP addresses of the various servers */
-char * ServerName_CountingHouse="129.57.164.13"; 
-char * ServerName_LeftSpect="129.57.192.61"; 
+char * ServerName_CountingHouse="129.57.224.101"; 
+char * ServerName_LeftSpect="129.57.164.100"; 
+/* char * ServerName_CountingHouse="129.57.164.13"; */
+/* char * ServerName_LeftSpect="129.57.192.61"; */
 char * ServerName_RightSpect="129.57.192.60";
 char * ServerName_Injector="129.57.206.10";   
 

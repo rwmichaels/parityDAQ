@@ -26,6 +26,7 @@ int           closeSocket = 0;  /* switch to close socket and terminate */
 
 void cfSockWorkTask (int task_sFd, char * address, u_short port);
 
+extern void taskSCAN_CF(long*,long*,long*);
 extern void taskHAPTB_CF(long*,long*,long*);
 extern void taskHAPADC_CF(long*,long*,long*);
 extern void task_BMW(long*,long*,long*);
@@ -218,6 +219,11 @@ void cfSockWorkTask
 
       if (clientRequest.command_type==COMMAND_BMW) {
 	task_BMW(&clientRequest.command,
+                     &clientRequest.par1,&clientRequest.par2);
+      }
+
+      if (clientRequest.command_type==COMMAND_SCAN) {
+	taskSCAN_CF(&clientRequest.command,
                      &clientRequest.par1,&clientRequest.par2);
       }
 

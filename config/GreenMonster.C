@@ -17,17 +17,18 @@ GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) :
   this->SetBackgroundColor(grnback);
   fUseCrate[0]= kTRUE;
   fCrateNames[0] = new TString("Counting House");
+  //  fCrateNames[0] = new TString("Laser Room");
   fCrateNumbers[0] = Crate_CountingHouse;
 
-  fUseCrate[1]= kTRUE;
+  fUseCrate[1]= kFALSE;
   fCrateNames[1] = new TString("Injector");
   fCrateNumbers[1] = Crate_Injector;
 
-  fUseCrate[2]= kTRUE;
+  fUseCrate[2]= kFALSE;
   fCrateNames[2] = new TString("Left Spect");
   fCrateNumbers[2] = Crate_LeftSpect;
 
-  fUseCrate[3]= kTRUE;
+  fUseCrate[3]= kFALSE;
   fCrateNames[3] = new TString("Right Spect");
   fCrateNumbers[3] = Crate_RightSpect;
 
@@ -174,15 +175,88 @@ void GreenMonster::InitGui() {
   //tcf4a->SetBackgroundColor(dgreen);
   tf->AddFrame(tcf4a,noex);
 
-//    // create test page
-//    tf = fTab->AddTab("Test Page");
-//    tf->SetBackgroundColor(grnback);
-//    tf->SetLayoutManager(new TGHorizontalLayout(tf));
-//    TGCompositeFrame *tcf3a = new TGCompositeFrame(tf, 300, 300, kVerticalFrame);
-//    tcf3a->SetBackgroundColor(grnback);
-//    tf->AddFrame(tcf3a,framout);
-//    tabel = fTab->GetTabTab(3);
-//    tabel->ChangeBackground(grnback);
+//    // create SCAN page
+    tf = fTab->AddTab("ScanUtil");
+    fSCN_TABID = fTab->GetNumberOfTabs()-1;  // set tab index for later use
+    tabel = fTab->GetTabTab(fSCN_TABID);  // get tab index
+    tabel->ChangeBackground(grnback);
+    tf->SetBackgroundColor(grnback);
+    tf->SetLayoutManager(new TGHorizontalLayout(tf));
+    TGCompositeFrame *tcfSCN = new TGGroupFrame(tf, "SCAN UTILITY", 
+						kHorizontalFrame);
+    tcfSCN->SetBackgroundColor(grnback);
+    //    TGCompositeFrame *tcfSCN = new TGCompositeFrame(tf, 300, 300, kVerticalFrame);
+    //    tcfSCN->SetBackgroundColor(grnback);
+    tf->AddFrame(tcfSCN,framout);
+
+//----------------------------------------------------------------------
+  // add buttons to SCN page
+
+  tcfSCN->SetLayoutManager(new TGVerticalLayout(tcfSCN));
+
+  TGCompositeFrame *tcfSCN1 = new TGGroupFrame(tcfSCN, "",
+ 					      kVerticalFrame);
+  tcfSCN1->SetBackgroundColor(grnback);
+  tcfSCN->AddFrame(tcfSCN1,framout);
+
+  TGCompositeFrame *sfrm1 = new TGHorizontalFrame(tcfSCN1,300,200);
+  sfrm1->SetBackgroundColor(grnback);
+  TGCompositeFrame *sfrm2 = new TGHorizontalFrame(tcfSCN1,300,200);
+  sfrm2->SetBackgroundColor(grnback);
+  TGLayoutHints *sL_1 = new TGLayoutHints(kLHintsTop, 2, 2, 5, 1);
+  tcfSCN1->AddFrame(sfrm1,sL_1);
+  tcfSCN1->AddFrame(sfrm2,sL_1);
+  sfrm1->SetLayoutManager(new TGMatrixLayout(sfrm1, 0, 2, 10));
+  sfrm2->SetLayoutManager(new TGMatrixLayout(sfrm2, 1, 0, 10));
+
+  fStateRBtSCN[0] = new TGRadioButton(sfrm1,"  CLEAN ",SCN_RADIO_CLN);
+  fStateRBtSCN[1] = new TGRadioButton(sfrm1,"NOT CLEAN  ",SCN_RADIO_NOT);
+  for (Int_t ib = 0; ib<2; ib++) {
+    fStateRBtSCN[ib]->SetBackgroundColor(grnback);
+    fStateRBtSCN[ib]->Associate(this);
+    sfrm1->AddFrame(fStateRBtSCN[ib]);
+  }
+
+  sprintf(buff, "0");
+  TGTextBuffer *stbuf = new TGTextBuffer(6);
+  stbuf->AddText(0,buff);
+  TGLabel * stlab= new TGLabel(sfrm1,new TGHotString("Set Point 1"));
+  sfrm1->AddFrame(stlab);
+  stlab->SetBackgroundColor(grnback);
+  tentSetPnt1SCN = new TGTextEntry(sfrm1, stbuf, 221);
+  tentSetPnt1SCN->Resize(60, tentSetPnt1SCN->GetDefaultHeight());
+  tentSetPnt1SCN->SetFont("-adobe-courier-bold-r-*-*-14-*-*-*-*-*-iso8859-1");
+  sfrm1->AddFrame(tentSetPnt1SCN);
+
+  sprintf(buff, "0");
+  TGTextBuffer *stbuf2 = new TGTextBuffer(6);
+  stbuf2->AddText(0,buff);
+  TGLabel * stlab2= new TGLabel(sfrm1,new TGHotString("Set Point 2"));
+  sfrm1->AddFrame(stlab2);
+  stlab2->SetBackgroundColor(grnback);
+  tentSetPnt2SCN = new TGTextEntry(sfrm1, stbuf2, 221);
+  tentSetPnt2SCN->Resize(60, tentSetPnt2SCN->GetDefaultHeight());
+  tentSetPnt2SCN->SetFont("-adobe-courier-bold-r-*-*-14-*-*-*-*-*-iso8859-1");
+  sfrm1->AddFrame(tentSetPnt2SCN);
+
+  tcfSCN1->Resize(tcfSCN1->GetDefaultSize());
+  sfrm1->Resize(sfrm1->GetDefaultSize());
+
+  sfrm2->AddFrame(checkStatusBtSCN = 
+		     new TGTextButton(sfrm2,"Check Status",GM_SCN_CHECK));
+  checkStatusBtSCN->Associate(this);
+  checkStatusBtSCN->SetBackgroundColor(grnback);
+
+  sfrm2->AddFrame(setValueBtSCN = 
+		     new TGTextButton(sfrm2,"Set Values",GM_SCN_SET));
+  setValueBtSCN->Associate(this);
+  setValueBtSCN->SetBackgroundColor(grnback);
+
+  sfrm2->Resize(sfrm2->GetDefaultSize());
+
+  SCNCheckStatus(); // this call is actually an important initialization!
+  SCNCheckValues(); // this call is actually an important initialization!
+
 
 
 //----------------------------------------------------------------------
@@ -402,6 +476,20 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	      BMWStartTest();
 	      break;
 	    }
+	  case GM_SCN_CHECK:	
+	    {
+	      //	      printf("checking status of SCN \n");
+	      SCNCheckStatus();
+	      SCNCheckValues();
+	      break;
+	    }
+	  case GM_SCN_SET:	
+	    {
+	      //	      printf("setting SCN values\n");
+	      SCNSetValues();
+	      SCNCheckStatus();
+	      break;
+	    }
 	  default:
 	    printf("text button id %ld pressed\n", parm1);
 	    printf("text button context %ld \n", parm2);
@@ -409,10 +497,12 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	  }
 	break;
       case kCM_RADIOBUTTON: {
-	  case BMW_OBJRADIO1:
+	switch (parm1) 
+	  {
+          case BMW_OBJRADIO1:
 	  case BMW_OBJRADIO2:
-	  case BMW_OBJRADIO3:
-	  case BMW_OBJRADIO4:
+          case BMW_OBJRADIO3:
+          case BMW_OBJRADIO4:
 	  case BMW_OBJRADIO5:
 	  case BMW_OBJRADIO6:
 	  case BMW_OBJRADIO7:
@@ -422,6 +512,18 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	      BMWDoRadio(parm1);
 	      break;
 	    }
+	  case SCN_RADIO_CLN:
+	  case SCN_RADIO_NOT:
+	    {
+	      // cout << "SCN radio button pushed " << parm1 << endl;
+	      SCNDoRadio(parm1);
+	      break;
+	    }
+	  default:
+	    {
+	      cout << "unknown radio button pushed " << parm1 << endl;
+	    }
+	  }
       }
       case kCM_TAB: {
 	if (parm1==fBMW_TABID) {
@@ -746,5 +848,220 @@ void GreenMonster::BMWCheckActiveFlag() {
     activeLabelBMW->SetText("Beam Modulation script is INACTIVE");
   }
   MapSubwindows();
+}
+
+void GreenMonster::SCNDoRadio(Int_t id) {    
+  
+  switch (id) 
+    {
+    case SCN_RADIO_CLN:
+      {
+	if (statusSCN!=SCN_INT_CLN) {
+	  SCNSetValues();  // first set data value to match input value
+	  statusSCN=SCN_INT_CLN;
+	  SCNSetStatus(statusSCN);
+	} 
+	break;
+     }
+    case SCN_RADIO_NOT:
+      {
+	if (statusSCN!=SCN_INT_NOT) {
+	  statusSCN=SCN_INT_NOT;
+	  SCNSetStatus(statusSCN);
+	}
+	break;
+      }
+    default:
+      cout << "ERROR: Unrecognized SCAN status Button ID" << endl;
+    }
+  return;
+}
+
+
+void GreenMonster::SCNUpdateStatus(Int_t id) {    
+  
+  switch (id) 
+    {
+    case SCN_INT_CLN:
+      {
+	fStateRBtSCN[SCN_RADIO_NOT_BT]->SetState(kButtonUp);
+	fStateRBtSCN[SCN_RADIO_CLN_BT]->SetState(kButtonDown);
+	statusSCN=id;
+	break;
+      }
+    case SCN_INT_NOT:
+      {
+	fStateRBtSCN[SCN_RADIO_CLN_BT]->SetState(kButtonUp);
+	fStateRBtSCN[SCN_RADIO_NOT_BT]->SetState(kButtonDown);
+	statusSCN=id;
+	break;
+      }
+    default:
+      cout << "ERROR: Unrecognized SCAN status flag" << endl;
+    }
+  return;
+}
+
+
+Bool_t GreenMonster::SCNCheckStatus() {
+  struct greenRequest gRequest;
+  int command, par1, par2, command_type;
+  char *msgReq = "SCN status check";
+  char *reply = "Y";
+  Int_t iclean;
+  
+  //  printf("SCN Status =");
+  command_type = COMMAND_SCAN;   gRequest.command_type = command_type;
+  command = SCAN_GET_STATUS;     gRequest.command = command;
+  par1 = 0;                      gRequest.par1 = par1;
+  par2 = 0;                      gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+    par1 = gRequest.par1;
+    par2 = gRequest.par2;
+    iclean=par1;
+    if (iclean != SCN_INT_CLN && iclean != SCN_INT_NOT) {
+      printf("UNKNOWN REPLY FOR SCN STATUS: %d  ",iclean);
+      return kFALSE;
+    }
+  } else {
+    printf("ERROR accessing socket!");
+    return kFALSE;
+  }
+  
+  //  printf("% d  %d\n",par1,par2);
+  
+  SCNUpdateStatus(iclean);
+  return kTRUE;
+}
+
+void GreenMonster::SCNSetStatus(Int_t status) {
+  struct greenRequest gRequest;
+  int command, par1, par2, command_type;
+  char *msgReq = "SCN Status Change";
+  char *reply = "Y";
+
+  command_type = COMMAND_SCAN;  gRequest.command_type = command_type;
+  command = SCAN_SET_STATUS;    gRequest.command = command;
+  par1 = status;                gRequest.par1 = par1;
+  par2 = 0;                     gRequest.par2 = par2;
+
+  cout << "Setting SCN status: " << par1 << endl;
+   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+     printf("SCAN status change call is complete\n");
+   } else {
+     printf("ERROR accessing socket!");
+     return;
+   }
+   // check scan status
+   SCNCheckStatus();
+}
+
+
+void GreenMonster::SCNSetValues() {
+  int value;
+  
+  //
+  // get value from tent
+  //
+  value = atoi(tentSetPnt1SCN->GetText());
+  SCNSetValue(1,value);
+  setpoint1SCN=value;
+
+  value = atoi(tentSetPnt2SCN->GetText());
+  SCNSetValue(2,value);
+  setpoint2SCN=value;
+
+  return;
+}
+
+void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
+  struct greenRequest gRequest;
+  int command, par1, par2, command_type;
+  char *msgReq = "Set SCN Data Value";
+  char *reply = "Y";
+  
+  cout << " writing new SCAN set point " << value 
+       << " to data" << which <<endl;
+  //
+  // send set message for obj, value
+  //
+  command_type = COMMAND_SCAN;   gRequest.command_type = command_type;
+  command = SCAN_SET_DATA;       gRequest.command = command;
+  par1 = which;                  gRequest.par1 = par1;
+  par2 = value;                  gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+    par1 = gRequest.par1;
+    par2 = gRequest.par2;
+  } else {
+    printf("ERROR accessing socket!"); 
+    return;
+  }
+  return;
+}
+
+void GreenMonster::SCNCheckValues() {
+  struct greenRequest gRequest;
+  int command, par1, par2, command_type;
+  char *msgReq = "Check SCN Data Value";
+  char *reply = "Y";
+  char buff[10];
+  int value;
+
+  //
+  command_type = COMMAND_SCAN;   gRequest.command_type = command_type;
+  command = SCAN_GET_DATA;       gRequest.command = command;
+  par1 = 1;                      gRequest.par1 = par1;
+  par2 = 0;                      gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+    par1 = gRequest.par1;
+    par2 = gRequest.par2;
+    value = par2;
+  } else {
+    printf("ERROR accessing socket!"); 
+    return;
+  }
+
+  //
+  // get value from tent
+  //
+  setpoint1SCN=value;
+  sprintf(buff, "%i", setpoint1SCN);
+  tentSetPnt1SCN->SetText(buff);
+
+  // repeat for second data word
+
+  command_type = COMMAND_SCAN;   gRequest.command_type = command_type;
+  command = SCAN_GET_DATA;       gRequest.command = command;
+  par1 = 2;                      gRequest.par1 = par1;
+  par2 = 0;                      gRequest.par2 = par2;
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    command = gRequest.command;
+    par1 = gRequest.par1;
+    par2 = gRequest.par2;
+    value = par2;
+  } else {
+    printf("ERROR accessing socket!"); 
+    return;
+  }
+
+  //
+  // get value from tent
+  //
+  setpoint2SCN=value;
+  sprintf(buff, "%i", setpoint2SCN);
+  tentSetPnt2SCN->SetText(buff);
+
+  return;
 }
 

@@ -41,7 +41,7 @@ const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
 int oport_state;   /* output port state (global variable) */
 
-static int noscaler, bmw, tbreadout, flexio;
+static int noscaler, bmw, scan, tbreadout, flexio;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -93,9 +93,10 @@ begin download
   }
 init_strings();
 
-noscaler=0;bmw=0;tbreadout=0;flexio=0;
+noscaler=0;bmw=0;scan=0;tbreadout=0;flexio=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 bmw       = getflag(BMW);        /* Readout Beam Modulation Words */
+scan      = getflag(SCAN);        /* Readout Scan Words */
 tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
 flexio    = getflag(FLEXIO);     /* Readout Flexible I/O Module */
 
@@ -110,6 +111,11 @@ if(bmw==1) {
   printf("WILL readout Beam Modulation Words: %d\n",bmw);
 } else {
   printf("Will NOT readout Beam Modulation Words: %d\n",bmw);
+}
+if(scan==1) {
+  printf("WILL readout SCAN Words: %d\n",scan);
+} else {
+  printf("Will NOT readout SCAN Words: %d\n",scan);
 }
 if(tbreadout==1) {
   printf("WILL write timing board config to file: %d\n",tbreadout);
@@ -514,6 +520,13 @@ if(bmw==1) {
   *rol->dabufp++ = localBMWval; // record the value of the last-moved object
   *rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
 }
+
+if(scan==1) {
+  *rol->dabufp++ = getCleanSCAN();
+  *rol->dabufp++ = getDataSCAN();  
+  *rol->dabufp++ = getDataSCAN();  
+}
+
 
 for (i = 0; i < ADC_NUMSLOTS; i++) {  
   if (usesDACHAPADC(i)==1) {
