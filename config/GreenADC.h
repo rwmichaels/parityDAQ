@@ -64,6 +64,7 @@ class GreenADC : public TGCompositeFrame {
   TGLabel *fSetLab[GA_MAXADC];
 
   Int_t getNumADC();
+  Int_t getLabelADC(Int_t);
   Bool_t getValsADC();
   Bool_t getValADC(Int_t);
   Bool_t setValsADC();

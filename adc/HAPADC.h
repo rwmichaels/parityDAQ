@@ -47,6 +47,16 @@
 #define  ADC8 0x490000
 #define  ADC9 0x490000
 // #define  ADC2 0x840000   Removed March 25, 2003
+#define  ADCLAB0 0
+#define  ADCLAB1 1
+#define  ADCLAB2 2
+#define  ADCLAB3 3
+#define  ADCLAB4 4
+#define  ADCLAB5 5
+#define  ADCLAB6 6
+#define  ADCLAB7 7
+#define  ADCLAB8 8
+#define  ADCLAB9 9
 #endif
 #ifdef   INJECTOR
 #define  ADC0 0x4e0000
@@ -59,6 +69,16 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
+#define  ADCLAB0 10
+#define  ADCLAB1 11
+#define  ADCLAB2 12
+#define  ADCLAB3 13
+#define  ADCLAB4 14
+#define  ADCLAB5 15
+#define  ADCLAB6 16
+#define  ADCLAB7 17
+#define  ADCLAB8 81
+#define  ADCLAB9 19
 #endif
 #ifdef   LEFTSPECT
 #define  ADC0 0x850000
@@ -71,6 +91,16 @@
 #define  ADC7 0x510000
 #define  ADC8 0x490000
 #define  ADC9 0x5F0000
+#define  ADCLAB0 20
+#define  ADCLAB1 21
+#define  ADCLAB2 22
+#define  ADCLAB3 23
+#define  ADCLAB4 24
+#define  ADCLAB5 25
+#define  ADCLAB6 26
+#define  ADCLAB7 27
+#define  ADCLAB8 28
+#define  ADCLAB9 29
 #endif
 #ifdef   RIGHTSPECT
 #define  ADC0 0x850000
@@ -83,6 +113,16 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
+#define  ADCLAB0 30
+#define  ADCLAB1 31
+#define  ADCLAB2 32
+#define  ADCLAB3 33
+#define  ADCLAB4 34
+#define  ADCLAB5 35
+#define  ADCLAB6 36
+#define  ADCLAB7 37
+#define  ADCLAB8 38
+#define  ADCLAB9 39
 #endif
 
 // gain setting for each adc
@@ -151,6 +191,9 @@ LOCAL int ADC_TIMEOUT  = DEF_TIMEOUT;
 //
 // arrays of default values
 //
+
+// Integer Labels of ADCs (maximum of 10 for now)
+LOCAL unsigned long ADCLABEL[10] = {ADCLAB0, ADCLAB1, ADCLAB2, ADCLAB3, ADCLAB4, ADCLAB5, ADCLAB6, ADCLAB7, ADCLAB8, ADCLAB9};
 
 // Addresses of ADCs (maximum of 10 for now)
 LOCAL unsigned long ADCADDR[10] = {ADC0, ADC1, ADC2, ADC3, ADC4, ADC5, ADC6, ADC7, ADC8, ADC9};

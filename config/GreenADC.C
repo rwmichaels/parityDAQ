@@ -64,7 +64,10 @@ void GreenADC::Init(ULong_t backgrnd) {
   lab->SetBackgroundColor(backgrnd);
 
   for (Int_t i=0; i<fNumADC; i++) {
-    fLabel[i]=i;  // use default label for now
+
+    //  Get label for i-th ADC
+    //    fLabel[i]=i;  // use default label for now
+    fLabel[i]=getLabelADC(i);
     char buff[30];
 
     // add ADC labels, 1st column
@@ -273,7 +276,7 @@ Bool_t GreenADC::getValsADC() {
   return good;
 }
 
-Bool_t GreenADC::getValADC(Int_t i) {
+Bool_t GreenADC::getValADC(Int_t index) {
   // Replace settings label with readback values from ADC
   char buff[30];
   int errFlag;
@@ -285,7 +288,7 @@ Bool_t GreenADC::getValADC(Int_t i) {
   
   command_type = COMMAND_HAPADC;    gRequest.command_type = command_type;
   command = HAPADC_GET_CSR;        gRequest.command = command;
-  par1 = fLabel[i];                 gRequest.par1 = par1;
+  par1 = index;                 gRequest.par1 = par1;
   par2 = 0;                         gRequest.par2 = par2;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   errFlag = GreenSockCommand(crateNumber,&gRequest);
@@ -300,27 +303,29 @@ Bool_t GreenADC::getValADC(Int_t i) {
     if (par2==-1) { 
       //       not inited
       //       cout << "Board not initialized " << i << endl;
-      fGain[i]=-1;
-      fDAC[i]=-1;
-      fSetLab[i]->SetText("ADC not initialized");
+      fGain[index]=-1;
+      fDAC[index]=-1;
+      fSetLab[index]->SetText("ADC not initialized");
       return kFALSE;
     }
-    if ((par2 & 0x10)==16) fGain[i]=GAINHI;
-    else fGain[i]=GAINLO;
-    if ((par2 & 0x8)==8) fDAC[i]=DACON;
-    else fDAC[i]=DACOFF;
+    if ((par2 & 0x10)==16) fGain[index]=GAINHI;
+    else fGain[index]=GAINLO;
+    if ((par2 & 0x8)==8) fDAC[index]=DACON;
+    else fDAC[index]=DACOFF;
   } else {
     printf("ERROR accessing socket!");
     return kFALSE;
   }
   
-  sprintf(buff, "%s Gain, DAC Noise %s", ( (fGain[i]==GAINLO) ? "Low" : "High"), 
-	  (fDAC[i]==DACOFF ? "Off" : "On"));
-  fSetLab[i]->SetText(buff);
-  fSetLab[i]->Resize(fSetLab[i]->GetDefaultSize());
+  sprintf(buff, "%s Gain, DAC Noise %s", ( (fGain[index]==GAINLO) ? "Low" : "High"), 
+	  (fDAC[index]==DACOFF ? "Off" : "On"));
+  fSetLab[index]->SetText(buff);
+  fSetLab[index]->Resize(fSetLab[index]->GetDefaultSize());
   
   return kTRUE;
 }
+
+
 
 Int_t GreenADC::getNumADC() {
   // get number of adcs listed in crate's utilities
@@ -349,6 +354,33 @@ Int_t GreenADC::getNumADC() {
  }
 
 
+Int_t GreenADC::getLabelADC(Int_t index) {
+  // get integer label for ADC index, as listed in crate's utilities
+   int errFlag;
+   struct greenRequest gRequest;
+   int command, par1, par2, command_type;
+   char *msgReq = "ADC Get Label";
+   char *reply = "Y";
+  
+   command_type = COMMAND_HAPADC;    gRequest.command_type = command_type;
+   command = HAPADC_GET_LABEL;       gRequest.command = command;
+   par1 = index;                     gRequest.par1 = par1;
+   par2 = 0;                         gRequest.par2 = par2;
+   strcpy(gRequest.message,msgReq);  gRequest.reply = reply;
+   errFlag = GreenSockCommand(crateNumber,&gRequest);
+
+   if (errFlag == SOCK_OK) {
+     command = gRequest.command;
+     par1 = gRequest.par1;
+     par2 = gRequest.par2;
+   } else {
+     printf("ERROR accessing socket!");
+     return -1;
+   }
+   return par2;
+ }
+
+
 Bool_t GreenADC::setValsADC() {
    // Read Buttons and set values for all ADCs
   Bool_t good=kTRUE;
@@ -357,7 +389,7 @@ Bool_t GreenADC::setValsADC() {
 }
 
 
-Int_t GreenADC::setValADC(Int_t i) { 
+Int_t GreenADC::setValADC(Int_t index) { 
   // Set current values of Gain and DAC noise to ADC
 
   int errFlag;
@@ -368,12 +400,12 @@ Int_t GreenADC::setValADC(Int_t i) {
   Int_t replyFlag = 0;
 
   int value = 0;
-  if (fNewGain[i]==GAINHI) value += 2; // set high gain
-  if (fNewDAC[i]==DACON) value += 1;  // turn dac on
+  if (fNewGain[index]==GAINHI) value += 2; // set high gain
+  if (fNewDAC[index]==DACON) value += 1;  // turn dac on
 
   command_type = COMMAND_HAPADC;    gRequest.command_type = command_type;
   command = HAPADC_SET_CSR;         gRequest.command = command;
-  par1 = fLabel[i];                 gRequest.par1 = par1;
+  par1 = index;                 gRequest.par1 = par1;
   par2 = value;                     gRequest.par2 = par2;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   
@@ -394,9 +426,9 @@ Int_t GreenADC::setValADC(Int_t i) {
 	replyFlag = 1;
       } 
     } else {
-      if (fLabel[i] != (int) gRequest.par1) {
+      if (index != (int) gRequest.par1) {
 	printf("Server replied with wrong ADC number: %d  instead of %d \n",
-	       (int) gRequest.par1, fLabel[i]);
+	       (int) fLabel[gRequest.par1], fLabel[index]);
 	replyFlag = 1;
       } 
     }
@@ -406,15 +438,15 @@ Int_t GreenADC::setValADC(Int_t i) {
   }
   
   if (replyFlag ==0 ) {
-    if (par2 & 16 == 16) fGain[i]=GAINHI; // extract gain bit from csr
-    else fGain[i] = GAINLO;
-    fGain[i] = ( ((par2 & 16) == 16) ? GAINHI : GAINLO );
-    fDAC[i] = ( ((par2 & 8)==8) ? DACON : DACOFF );
+    if (par2 & 16 == 16) fGain[index]=GAINHI; // extract gain bit from csr
+    else fGain[index] = GAINLO;
+    fGain[index] = ( ((par2 & 16) == 16) ? GAINHI : GAINLO );
+    fDAC[index] = ( ((par2 & 8)==8) ? DACON : DACOFF );
     char buff[30];
     sprintf(buff, "%s Gain, DAC Noise %s", 
-	    ( fGain[i]==GAINLO ? "Low" : "High"), 
-	    (fDAC[i]==DACON ? "Off" : "On"));
-    fSetLab[i]->SetText(buff);
+	    ( fGain[index]==GAINLO ? "Low" : "High"), 
+	    (fDAC[index]==DACON ? "Off" : "On"));
+    fSetLab[index]->SetText(buff);
   }
   return replyFlag;
 }  

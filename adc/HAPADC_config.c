@@ -20,6 +20,9 @@ void taskHAPADC_CF(long* command, long *par1, long *par2)
     case HAPADC_GET_NUMADC:
       *par2 = getNumHAPADC();
       break;
+    case HAPADC_GET_LABEL:
+      *par2 = getLabelHAPADC();
+      break;
     case HAPADC_GET_CSR:
       ibrd = *par1;
       *par2 = getCSRHAPADC(ibrd);

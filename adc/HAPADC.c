@@ -397,5 +397,17 @@ int getNumHAPADC()
   return NADC;
 }
 
+////////////////////////////////////////////////////////
+//  
+//    return label of an ADC
+//       necessary for config interface
+// 
+////////////////////////////////////////////////////////
+int getLabelHAPADC(int ibrd)
+{
+  if (ibrd>=0 && ibrd<NADC && did_init[ibrd]!=-1) return ADCLABEL[ibrd];
+  return -1;
+}
+
 
 
