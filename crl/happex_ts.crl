@@ -9,6 +9,7 @@
 readout list VME1
 maximum 10240,100
 vme readout
+ts control
 /* All the memory maps of VME modules are defined in module_map.h  */
 include "../module_map.h"
 /* User strings to control some readout */
@@ -20,7 +21,7 @@ const  DEF_DAC16   =    32767   /* output voltage = 0 */
 # all other timing parameters are set in separate utilities
 
 # Number of random array elements
-# 2e6 good for 2 hours (at 30Hz) for 9 ADCs.
+# 2e6 good for 2 hours (at 30Hz) for 9 ADCs
 const RANDNUM = 2000000
 
 # Number of scaler
@@ -41,9 +42,10 @@ const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
 int oport_state;   /* output port state (global variable) */
 
-static int noscaler, bmw, tbreadout, flexio;
+static int noscaler, bmw, tbreadout, evtypefix, flexio;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
+
 
 extern int bigendian_out;
 static FUNCPTR handlerPtr;
@@ -91,30 +93,35 @@ begin download
       printf("Assuming EB is on a Little-Endian cpu\n");      
       bigendian_out = 0;
   }
+
 init_strings();
 
-noscaler=0;bmw=0;tbreadout=0;flexio=0;
+noscaler=0;bmw=0;tbreadout=0;evtypefix=0;flexio=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 bmw       = getflag(BMW);        /* Readout Beam Modulation Words */
 tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
+evtypefix = getflag(EVTYPEFIX);  /* Correct event type for Injector DAQ */
 flexio    = getflag(FLEXIO);     /* Readout Flexible I/O Module */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
 if(noscaler == 0) {
-  printf("WILL readout scaler: %d\n",noscaler);
+  printf("WILL readout scaler\n");
 } else {
-  printf("Will NOT readout scaler: %d\n",noscaler);
+  printf("Will NOT readout scaler\n");
 }
-if(bmw==1) {
-  printf("WILL readout Beam Modulation Words: %d\n",bmw);
+if(bmw) {
+  printf("WILL readout Beam Modulation Words\n");
 } else {
-  printf("Will NOT readout Beam Modulation Words: %d\n",bmw);
+  printf("Will NOT readout Beam Modulation Words\n");
 }
-if(tbreadout==1) {
-  printf("WILL write timing board config to file: %d\n",tbreadout);
+if(tbreadout) {
+  printf("WILL write timing board config to file\n");
 } else {
-  printf("Will NOT write timing board config to file: %d\n",tbreadout);
+  printf("Will NOT write timing board config to file\n");
+}
+if(evtypefix) {
+  printf("WILL use EVTYPE fix for Injector DAQ\n");
 }
 if(flexio==1) {
   printf("WILL readout Flexible IO Module: %d\n",flexio);
@@ -210,17 +217,22 @@ if(noscaler == 0) {
 }
 
 srand(9421);       /* seed random num generator */
+/* Fill Random Integer Array */
+for (j=0;j<RANDNUM;j++) {
+  /* Generate random integers from 2048 to 63488 */
+  ranny[j] = 2048 + (unsigned short) (61440.0*rand()/(32768+1.0));
+}
 
 
 /* Clear TIR */
-   tir[1]->tir_csr = 0x80;
+tir[1]->tir_csr = 0x80;
 /* inhibit bit */
-   oport_state |= OPORT_INB;   
-   tir[1]->tir_oport=oport_state;
+oport_state |= OPORT_INB;   
+tir[1]->tir_oport=oport_state;
 
 %%
 
-  log inform "User Download Executed"
+log inform "User Download Executed"
 
 end download
     
@@ -228,21 +240,8 @@ begin prestart
 
   log inform "Entering User Prestart"
 
-%%
-  int j;
-
-/* Fill Random Integer Array 
-   Do this during prestart, so that each run has a different ranny array*/
-
-printf("Generating Random Integer Array\n");
-printf("Number of Array elements = %d\n",RANDNUM);
-for (j=0;j<RANDNUM;j++) {
-  /* Generate random integers from 2048 to 63488 */
-  ranny[j] = 2048 + (unsigned short) (61440.0*rand()/(32768+1.0));
-}
-%%
-
   init trig source VME
+
 
 %%
 /* The following replaces the line
@@ -270,7 +269,7 @@ for (j=0;j<RANDNUM;j++) {
 
 %%
 
-  if(tbreadout==1) {
+  if(tbreadout) {
     /* Send timing board information to ~apar/db/timebrd/timebrd.cfg */
     
     int fdbfile;
@@ -287,6 +286,7 @@ for (j=0;j<RANDNUM;j++) {
 
   log inform "User Prestart Executed"
 
+
 end prestart
 
 begin end
@@ -298,7 +298,7 @@ begin end
   tir[1]->tir_oport=oport_state;
 
 /* Disable LNE Flag */
-   oport_state = oport_state & 0xfb;
+   oport_state |= oport_state & 0xfb;
    tir[1]->tir_oport=oport_state;
 
   CODA_RUN_IN_PROGRESS = 0;
@@ -356,7 +356,7 @@ if(flexio == 1) {
 /* remove the inhibit */
 %%  
 /* We dont actually use this anymore.. */
-/* But just in case, just comment out the taskDelay */
+/* But just in case... just comment out the taskDelay. */
    log inform "wait... will remove inhibit"
    //   taskDelay(600);
    log inform "about to remove inhibit"
@@ -374,7 +374,7 @@ end go
 
 begin trigger partrig
 
-variable i,j
+variable i,j, event_ty, event_no
 unsigned long ltest;
 unsigned short junk;
 static int dac16val=DEF_DAC16;
@@ -400,8 +400,19 @@ int* intpointer;
 oport_state |= OPORT_BUSY;
 tir[1]->tir_oport=oport_state;
 
+%%
+if(evtypefix==1) EVTYPE &= 1;  /* Fix event type for Injector DAQ */
+event_ty = EVTYPE;
+event_no = *rol->nevents;
+%%
+
 rol->dabufp = (long *)0;
 open event type EVTYPE of BT_UI4
+
+# DEBUGGING PURPOSES ONLY 
+# output hex ffbb0000
+# output event_ty
+# output event_no
 
 ncnt++;
 
@@ -414,11 +425,11 @@ if(flexio==1) {
   flex_io->csr1 = 0x03;
   junk = flex_io->csr1;
 } else {
-  tir_dat = tir[1]->tir_dat;
+  tir_dat = tir[1]->tir_iport;
   *rol->dabufp++ = tir_dat & 0xfff;
 }
 
-if(bmw==1) {
+if(bmw) {
   //////////////////////////////////////////////////
   //
   // BMW: early in readout! (the bmw process in asynchronous,
@@ -435,12 +446,10 @@ if(bmw==1) {
   //  if pulse was at some point unclean, but ended clean, prepare
   //  next pulse to be seen as clean
   if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;
+  
 }
 
 if(noscaler == 0) {
-  //////////////////////////////////////////////////
-  
-  /* Put scalers at beginning of readout */
   
 #ifdef TYPE_SIS3801
   errstat = 0;
@@ -452,7 +461,10 @@ if(noscaler == 0) {
       }
     }
   }
-  if (timeout > 1) errstat = 1;
+  if (timeout > 1) {
+    errstat = 1;
+    pscaler[0]->clear = 1;
+  }
   *rol->dabufp++ = 0xfffca000 + NSCALER + (errstat<<4);   /* Header for scaler */
   for (i = 0; i <NSCALER; i++){
     for (j = 0; j < 32; j++) {
@@ -492,7 +504,7 @@ if(noscaler == 0) {
     for (j=0; j < 16; j++) *rol->dabufp++ = 0;  
   }
 #endif
-}  
+}
 
 *rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
 //readoutHAPADC(rol->dabufp,ADC_NUMSLOTS-1);
@@ -508,13 +520,13 @@ for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
 *rol->dabufp++ = getDACHAPTB(2); /* DAC16 */
 *rol->dabufp++ = getDACHAPTB(1); /* DAC12 */
 
-if(bmw==1) {
+if(bmw) {
   *rol->dabufp++ = pulseclean;  //record in bmw says entire pulse was clean
   *rol->dabufp++ = localBMWobj; //record the last-moved object (from beginning of readout)
   *rol->dabufp++ = localBMWval; // record the value of the last-moved object
   *rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
 }
-
+  
 for (i = 0; i < ADC_NUMSLOTS; i++) {  
   if (usesDACHAPADC(i)==1) {
     // lookup table of random numbers
@@ -551,13 +563,11 @@ for (i = 0; i < ADC_NUMSLOTS; i++) {
 //      }    
 //  setDACHAPTB(2,dac16val);
 
-
-/* V/F and/or ADC test.  Increment dacs after last sample in helicity window
-   recall: Last sample has OS=0 in these new timing boards */
-
+/* For the synch monitor.  Use dac12 or dac16 */
+/* Note that dac12 will saturate the v2f at high voltage */
 if(getOverSampleCurrentHAPTB()==0) {
-  dac12val = dac12val + 1; 
-  dac16val = dac16val + 5; 
+   dac12val = dac12val + 1; 
+   dac16val = dac16val + 5; 
 } 
 if (dac12val >= maxdac12) dac12val = 0;
 setDACHAPTB(1,dac12val);
@@ -571,6 +581,16 @@ setDACHAPTB(2,dac16val);
 getDACHAPTB(2);
 
 
+
+/* V/F and/or ADC test.  Increment dac12 every 10 events 
+   if(k==10) {
+   dac12val = dac12val + 10; 
+   k = 0;
+   } 
+   k = k + 1;
+   if (dac12val >= maxdac12) dac12val = 0;
+   setDACHAPTB(1,dac12val);
+*/
 /* Disable BUSY Flag */
 oport_state = oport_state & 0xfe;
 tir[1]->tir_oport=oport_state;
