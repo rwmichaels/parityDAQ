@@ -15,7 +15,18 @@
 //
 
 /* number of HAPPEX ADCs */
+#ifdef  COUNTINGHOUSE
 #define NADC 10   // must be <10, or requires changes to static arrays.
+#endif
+#ifdef  INJECTOR
+#define NADC 3    // must be <10, or requires changes to static arrays.
+#endif
+#ifdef  LEFTSPECT
+#define NADC 5    // must be <10, or requires changes to static arrays.
+#endif
+#ifdef  RIGHTSPECT
+#define NADC 5    // must be <10, or requires changes to static arrays.
+#endif
 
 #define MAXRETRY 10   // max number of attempts to write csr
 
@@ -24,6 +35,7 @@
 #define DEF_DACVAL 3000  // dac value for non-dac noise adcs
 
 //   Relative Addresses of ADCs
+#ifdef   COUNTINGHOUSE
 #define  ADC0 0x470000
 #define  ADC1 0x830000
 #define  ADC2 0x840000
@@ -34,13 +46,50 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
+#endif
+#ifdef   INJECTOR
+#define  ADC0 0x4e0000
+#define  ADC1 0x4c0000
+#define  ADC2 0x4d0000
+#define  ADC3 0x400000
+#define  ADC4 0x4d0000
+#define  ADC5 0x480000
+#define  ADC6 0x4c0000
+#define  ADC7 0x4b0000
+#define  ADC8 0x510000
+#define  ADC9 0x490000
+#endif
+#ifdef   LEFTSPECT
+#define  ADC0 0x5F0000
+#define  ADC1 0x440000
+#define  ADC2 0x420000
+#define  ADC3 0x430000
+#define  ADC4 0x500000
+#define  ADC5 0x480000
+#define  ADC6 0x4c0000
+#define  ADC7 0x4b0000
+#define  ADC8 0x510000
+#define  ADC9 0x490000
+#endif
+#ifdef   RIGHTSPECT
+#define  ADC0 0x8F0000
+#define  ADC1 0x850000
+#define  ADC2 0x820000
+#define  ADC3 0x810000
+#define  ADC4 0x4B0700
+#define  ADC5 0x480000
+#define  ADC6 0x4c0000
+#define  ADC7 0x4b0000
+#define  ADC8 0x510000
+#define  ADC9 0x490000
+#endif
 
 // gain setting for each adc
-#define ADC0_DEF_GAINBIT HI_GAIN
+#define ADC0_DEF_GAINBIT LO_GAIN
 #define ADC1_DEF_GAINBIT LO_GAIN
 #define ADC2_DEF_GAINBIT LO_GAIN
 #define ADC3_DEF_GAINBIT LO_GAIN
-#define ADC4_DEF_GAINBIT HI_GAIN
+#define ADC4_DEF_GAINBIT LO_GAIN
 #define ADC5_DEF_GAINBIT LO_GAIN
 #define ADC6_DEF_GAINBIT LO_GAIN
 #define ADC7_DEF_GAINBIT LO_GAIN

@@ -11,7 +11,8 @@ ROOTGLIBS  = $(shell root-config --glibs --new)
 #INCLUDES   = -I$(ROOTSYS)/include -I$(DCDIR) 
 INCLUDES   = -I$(ROOTSYS)/include
 CXX        = g++
-CXXFLAGS   = -O -Wall -fno-rtti -fno-exceptions -fPIC $(INCLUDES) 
+#CXXFLAGS   = -O -Wall -fno-rtti -fno-exceptions -fPIC $(INCLUDES) 
+CXXFLAGS   = -O -Wall -fno-exceptions -fPIC $(INCLUDES) 
 LD         = g++
 LDFLAGS    = 
 SOFLAGS    = -shared
@@ -47,7 +48,8 @@ OBJS = $(SRC:.C=.o) cfSock/cfSockCli.o
 PROGS = config/config
 SHLIB =
 #SHLIB = config/libGreenMonster.so
-ADC = adc/HAPADC.o adc/HAPADC_config.o
+ADC = adc/HAPADC_ch.o adc/HAPADC_inj.o adc/HAPADC_lspec.o \
+	adc/HAPADC_rspec.o adc/HAPADC_config.o
 BMW = bmw/bmwClient.o bmw/bmw_config.o 
 TB = timebrd/HAPTB_util.o timebrd/HAPTB_config.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
@@ -71,7 +73,7 @@ version: clean
 	cp *.h ./$(VERS) 
 	cp Makefile ./$(VERS) 
 	cp README ./$(VERS)
-         
+
 clean:
 	rm -f *.o core *~ *.d *.out $(PROGS) *Dict* *.so
 	rm -f core *.o
@@ -90,9 +92,21 @@ config/config: config/config.o $(OBJS) $(SRC) $(HEAD)
 	$(CXX) $(CXXFLAGS) -o $@ config/config.o $(OBJS) $(ALL_LIBS) 
 
 
-adc/HAPADC.o : adc/HAPADC.c adc/HAPADC.h
+adc/HAPADC_ch.o : adc/HAPADC.c adc/HAPADC.h
 	rm -f $@
-	ccppc -o $@ $(CCVXFLAGS) adc/HAPADC.c
+	ccppc -o $@ $(CCVXFLAGS) -DCOUNTINGHOUSE adc/HAPADC.c
+
+adc/HAPADC_inj.o : adc/HAPADC.c adc/HAPADC.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DINJECTOR adc/HAPADC.c
+
+adc/HAPADC_lspec.o : adc/HAPADC.c adc/HAPADC.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DLEFTSPECT adc/HAPADC.c
+
+adc/HAPADC_rspec.o : adc/HAPADC.c adc/HAPADC.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DRIGHTSPECT adc/HAPADC.c
 
 adc/HAPADC_config.o : adc/HAPADC_config.c adc/HAPADC_cf_commands.h
 	cd adc; rm -f $@
