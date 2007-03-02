@@ -33,7 +33,7 @@ int adc18_gatemode(int id, int which);
 /* Set DAC value (once) */
 int adc18_setdac(int id, long dac_value);
 /* Load 256K DAC values */
-int adc18_loaddac(int id);
+int adc18_loaddac(int id, int choice);
 /* Set integrator gain */
 int adc18_intgain(int id, long gain);
 /* Set V-to-C conversion */
@@ -116,9 +116,7 @@ int adc18_reset(int id) {
 /* Clear the ADC, like a power up condition.
    In CODA do this in download.  */
   if (adc18_chkid(id) < 1) return -1;
-  adc18p[id]->csr  = 0;
-  adc18p[id]->ctrl = 0x100;  /* hard reset */
-  adc18p[id]->ctrl = 0x200;  /* soft reset */
+  adc18p[id]->csr = 0x100;  /* hard reset */
   adc18p[id]->config = 0;
   adc18p[id]->dac_value = 0;
   adc18p[id]->delay_1 = 0;
@@ -128,7 +126,7 @@ int adc18_reset(int id) {
 
 int adc18_softreset(int id) {
   if (adc18_chkid(id) < 1) return -1;
-  adc18p[id]->ctrl = 0x200;  /* soft reset */
+  adc18p[id]->csr = 0x200;  /* soft reset */
   return 0;
 }
 
@@ -375,7 +373,7 @@ int adc18_gatemode(int id, int which) {
 
 }
 
-int adc18_loaddac(int id) {
+int adc18_loaddac(int id, int dac_choice) {
 /* Load a pattern of 256K dac values */
 
   int i;
@@ -383,35 +381,48 @@ int adc18_loaddac(int id) {
   int dac_max = 60000;
   int ncnt = 256000;
   int sign = 1;
-  int dac_value = 0;
+  int dac_value = dac_min;
+
+  int UPDOWN=1;
+  int JAGSAW=2;
+  int CONSTVAL=3;
+
+  if (dac_choice != UPDOWN && dac_choice != JAGSAW && dac_choice != CONSTVAL) {
+    printf("ERROR:adc18_loaddac: Could not find your dac_choice.\n");
+    dac_choice = CONSTVAL;
+  }
+  if (dac_choice==UPDOWN) printf("Using ramping up and down DAC\n");
+  if (dac_choice==JAGSAW) printf("Using discont. sawtooth DAC\n");
+  if (dac_choice==UPDOWN) printf("Using constant DAC\n");
 
 
   if (adc18_chkid(id) < 1) return -1;
 
   adc18p[id]->ctrl = 0;  /* set GO = 0 */
 
-  //printf("Initial DAC value is %d \n",dac_value);
+   for (i = 0; i <= ncnt; i++) {  
+    
+     if (dac_choice == UPDOWN) { //for steady up & down ramping 
+        if (dac_value > dac_max) sign = -1;
+        if (dac_value < dac_min) sign = 1;
+        dac_value = dac_value + sign*10;
+     }
 
-  dac_value = dac_max;
-  for (i = 0; i <= ncnt; i++) {  
-    
-    //for steady fluctuations
-    if (dac_value > dac_max) sign = -1;
-    if (dac_value < dac_min) sign = 1;
-    dac_value = dac_value + sign*10;
-    
-    //for sawtooth fluctuations
-    //    dac_value = dac_value - sign*10;
-    //    if (dac_value < dac_min) dac_value = dac_max;
+     if (dac_choice == JAGSAW) { //for discontinuous sawtooth function
+        dac_value = dac_value + sign*10;
+        if (dac_value > dac_max) dac_value = dac_min;
+     }
 
     //constant value
-    //dac_value = 40000;
+    if (dac_choice == CONSTVAL) dac_value = (dac_max + dac_min)/2;
     
     if (i == 0) dac_value |= 0x10000;
     if (i == ncnt) dac_value |= 0x20000;
     adc18p[id]->dac_memory = dac_value;
-  }
-  return 0;
+   }
+
+   return 0;
+
 }
 
 
