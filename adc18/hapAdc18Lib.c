@@ -393,8 +393,7 @@ int adc18_loaddac(int id, int dac_choice) {
   }
   if (dac_choice==UPDOWN) printf("Using ramping up and down DAC\n");
   if (dac_choice==JAGSAW) printf("Using discont. sawtooth DAC\n");
-  if (dac_choice==UPDOWN) printf("Using constant DAC\n");
-
+  if (dac_choice==CONSTVAL) printf("Using constant DAC\n");
 
   if (adc18_chkid(id) < 1) return -1;
 
