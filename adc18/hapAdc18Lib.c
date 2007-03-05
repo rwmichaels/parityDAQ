@@ -379,6 +379,7 @@ int adc18_loaddac(int id, int dac_choice) {
   int i;
   int dac_min = 20000;
   int dac_max = 60000;
+  int dac_const;
   int ncnt = 256000;
   int sign = 1;
   int dac_value = dac_min;
@@ -393,7 +394,10 @@ int adc18_loaddac(int id, int dac_choice) {
   }
   if (dac_choice==UPDOWN) printf("Using ramping up and down DAC\n");
   if (dac_choice==JAGSAW) printf("Using discont. sawtooth DAC\n");
-  if (dac_choice==CONSTVAL) printf("Using constant DAC\n");
+  if (dac_choice==CONSTVAL) {
+      dac_const = 0.5*(dac_max + dac_min);
+      printf("Using constant DAC = %d \n",dac_const);
+  }
 
   if (adc18_chkid(id) < 1) return -1;
 
@@ -413,11 +417,12 @@ int adc18_loaddac(int id, int dac_choice) {
      }
 
     //constant value
-    if (dac_choice == CONSTVAL) dac_value = (dac_max + dac_min)/2;
+     if (dac_choice == CONSTVAL) dac_value = dac_const;
     
     if (i == 0) dac_value |= 0x10000;
     if (i == ncnt) dac_value |= 0x20000;
     adc18p[id]->dac_memory = dac_value;
+
    }
 
    return 0;
