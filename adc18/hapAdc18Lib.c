@@ -33,7 +33,7 @@ int adc18_gatemode(int id, int which);
 /* Set DAC value (once) */
 int adc18_setdac(int id, long dac_value);
 /* Load 256K DAC values */
-int adc18_loaddac(int id, int choice);
+int adc18_loaddac(int id, int type);
 /* Set integrator gain */
 int adc18_intgain(int id, long gain);
 /* Set V-to-C conversion */
@@ -42,12 +42,16 @@ int adc18_setconv(int id, long conv);
 int adc18_setsample(int id, int nsample);
 /* To see if ADC is busy converting (1) or not (0) */
 int adc18_Busy(int id);
+/* To check if data is available (1) or not (0) */
+int adc18_DataAvail(int id);
 /* Print the ADC setup */
 int adc18_print_setup(int id);
-/* Get one event (initiates DAQ sequence) */
+/* Get one event (initiate DAQ sequence) */
 int adc18_go(int id);
+/* Get number of events (number of oversamples) */
+int adc18_getevtcnt(int id);
 /* Get event word count */
-long adc18_getcnt(int id);
+int adc18_getwordcnt(int id);
 /* Get CRL */
 long adc18_getcsr(int id);
 /* Get next in FIFO */
@@ -64,7 +68,15 @@ int adc18_chkid(int id);
 int adc18_defaultSetup(int id);
 /* interface for rapid setup */
 int adc18_setup(int id, int time, int intgain, int conv);
-
+/* to flush out buffer */
+int adc18_flush(int id);
+/* various test code for checking busy logic */
+int adc18_testcsr1(int id);
+int adc18_test2();
+int adc18_oneshot();
+void adc18_pulser();
+int adc18_test3();
+int adc18_test4();
 
 void adc18_zeromem() {
 /* This has to be done when you reboot the VME board, to define zero memory */
@@ -98,7 +110,7 @@ int adc18_init(int id, UINT32 adc_addr, UINT32 data_addr) {
     printf("ADC18:ERR: No addressable board %d  at addr 0x%x\n",id,adc_addr);
     return -1;
   } else {
-    printf("ADC18:Init: Board ID = %d \n",rdata);
+    printf("ADC18:Init: Board ID = %s \n",rdata);
   }
   sysBusToLocalAdrs(0x39,data_addr,&laddr);
   printf("ADC18 board %d   data local address = 0x%x\n",id,laddr);  
@@ -116,7 +128,9 @@ int adc18_reset(int id) {
 /* Clear the ADC, like a power up condition.
    In CODA do this in download.  */
   if (adc18_chkid(id) < 1) return -1;
-  adc18p[id]->csr = 0x100;  /* hard reset */
+  adc18p[id]->csr  = 0;
+  adc18p[id]->ctrl = 0x100;  /* hard reset */
+  adc18p[id]->ctrl = 0x200;  /* soft reset */
   adc18p[id]->config = 0;
   adc18p[id]->dac_value = 0;
   adc18p[id]->delay_1 = 0;
@@ -126,7 +140,7 @@ int adc18_reset(int id) {
 
 int adc18_softreset(int id) {
   if (adc18_chkid(id) < 1) return -1;
-  adc18p[id]->csr = 0x200;  /* soft reset */
+  adc18p[id]->ctrl = 0x200;  /* soft reset */
   return 0;
 }
 
@@ -177,7 +191,7 @@ int adc18_timesrc(int id, int source, int ramp, int window) {
   else {
     t_mode = 1;    		/* internal timing sequence */
     printf("\nUse internal timer to generate timing sequence\n\n");
-    adc18p[id]->delay_1 = 4;		/* set ramp to 10 us */
+    adc18p[id]->delay_1 = ramp;		
     if( (window >= 1) && (window <= 163840) ) {
       set_window = ( ( ((float)window) + TIME_INT ) / 2.5 ) + 0.5;
     } 
@@ -200,9 +214,9 @@ long adc18_getcsr(int id) {
 }
 
 
-long adc18_getcnt(int id) {
+int adc18_getwordcnt(int id) {
 /* Get event word count */
-  long event_word_count;
+  int event_word_count;
 
   if (adc18_chkid(id) < 1) return 0;
 
@@ -210,12 +224,22 @@ long adc18_getcnt(int id) {
   return event_word_count;
 }
 
+int adc18_getevtcnt(int id) {
+/* Get event count (number of oversamples) */
+  int event_count;
+
+  if (adc18_chkid(id) < 1) return 0;
+
+  event_count = 0xFF & (adc18p[id]->evt_ct);
+  return event_count;
+}
+
 
 unsigned long adc18_getdata(int id) {
-/* It's assumed the user has already called adc18_getcnt */
+/* It's assumed the user has already called adc18_getwordcnt */
 /* Then this routine gets data out of the FIFO  */
 /* Usage:
-/*    Let N = adc18_getcnt(id) 
+/*    Let N = adc18_getwordcnt(id) 
           for (i = 0; i < N; i++) {
              mydata = adc18_getdata(id);  // pop off FIFO
           }
@@ -318,6 +342,27 @@ void adc18_reg_decode(id)
 	
 }
 
+int adc18_DataAvail(int id) {
+  /* To check if data are available (1) or not (0) */
+  
+    long value;
+    int event_avail_flag = 0x3;
+
+    value = adc18_getcsr(id);
+
+    value = value & event_avail_flag;
+
+    //    printf("csr= %x\n",value);
+    
+    if(value == 0x2) /*csr=0b XXXX XXXX XXXX XXXX XXXX XXXX XXXX XX10 meaning that there isnt data waiting AND the buffer is empty*/
+      return 0;
+
+    return 1;
+
+    //return (value & event_avail_flag);
+}  
+
+
 int adc18_Busy(int id) {
   /* To check if the ADC is busy.  
          Returns 1 if busy                   
@@ -373,60 +418,52 @@ int adc18_gatemode(int id, int which) {
 
 }
 
-int adc18_loaddac(int id, int dac_choice) {
+int adc18_loaddac(int id, int type) {
 /* Load a pattern of 256K dac values */
 
   int i;
   int dac_min = 20000;
   int dac_max = 60000;
-  int dac_const;
   int ncnt = 256000;
   int sign = 1;
-  int dac_value = dac_min;
+  int dac_value = 0;
+  int TRIANGLE = 0;
+  int SAWTOOTH = 1;
+  int CONST = 2;
 
-  int UPDOWN=1;
-  int JAGSAW=2;
-  int CONSTVAL=3;
+  int pattern = type;
 
-  if (dac_choice != UPDOWN && dac_choice != JAGSAW && dac_choice != CONSTVAL) {
-    printf("ERROR:adc18_loaddac: Could not find your dac_choice.\n");
-    dac_choice = CONSTVAL;
-  }
-  if (dac_choice==UPDOWN) printf("Using ramping up and down DAC\n");
-  if (dac_choice==JAGSAW) printf("Using discont. sawtooth DAC\n");
-  if (dac_choice==CONSTVAL) {
-      dac_const = 0.5*(dac_max + dac_min);
-      printf("Using constant DAC = %d \n",dac_const);
-  }
 
   if (adc18_chkid(id) < 1) return -1;
 
   adc18p[id]->ctrl = 0;  /* set GO = 0 */
 
-   for (i = 0; i <= ncnt; i++) {  
-    
-     if (dac_choice == UPDOWN) { //for steady up & down ramping 
-        if (dac_value > dac_max) sign = -1;
-        if (dac_value < dac_min) sign = 1;
-        dac_value = dac_value + sign*10;
-     }
+  printf("adc18_loaddac:  DAC pattern = %d \n",pattern);
 
-     if (dac_choice == JAGSAW) { //for discontinuous sawtooth function
-        dac_value = dac_value + sign*10;
-        if (dac_value > dac_max) dac_value = dac_min;
-     }
-
-    //constant value
-     if (dac_choice == CONSTVAL) dac_value = dac_const;
+  dac_value = dac_max;
+  for (i = 0; i <= ncnt; i++) {  
     
+    //for steady fluctuations
+    if (pattern == TRIANGLE) {
+      if (dac_value > dac_max) sign = -1;
+      if (dac_value < dac_min) sign = 1;
+      dac_value = dac_value + sign*10;
+    } 
+    else if (pattern == SAWTOOTH) {
+      //for sawtooth fluctuations
+      dac_value = dac_value - sign*10;
+      if (dac_value < dac_min) dac_value = dac_max;
+    } 
+    else {
+      //constant value
+      dac_value = 30000;
+    }    
+
     if (i == 0) dac_value |= 0x10000;
     if (i == ncnt) dac_value |= 0x20000;
     adc18p[id]->dac_memory = dac_value;
-
-   }
-
-   return 0;
-
+  }
+  return 0;
 }
 
 
@@ -518,7 +555,7 @@ int adc18_setsample(int id, int nsample) {
       break;
     case 8:
       printf("Using sample by 8 \n");
-      n_mode=2;
+      n_mode=3;
       break;
     default:
       printf("ADC18:ERR: nsample can only be 1, 2, 4, or 8 \n");
@@ -570,7 +607,7 @@ int adc18_print_setup(int id) {
   
   adc18_reg_decode(id);
 
-  nmax = adc18_getcnt(id);
+  nmax = adc18_getwordcnt(id);
   printf("Num of words in ADC %d \n",nmax);
  
   if (nmax > 5000) {
@@ -618,7 +655,8 @@ int adc18_defaultSetup(int id) {
 
   adc18_init(id,0xed000,0xed100);  /* VME address of board */
 
-  adc18_reset(id);    
+  adc18_reset(id);
+    
   adc18_timesrc(id,1,0,30000);     /* Internal time source, window = 30 msec */
   adc18_gatemode(id,1);            
   adc18_intgain(id,3);  
@@ -687,6 +725,32 @@ void adc18_decode_data(int id, unsigned long data)
       }
 }
 
+int adc18_flush(int id) {
+  /* purpose: to flush the buffer */
+  /* This ensures the 1st bit of CSR is zero */
+
+  int i, timeout;
+  unsigned long rdata;
+
+  i = 0;
+  timeout = 1000000;  /* max number of words allowed */
+
+  if (adc18_chkid(id) < 1) {
+       printf("ADC is not initalized !\n");
+       return -1;
+  }
+
+  while (adc18_DataAvail(id)) {
+      rdata = adc18_getdata(0);
+      if (i++ > timeout) {
+	printf("adc18_flush::ERROR:  Too much data ?!\n");
+        return -1;
+      }
+  }
+
+}
+
+
 int adc18_testdata(int id) {
 
   /* This is an example of how a trigger routine might work.
@@ -704,7 +768,7 @@ int adc18_testdata(int id) {
 
   adc18_go(id);
 
-  nmax = adc18_getcnt(id);
+  nmax = adc18_getwordcnt(id);
   printf("Num of words in ADC %d \n",nmax);
  
   if (nmax > 5000) {
@@ -721,3 +785,434 @@ int adc18_testdata(int id) {
   return 0;
 
 }
+
+
+int adc18_testcsr1(int id) {
+ int i=0;
+ int j=0;
+ int k=0;
+ int l;
+ int c;
+ int nmax=0;
+ int rdata;
+
+ adc18_defaultSetup(id);
+
+ c=adc18_getcsr(id);
+ printf("c = %d \n",c);  /* this was printf(c) which led to compiler warning */
+
+ while(i<10 && !(k>100)){
+   if(j=0) adc18_go(id);
+
+   if((adc18_getcsr(id))%2==1){ //if there is an event
+     adc18_getcsr(id);
+     nmax = adc18_getwordcnt(id);
+     for (l = 0; l < nmax; l++) {
+      rdata = adc18_getdata(id);    
+      printf("Data [%d]  =  %d  =  0x%x \n",i,rdata,rdata);
+     }
+     i++;
+     j=0;
+     adc18_getcsr(id);
+   }
+
+   else{
+     j=1;
+     k++;
+   }
+
+ }
+ adc18_getcsr(id);
+ printf("this sucks more");
+ return 0;
+}
+
+int adc18_test2() {
+/* Bob's test of busy logic for id=0 */
+/* this seems to work for internal timing but not quite right
+   for external timing (see test3) */
+
+  long csr; 
+  int ramp, window, iinput;
+  int ncnt,i,nloop,iev,rdata;  
+  int timesrc;  /* 0 = external, 1 = internal */
+
+/* this is like defaultSetup but with possible change in time source */
+
+  adc18_init(0,0xed000,0xed100);  /* VME address of board */
+  adc18_reset(0);
+
+  printf("What timing source ?  Enter 0 or 1  (0=ext, 1=int) \n");
+  scanf("%d",&iinput);
+  if (iinput == 0) {
+    timesrc = 0;
+  } else {
+    timesrc = 1;
+  }
+    
+  if (timesrc == 0) {
+    printf("Using external timing board \n");
+    adc18_timesrc(0,0,0,0);     /* External timing source */
+  } else {
+    printf("Using internal timing \nEnter ramp delay \n");
+    scanf("%d",&ramp);
+    printf("Enter window \n");
+    scanf("%d",&window);
+    printf("ramp = %d   window = %d \n",ramp,window);
+    adc18_timesrc(0,1,ramp,window); /* Internal time; ramp & window are last 2 params */  
+  }
+
+  adc18_gatemode(0,1);            
+  adc18_intgain(0,3);  
+  adc18_setconv(0,0);
+
+  /*  adc18_print_setup(0); */
+
+  /* make sure the buffer is flushed */
+  adc18_flush(0);
+
+  csr=adc18_getcsr(0);
+  printf("\n ******************** \n\n Initial CSR  = 0x%x\n",csr);
+
+  for (iev = 0; iev < 100000; iev++) {
+
+    printf("Enter any number when ready to get an event \n");
+    scanf("%d",&iinput);
+
+    adc18_softreset(0);
+
+    adc18_go(0);
+
+    csr=adc18_getcsr(0);
+    printf("\n Before busy loop, CSR  = 0x%x\n",csr); 
+
+    for (nloop = 0; nloop < 500000; nloop++) {
+       /* WARNING: dont want the printf, it screws up the timing calib */
+       /*       csr=adc18_getcsr(0);  */
+       /*       printf("\n Busy loop %d    CSR  = 0x%x\n",nloop,csr); */
+       if ( !adc18_Busy(0) ) break;
+    }
+
+    csr=adc18_getcsr(0);
+    printf("\n After busy loop, loop size = %d   CSR  = 0x%x\n",nloop,csr);
+
+    ncnt = adc18_getwordcnt(0);
+    printf("Num of data in buffer = %d \n",ncnt);
+
+    for (i = 0; i < ncnt; i++) {
+      /*      printf("Data point # %d    Enter any number to continue \n",i);
+      scanf("%d",&iinput);
+      */ 
+
+      rdata = adc18_getdata(0);
+      csr = adc18_getcsr(0);
+
+      printf("Data = 0x%x     Csr = 0x%x \n",rdata,csr);
+ 
+    }
+
+    csr=adc18_getcsr(0);
+    printf("\n After we got all the data, CSR  = 0x%x\n",csr);
+
+    printf("\n\n ---> Want to repeat the cycle ?  (yes=1, no=0) \n");
+    scanf("%d",&iinput);
+
+    if (iinput != 1) return 0;
+  }  
+
+
+}     
+
+int adc18_oneshot() {
+/* Purpose : to use the TIR board to send a single pulse out.
+   This will be used to pulse the timing board for tests */
+
+  int i,j;
+  unsigned int tAddr, tirVersion;
+  int oport_data, stat;
+  unsigned long laddr;
+  unsigned short rval;
+  struct vme_tir {
+      unsigned short tir_csr;
+      unsigned short tir_vec;
+      unsigned short tir_dat;
+      unsigned short tir_oport;
+      unsigned short tir_iport;
+  };
+  struct vme_tir *tir;
+
+  tAddr = 0x0ed0;     /* address of TIR */
+  oport_data = 2;     /* this is the bit(s) to put out on TIR */
+
+  stat = 0;
+  stat = sysBusToLocalAdrs(0x29,tAddr,&laddr);
+  if (stat != 0) {
+       printf("tirInit: ERROR: Error in sysBusToLocalAdrs res=%d \n",stat);
+       return -1;
+  } else {
+    /* printf("TIR address = 0x%x\n",laddr); */
+       tir = (struct vme_tir *)laddr;
+  }
+  stat = vxMemProbe((char *)laddr,0,2,(char *)&rval);
+  if (stat != 0) {
+      printf("tirInit: ERROR: TIR card not addressable\n");
+      return -1;
+  } else {
+      tir->tir_csr = 0x80;
+      tirVersion = (unsigned int)rval;
+     /*  printf("tirInit: tirVersion = 0x%x\n",tirVersion); */
+  }
+
+  /* Toggle the output */
+  tir->tir_oport = 0;               /*  off  */
+  tir->tir_oport = oport_data;      /*  on   */
+  for (i=0; i<10000; i++) {
+    j = i*2;   /* do nothing, wait loop (5000 --> 50 usec) */
+  }
+  printf("i am here \n");
+  tir->tir_oport = 0;               /*  off  */   
+
+  return 0;
+}
+
+void adc18_pulser(int npulse) {
+  /* to check out adc18_oneshot */
+  int i,k,m;
+  for (i=0; i< npulse; i++) {
+    for (k = 0; k<50000; k++) {
+      m = k*2;  /* wait loop */
+    }
+    adc18_oneshot();
+  }
+}
+
+
+int adc18_test3(int rannum) {
+/* This is for external timing only -- test of busy logic for id=0 */
+
+  long csr; 
+  int ramp, window, iinput;
+  int ncnt,i,nloop,iev,rdata,dac16val;  
+
+/* ADC18: this is like defaultSetup, for external timing  */
+
+  adc18_init(0,0xed000,0xed100);  /* VME address of board */
+  adc18_reset(0);
+
+  printf("test3: Using external timing board ... \n");
+  adc18_timesrc(0,0,0,0);     /* External timing source */
+  adc18_gatemode(0,1);            
+  adc18_intgain(0,3);  
+  adc18_setconv(0,0);
+
+  /*  adc18_print_setup(0); */
+
+  /* make sure the buffer is flushed */
+  adc18_flush(0);
+
+  //rannum must be between 0 and ~7,000
+    dac16val = rannum+33000;
+    
+    setDACHAPTB(2,dac16val);
+
+  csr=adc18_getcsr(0);
+  printf("\n ******************** \n\n Initial CSR  = 0x%x\n",csr);
+
+  for (iev = 0; iev < 100000; iev++) {
+
+    printf("Enter any number when ready to get an event \n");
+    scanf("%d",&iinput);
+
+    adc18_softreset(0);
+
+    adc18_go(0);
+
+    adc18_oneshot();  /* get one trigger */
+
+    csr=adc18_getcsr(0);
+    printf("\n Before busy loop, CSR  = 0x%x\n",csr); 
+
+    for (nloop = 0; nloop < 500000; nloop++) {
+       /* WARNING: dont want the printf, it screws up the timing calib */
+       /*       csr=adc18_getcsr(0);  */
+       /*       printf("\n Busy loop %d    CSR  = 0x%x\n",nloop,csr); */
+       if ( !adc18_Busy(0) ) break;
+    }
+
+    csr=adc18_getcsr(0);
+    printf("\n After busy loop, loop size = %d   CSR  = 0x%x\n",nloop,csr);
+
+    ncnt = adc18_getwordcnt(0);
+    printf("Num of data in buffer = %d \n",ncnt);
+
+    for (i = 0; i < ncnt; i++) {
+      /*      printf("Data point # %d    Enter any number to continue \n",i);
+      scanf("%d",&iinput);
+      */ 
+
+      rdata = adc18_getdata(0);
+      csr = adc18_getcsr(0);
+
+      printf("Data = 0x%x     Csr = 0x%x \n",rdata,csr);
+ 
+    }
+
+    csr=adc18_getcsr(0);
+    printf("\n After we got all the data, CSR  = 0x%x\n",csr);
+
+    printf("\n\n ---> Want to repeat the cycle ?  (yes=1, no=0) \n");
+    scanf("%d",&iinput);
+
+    if (iinput != 1) return 0;
+  }  
+
+
+}     
+
+
+int adc18_test4(int sample, int oversample) {
+/* Similar to test3, but using oversampling */
+
+/* I'm too tired to continue now ... but here are some notes on
+   how to proceed.
+
+   Seems that "event count" nevt increments by number of oversamples
+   on each MPS.  Also "event word count" nword is always 14 if there
+   is one base & peak sample (this will grow with more samples
+   of base,peak).  And the DataAvail becomes zero after 14, not
+   after 14*N_oversample.  Hmmm...  Ed J. says one should read out
+   N_oversample*nword and check header.  E.g. the event # in header
+   should increment.  Header should have valid module id, if id=31
+   it is invalid.  Invalid also has event=0 in header.   Whew ! */
+
+  while (1){
+
+  long csr; 
+  int ramp, window, iinput;
+  int nevt,nword,i,nloop,iev,ievloop,iword;
+  int hdr_evt, hdr_modid;
+  int oldevnum;
+  unsigned long rdata;  
+  int dataavail;
+  int fullwindow;
+  int count;
+  int data;
+
+
+/* ADC18: this is like defaultSetup, for external timing  */
+
+  adc18_init(0,0xed000,0xed100);  /* VME address of board */
+  adc18_reset(0);
+
+  printf("test4: External timing with oversampling ... \n");
+  adc18_timesrc(0,0,0,0);     /* External timing source */
+  adc18_gatemode(0,1);            
+  adc18_intgain(0,3);  
+  adc18_setconv(0,0);
+  adc18_setsample(0,sample);  /* 2nd arg is 1,2,4, or 8 */
+
+  /* units: 2.5 usec */
+  ramp = 400;
+  fullwindow= 13000;
+/* oversample=0 means no oversampling, `oversample N' means N+1 samples */  
+  window=fullwindow/(oversample+1);
+
+  printf("Ramp = %d    Window = %d    Oversample = %d \n",ramp,window,oversample);
+
+  setTimeHAPTB(ramp,window);
+  setOverSampleHAPTB(oversample); 
+
+  /*  adc18_print_setup(0); */
+
+  /* make sure the buffer is flushed */
+  adc18_flush(0);
+
+  csr=adc18_getcsr(0);
+  printf("\n ******************** \n\n Initial CSR  = 0x%x\n",csr);
+
+  oldevnum=0;
+  count=0;
+
+  //  for (iev = 0; iev < 10; iev++) { /*this is what was causing the test to run continuously previously i<10000*/
+
+    printf("Enter any number when ready to get an event \n");
+    scanf("%d",&iinput);
+
+    adc18_softreset(0);
+
+    adc18_go(0);
+
+    adc18_oneshot();  /* get one trigger */
+
+    csr=adc18_getcsr(0);
+    printf("\n Before busy loop, CSR  = 0x%x\n",csr); 
+
+    for (nloop = 0; nloop < 500000; nloop++) {
+       /* WARNING: dont want the printf, it screws up the timing calib */
+       /* csr=adc18_getcsr(0);  
+	  printf("\n Busy loop %d    CSR  = 0x%x\n",nloop,csr); */
+       if ( !adc18_Busy(0) ) break;
+    }
+
+ 
+    csr=adc18_getcsr(0);
+    printf("\n After busy loop, loop size = %d   CSR  = 0x%x\n",nloop,csr);
+
+    nevt = adc18_getevtcnt(0);
+    nword = adc18_getwordcnt(0);
+    printf("Num of events %d   oldevnum %d    num words %d \n",nevt,oldevnum,nword);
+
+    while(adc18_DataAvail(0)){
+
+	 printf("Evloop %d   Nword %d  Enter any number to continue \n",ievloop,iword);
+	   scanf("%d",&iinput);
+      
+        rdata = adc18_getdata(0);
+        csr = adc18_getcsr(0);
+       	printf("Data = 0x%x     Csr = 0x%x \n",rdata,csr);
+	
+	count++;
+
+	//	adc18_decode_data(0,rdata);
+
+        if (rdata & 0x80000000) {
+        
+           hdr_modid = ((rdata & 0x7c000000)>>26);
+           hdr_evt = (rdata & 0x3ffffff);
+	   printf("Header in loop= 0x%x    modid = %d = 0x%x    event = %d 0x%x \n",
+                 rdata,hdr_modid,hdr_modid,hdr_evt,hdr_evt);
+        }
+
+	if(count>50000)break;
+
+      oldevnum = nevt;
+      /************************************************************************************************************************
+      rdata = adc18_getdata(0);/*something should fail( because the data should be flushed) here dont know what should fail...*
+      csr = adc18_getcsr(0);
+      printf("Data = 0x%x     Csr = 0x%x \n",rdata,csr);
+      adc18_decode_data(0,rdata);
+
+      hdr_modid = ((rdata & 0x7c000000)>>26);
+      hdr_evt = (rdata & 0x3ffffff);
+      printf("Header = 0x%x    modid = %d = 0x%x    event = %d 0x%x \n",rdata,hdr_modid,hdr_modid,hdr_evt,hdr_evt);
+      ***************************************************************************************************************************/
+
+    }
+
+    printf("Counter=0x%x \n",count);
+    data=(oversample+1)*(nword);
+    if (count!=data)	{/*makes sure the "correct" amount of data was retrieved*/
+      printf("\n bad \n");
+    }
+
+    csr=adc18_getcsr(0);
+    printf("\n After we got all the data, CSR  = 0x%x\n",csr);
+    scanf("%d",&iinput);
+    printf("\n\n ---> Want to repeat the cycle1 ?  (yes=1, no=0) \n");
+    scanf("%d",&iinput);
+
+    if (iinput != 1) break;
+}
+return 0;
+}
+
