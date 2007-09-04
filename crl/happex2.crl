@@ -1,14 +1,15 @@
 #  -*- c -*-
 # 
-#  Minimal test of HAPPEX ADCs, with VME timing board,
-#  and a scaler.
+# CODA Readout list for HAPPEX-H/He
 #
-#    Bob Michaels / Antonin Vacheret  Oct 2000
+#    Bob Michaels, Antonin Vacheret  (Oct 2000)
+#    Kent Paschke, Bryan Moffit (since then)
 # 
 
 readout list VME1
 maximum 10240,100
 vme readout
+
 /* All the memory maps of VME modules are defined in module_map.h  */
 include "../module_map.h"
 /* User strings to control some readout */
@@ -23,11 +24,12 @@ const  DEF_DAC16   =    32767   /* output voltage = 0 */
 # 2e6 good for 2 hours (at 30Hz) for 9 ADCs.
 const RANDNUM = 2000000
 
-# Number of scaler
-const NSCALER = 1
+# Number of scalers (set to two, might be one... still okay)
+const NSCALER = 2
 # Switch all this, depending on which kind of scaler 
 # Must be consistent with preprocessor switch below (TYPE_SIS3800, etc)
 const SCALER0 = hex a40000
+const SCALER1 = hex a50000
 
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
@@ -41,7 +43,7 @@ const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
 int oport_state;   /* output port state (global variable) */
 
-static int noscaler, bmw, scan, tbreadout, flexio;
+static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -91,14 +93,17 @@ begin download
       printf("Assuming EB is on a Little-Endian cpu\n");      
       bigendian_out = 0;
   }
+
 init_strings();
 
-noscaler=0;bmw=0;scan=0;tbreadout=0;flexio=0;
+noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0,flexio2=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
-bmw       = getflag(BMW);        /* Readout Beam Modulation Words */
-scan      = getflag(SCAN);        /* Readout Scan Words */
+scaler2   = getflag(SCALER2);    /* Use 2 scalers for this crate */
+bmwscan   = getflag(BMWSCAN);    /* Readout Beam Modulation and Scan Words */
 tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
+evtypefix = getflag(EVTYPEFIX);  /* Correct event type for Injector DAQ */
 flexio    = getflag(FLEXIO);     /* Readout Flexible I/O Module */
+flexio2   = getflag(FLEXIO2);    /* Readout Flexible I/O Module */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
@@ -107,39 +112,52 @@ if(noscaler == 0) {
 } else {
   printf("Will NOT readout scaler: %d\n",noscaler);
 }
-if(bmw==1) {
-  printf("WILL readout Beam Modulation Words: %d\n",bmw);
+if(scaler2 == 0) {
+  printf("Will NOT readout second scaler\n");
 } else {
-  printf("Will NOT readout Beam Modulation Words: %d\n",bmw);
+  printf("WILL readout second scaler\n");
 }
-if(scan==1) {
-  printf("WILL readout SCAN Words: %d\n",scan);
+if(bmwscan==1) {
+  printf("WILL readout Beam Modulation and Scan Words: %d\n",bmwscan);
 } else {
-  printf("Will NOT readout SCAN Words: %d\n",scan);
+  printf("Will NOT readout Beam Modulation and Words: %d\n",bmwscan);
 }
 if(tbreadout==1) {
   printf("WILL write timing board config to file: %d\n",tbreadout);
 } else {
   printf("Will NOT write timing board config to file: %d\n",tbreadout);
 }
+if(evtypefix) {
+  printf("WILL use EVTYPE fix for Injector DAQ: %d\n",evtypefix);
+}
 if(flexio==1) {
   printf("WILL readout Flexible IO Module: %d\n",flexio);
 } else {
   printf("Will NOT readout Flexible IO Module: %d\n",flexio);
 }
+if(flexio2==1) {
+  printf("WILL readout Flexible IO Module2: %d\n",flexio2);
+} else {
+  printf("Will NOT readout Flexible IO Module2: %d\n",flexio2);
+}
 
 
 /* Setup Device Pointers */
 
-/* TIR Pointer */
-  res = sysBusToLocalAdrs(0x29,TRIG_ADDR,&laddr);
-  if (res != 0) {
-     printf("Error in sysBusToLocalAdrs res=%d \n",res);
-     printf("ERROR:  TIR POINTER NOT INITIALIZED");
-  } else {
-     printf("Trigger Interface address = 0x%x\n",laddr);
-     tir[1] = (struct vme_tir *)laddr;
-  }
+/* Setup TIR */
+tirInit(TRIG_ADDR);
+
+
+/* TIR Pointer  - the old way (CODA v<2.2.1)
+   res = sysBusToLocalAdrs(0x29,TRIG_ADDR,&laddr);
+   if (res != 0) {
+   printf("Error in sysBusToLocalAdrs res=%d \n",res);
+   printf("ERROR:  TIR POINTER NOT INITIALIZED");
+   } else {
+   printf("Trigger Interface address = 0x%x\n",laddr);
+   tir[1] = (struct vme_tir *)laddr;
+   }
+*/
 
 if(flexio == 1) {
   /* FlexIO Pointer */
@@ -153,6 +171,22 @@ if(flexio == 1) {
   }
   flex_io->csr1 = 0x8000; /* Reset Module */
   flex_io->csr1 = 0x3;    /* Enable External Strobe and Latch Mode */
+}
+
+if(flexio2 == 1) {
+  /* FlexIO2 Pointer */
+  res = sysBusToLocalAdrs(0x29,FLEXIO_ADDR,&laddr);
+  if (res != 0) {
+    printf("Error in sysBusToLocalAdrs res=%d \n",res);
+    printf("ERROR:  FlexIO2 POINTER NOT INITIALIZED");
+  } else {
+    printf("FlexIO2 address = 0x%x\n",laddr);
+    flex_io = (struct vme_flex_io *)laddr;
+  }
+/*   flex_io->csr1 = 0x8000; /\* Reset Module *\/ */
+/*   flex_io->csr1 = 0x3;    /\* Enable External Strobe and Latch Mode *\/ */
+  flex_io->csr2 = 0x8000; /* Reset Module */
+  flex_io->csr2 = 0x3;    /* Enable External Strobe and Latch Mode */
 }
 
 /* ADC Configuration */
@@ -187,6 +221,29 @@ if(noscaler == 0) {
   pscaler[0]->csr=tmode;       /* set new Mode */
   pscaler[0]->csr=0x10000;     /* Enable External Next Clock */
   pscaler[0]->csr=0x40000;     /* Enable External Disable */
+
+  /* Do this for a second scaler */
+  if(scaler2==1) {
+    res = sysBusToLocalAdrs(0x39,SCALER1,&laddr);
+    if (res != 0) {
+      printf("Error in sysBusToLocalAdrs res=%d \n",res);
+      printf("ERROR:  SCALER POINTER NOT INITIALIZED");
+    } else {
+      printf("SIS3801 Scaler address = 0x%x\n",laddr);
+      pscaler[1] = (struct fifo_scaler *)laddr;
+    }
+  
+    pscaler[1]->reset=1;
+    pscaler[1]->csr=0xff00fc00;
+    pscaler[1]->clear=1;
+    pscaler[1]->enable=1;
+    mode = 2;
+    tmode = mode << 2;
+    pscaler[1]->csr=0x00000C00;  /* clear Mode bits to Mode 0*/
+    pscaler[1]->csr=tmode;       /* set new Mode */
+    pscaler[1]->csr=0x10000;     /* Enable External Next Clock */
+    pscaler[1]->csr=0x40000;     /* Enable External Disable */
+  }
 #endif  
 #ifdef TYPE_SIS3800
   pscaler[0] = (struct SIS3800 *) SCALER0;
@@ -219,32 +276,52 @@ srand(9421);       /* seed random num generator */
 
 
 /* Clear TIR */
-   tir[1]->tir_csr = 0x80;
+tir[1]->tir_csr = 0x80;
 /* inhibit bit */
-   oport_state |= OPORT_INB;   
-   tir[1]->tir_oport=oport_state;
+oport_state |= OPORT_INB;   
+tir[1]->tir_oport=oport_state;
 
 %%
 
-  log inform "User Download Executed"
+log inform "User Download Executed"
 
 end download
     
 begin prestart
 
-  log inform "Entering User Prestart"
+log inform "Entering User Prestart"
 
 %%
   int j;
+  unsigned short tmp_rand;
+  int bad_randmake=0;
+  extern void srand();
+  extern int rand();
 
 /* Fill Random Integer Array 
    Do this during prestart, so that each run has a different ranny array*/
 
 printf("Generating Random Integer Array\n");
 printf("Number of Array elements = %d\n",RANDNUM);
+srand(ncnt);  /* seed random number generator with the event counter */
+bad_randmake=0;
 for (j=0;j<RANDNUM;j++) {
   /* Generate random integers from 2048 to 63488 */
-  ranny[j] = 2048 + (unsigned short) (61440.0*rand()/(32768+1.0));
+  tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
+  while(tmp_rand==0 || tmp_rand==-1) {
+    bad_randmake=1;
+    tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
+  }
+  ranny[j] = 2048 + tmp_rand;
+}
+
+if(bad_randmake==1) {
+  int badfile;
+  
+  badfile=fopen("~apar/bryan/badrand/badrand.hist","a");
+  fprintf(badfile,"Another bad random number generation at ncnt=%d\n",
+	  ncnt);
+  fclose(badfile);
 }
 %%
 
@@ -253,7 +330,8 @@ for (j=0;j<RANDNUM;j++) {
 %%
 /* The following replaces the line
    "link async trig source VME 1 to partrig and partrig_done"
-   which was erroneously clearing the TIR outputs */
+   which was erroneously clearing the TIR outputs 
+   This is some code we might not need anymore - Bryan 02Apr04
 
     { void partrig (); void partrig_done (); 
       doneRtns[trigId] = (FUNCPTR) ( partrig_done ) ; 
@@ -271,7 +349,10 @@ for (j=0;j<RANDNUM;j++) {
       };
       trigId++;
      };  
+*/
+
 %%
+  link async trig source VME 1 to partrig and partrig_done
   event type 1 then read VME 1
 
 %%
@@ -304,7 +385,7 @@ begin end
   tir[1]->tir_oport=oport_state;
 
 /* Disable LNE Flag */
-   oport_state = oport_state & 0xfb;
+   oport_state |= oport_state & 0xfb;
    tir[1]->tir_oport=oport_state;
 
   CODA_RUN_IN_PROGRESS = 0;
@@ -325,13 +406,18 @@ begin go
   log inform "Entering User Go Go (bob)"
   
 %% 
-  int i;
+  int i, nscaler;
   unsigned short temp;
 
 if(noscaler == 0) {
 #ifdef TYPE_SIS3801
   /* SIS3801 */
-  for (i=0; i<NSCALER; i++) {
+  if(scaler2==1) {
+    nscaler = 2;
+  } else {
+    nscaler = 1;
+  }
+  for (i=0; i<nscaler; i++) {
     pscaler[i]->csr = 0x1000000; /* disable LNE */
     pscaler[i]->clear = 1;
     pscaler[i]->next = 1;  /* flush FIFO */
@@ -358,11 +444,17 @@ if(flexio == 1) {
   flex_io->csr1 = 0x100; /* Re-Activate Strobe */
   flex_io->csr1 = 0x03; /* Re-Activate Strobe */
 }
+if(flexio2 == 1) {
+/*   flex_io->csr1 = 0x100; /\* Re-Activate Strobe *\/ */
+/*   flex_io->csr1 = 0x03; /\* Re-Activate Strobe *\/ */
+  flex_io->csr2 = 0x100; /* Re-Activate Strobe */
+  flex_io->csr2 = 0x03; /* Re-Activate Strobe */
+}
 
 /* remove the inhibit */
 %%  
 /* We dont actually use this anymore.. */
-/* But just in case, just comment out the taskDelay */
+/* But just in case... just comment out the taskDelay. */
    log inform "wait... will remove inhibit"
    //   taskDelay(600);
    log inform "about to remove inhibit"
@@ -380,17 +472,16 @@ end go
 
 begin trigger partrig
 
-variable i,j
+variable i,j, event_ty, event_no
 unsigned long ltest;
 unsigned short junk;
 static int dac16val=DEF_DAC16;
 static int dac12val=DEF_DAC12;
 static int maxdac16=65535;
 static int maxdac12=3650;
-static int ncnt=0;
 int timeout;
 unsigned short rannum;
-int tir_dat;
+int tirdata;
 static int k;
 static int rannyint;
 int errstat;
@@ -399,6 +490,8 @@ int pulseclean;
 int localBMWobj;
 int localBMWval;
 int localBMWcycnum;
+int nscaler;
+int iocTime;
 
 int* intpointer;
 
@@ -406,8 +499,20 @@ int* intpointer;
 oport_state |= OPORT_BUSY;
 tir[1]->tir_oport=oport_state;
 
+%%
+if(evtypefix==1) EVTYPE &= 1;  /* Fix event type for Injector DAQ */
+event_ty = EVTYPE;
+event_no = *rol->nevents;
+iocTime = vxTicks;
+%%
+
 rol->dabufp = (long *)0;
 open event type EVTYPE of BT_UI4
+
+# DEBUGGING PURPOSES ONLY 
+# output hex ffbb0000
+# output event_ty
+# output event_no
 
 ncnt++;
 
@@ -419,12 +524,20 @@ if(flexio==1) {
   flex_io->csr1 = 0x100;
   flex_io->csr1 = 0x03;
   junk = flex_io->csr1;
+} else if(flexio2==1) {
+  *rol->dabufp++ = flex_io->data2;
+/*   flex_io->csr1 = 0x100; */
+/*   flex_io->csr1 = 0x03; */
+  flex_io->csr2 = 0x100;
+  flex_io->csr2 = 0x03;
+  junk = flex_io->csr2;
 } else {
-  tir_dat = tir[1]->tir_dat;
-  *rol->dabufp++ = tir_dat & 0xfff;
+  /* In TIR Control, readout from TIR_DAT */
+  tirdata = tir[1]->tir_dat;
+  *rol->dabufp++ = tirdata & 0xfff;
 }
 
-if(bmw==1) {
+if(bmwscan==1) {
   //////////////////////////////////////////////////
   //
   // BMW: early in readout! (the bmw process in asynchronous,
@@ -440,17 +553,19 @@ if(bmw==1) {
   
   //  if pulse was at some point unclean, but ended clean, prepare
   //  next pulse to be seen as clean
-  if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;
+  if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;  
 }
 
 if(noscaler == 0) {
-  //////////////////////////////////////////////////
-  
-  /* Put scalers at beginning of readout */
-  
+
 #ifdef TYPE_SIS3801
+  if(scaler2==1) {
+    nscaler=2;
+  } else {
+    nscaler=1;
+  }
   errstat = 0;
-  for (i = 0; i <NSCALER; i++) {
+  for (i = 0; i <nscaler; i++) {
     timeout = 0;
     while ( (pscaler[i]->csr&FIFO_EMPTY) != FIFO_EMPTY && timeout++ < 10) {
       for (j = 0; j < 32; j++) {
@@ -458,9 +573,14 @@ if(noscaler == 0) {
       }
     }
   }
-  if (timeout > 1) errstat = 1;
-  *rol->dabufp++ = 0xfffca000 + NSCALER + (errstat<<4);   /* Header for scaler */
-  for (i = 0; i <NSCALER; i++){
+  if (timeout > 1) {
+    errstat = 1;
+    for (i = 0; i <nscaler; i++){
+      pscaler[i]->clear = 1;
+    }
+  }
+  *rol->dabufp++ = 0xfffca000 + nscaler + (errstat<<4); /* Header for scaler */
+  for (i = 0; i <nscaler; i++){
     for (j = 0; j < 32; j++) {
       *rol->dabufp++ = sdata[i*32+j];
     }
@@ -498,7 +618,7 @@ if(noscaler == 0) {
     for (j=0; j < 16; j++) *rol->dabufp++ = 0;  
   }
 #endif
-}  
+}
 
 *rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
 //readoutHAPADC(rol->dabufp,ADC_NUMSLOTS-1);
@@ -514,19 +634,24 @@ for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
 *rol->dabufp++ = getDACHAPTB(2); /* DAC16 */
 *rol->dabufp++ = getDACHAPTB(1); /* DAC12 */
 
-if(bmw==1) {
+if(bmwscan==1) {
+  *rol->dabufp++ = 0xfdacf000;  // Header for daqflags
+
+  /* Start with BMW words */
   *rol->dabufp++ = pulseclean;  //record in bmw says entire pulse was clean
   *rol->dabufp++ = localBMWobj; //record the last-moved object (from beginning of readout)
   *rol->dabufp++ = localBMWval; // record the value of the last-moved object
   *rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
-}
 
-if(scan==1) {
+  /* Scan words next */
   *rol->dabufp++ = getCleanSCAN();
-  *rol->dabufp++ = getDataSCAN();  
-  *rol->dabufp++ = getDataSCAN();  
-}
+  *rol->dabufp++ = getDataSCAN(1);  
+  *rol->dabufp++ = getDataSCAN(2);  
 
+  /* Now the vxWorks Clock and software event increment*/
+  *rol->dabufp++ = iocTime;
+  *rol->dabufp++ = ncnt;
+}
 
 for (i = 0; i < ADC_NUMSLOTS; i++) {  
   if (usesDACHAPADC(i)==1) {
@@ -564,24 +689,23 @@ for (i = 0; i < ADC_NUMSLOTS; i++) {
 //      }    
 //  setDACHAPTB(2,dac16val);
 
-
-/* V/F and/or ADC test.  Increment dacs after last sample in helicity window
-   recall: Last sample has OS=0 in these new timing boards */
-
+/* For the synch monitor.  Use dac12 */
+/* Note that dac12 will saturate the v2f at high voltage 
+   so, set the max around 3650.*/
+/* Increment dac16 by 5 each window */
 if(getOverSampleCurrentHAPTB()==0) {
-  dac12val = dac12val + 1; 
   dac16val = dac16val + 5; 
 } 
-if (dac12val >= maxdac12) dac12val = 0;
+dac12val = 1602+rand()%2048;
 setDACHAPTB(1,dac12val);
 getDACHAPTB(1);
 setDACHAPTB(1,dac12val);
 getDACHAPTB(1);
-if (dac16val >= maxdac16) dac16val = 32767;
-setDACHAPTB(2,dac16val);
-getDACHAPTB(2);
-setDACHAPTB(2,dac16val);
-getDACHAPTB(2);
+/* if (dac16val >= maxdac16) dac16val = 32767; */
+/* setDACHAPTB(2,dac16val); */
+/* getDACHAPTB(2); */
+/* setDACHAPTB(2,dac16val); */
+/* getDACHAPTB(2); */
 
 
 /* Disable BUSY Flag */
@@ -601,8 +725,11 @@ end done
 begin done
 
 # Acknowledge tir register
-poolEmpty = 0;
-tirtack(0);
+CDOACK(VME,1,0);
+
+# Here's the old way (2.2.1)
+# poolEmpty = 0;
+# tirtack(0);
 
 end done
 
