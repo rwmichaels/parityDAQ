@@ -36,10 +36,14 @@
 #define INJ "inj"
 #define EVTYPEFIX "evtypefix"
 #define NOSCALER "noscaler"
-#define SCAN "scan"
-#define BMW "bmw"
+#define SCALER2 "scaler2"
+#define BMWSCAN "bmwscan"
 #define TBREADOUT "tbreadout"
 #define FLEXIO "flexio"
+#define FLEXIO2 "flexio2"
+#define ADC18BIT "adc18bit"
+#define ADC16BIT "adc16bit"
+#define MTREAD "mtread"  /* empty readout (for test) */
 #define FLAG_FILE "ffile"
 #define COMMENT_CHAR ';'
 
