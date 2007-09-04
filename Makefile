@@ -49,8 +49,13 @@ OBJS = $(SRC:.C=.o) cfSock/cfSockCli.o
 PROGS = config/config
 SHLIB =
 #SHLIB = config/libGreenMonster.so
+# Of course, "ADC" means the 16-bit ADC (while ADC18 is obvious)
+# I might change this later to ADC16, etc.
 ADC = adc/HAPADC_ch.o adc/HAPADC_inj.o adc/HAPADC_lspec.o \
 	adc/HAPADC_rspec.o adc/HAPADC_config.o
+ADC18 = adc18/hapAdc18Test.o adc18/hapAdc18Count.o \
+	adc18/hapAdc18Left.o adc18/hapAdc18Right.o \
+	adc18/hapAdc18Inj.o 
 BMW = bmw/bmwClient.o bmw/bmw_config.o 
 TB = timebrd/HAPTB_util.o timebrd/HAPTB_config.o
 AUXTB = auxtimebrd/AUXTB_util.o
@@ -62,6 +67,7 @@ FLEXIO = flexio/flexio_lib.o
 #CAFFB = 
 
 adc: $(ADC)
+adc18: $(ADC18)
 timebrd: $(TB)
 auxtimebrd: $(AUXTB)
 bmw: $(BMW)
@@ -92,6 +98,7 @@ clean:
 	rm -f core *.o
 	rm -f config/core config/*.o config/*Dict* config/*.d config/*.so
 	rm -f adc/core adc/*.o adc/*.d
+	rm -f adc18/*.o adc18/*.d
 	rm -f bmw/core bmw/*.o bmw/*.d
 	rm -f cfSock/core cfSock/*.o cfSock/*.d
 	rm -f timebrd/core timebrd/*.o timebrd/*.d
@@ -128,6 +135,30 @@ adc/HAPADC_rspec.o : adc/HAPADC.c adc/HAPADC.h
 adc/HAPADC_config.o : adc/HAPADC_config.c adc/HAPADC_cf_commands.h
 	cd adc; rm -f $@
 	ccppc -o $@ $(CCVXFLAGS) adc/HAPADC_config.c
+
+adc18/hapAdc18Lib.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DTESTCRATE adc18/hapAdc18Lib.c
+
+adc18/hapAdc18Test.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DTESTCRATE adc18/hapAdc18Lib.c
+
+adc18/hapAdc18Count.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DCOUNTINGHOUSE adc18/hapAdc18Lib.c
+
+adc18/hapAdc18Left.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DLEFTSPECT adc18/hapAdc18Lib.c
+
+adc18/hapAdc18Right.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DRIGHTSPECT adc18/hapAdc18Lib.c
+
+adc18/hapAdc18Inj.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DINJECTOR adc18/hapAdc18Lib.c
 
 bmw/bmwClient.o : bmw/bmwClient.c bmw/bmw.h
 	rm -f $@
