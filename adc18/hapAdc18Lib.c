@@ -20,8 +20,14 @@
 
 /* Define memory state (power up condition) */
 void adc18_zeromem();
+/* Generic Init  (knows what to do for this crate */
+int adc18_initall();
 /* Initialize board pointers */
 int adc18_init(int id, UINT32 adc_addr, UINT32 data_addr);
+/* Get number of ADCs */
+int adc18_getNum();
+/* Get label of ADC #id */
+int adc18_getLabel(int id);
 /* Reset the ADC */
 int adc18_reset(int id);
 /* Soft reset of the ADC */
@@ -89,6 +95,26 @@ void adc18_zeromem() {
   }
 }
 
+int adc18_initall() {
+/* Generic Init  (knows what to do for this crate) */
+  int id;
+  UINT32 adc_addr, data_addr;
+  adc18_zeromem();
+  if (NADC > ADC18_MAXBOARDS) {
+    printf("adc18_initall:  Need a larger ADC_MAXBOARDS \n");
+    printf("No ADCs initialized !!\n");
+    return -1;
+  }
+  for (id = 0; id < NADC; id++) {
+    adc_addr = ADCADDR[id];
+    data_addr = adc_addr + 0x200;
+    adc18_init(id, adc_addr, data_addr);
+    adc18_reset(id);
+    adc18_softreset(id);
+  }
+  return 0;
+}
+
 int adc18_init(int id, UINT32 adc_addr, UINT32 data_addr) {
 
 /* Initialize board pointers : adc at adc_addr and data at data_addr */
@@ -123,6 +149,19 @@ int adc18_init(int id, UINT32 adc_addr, UINT32 data_addr) {
 
 }
 
+int adc18_getNum() {
+/* Get number of ADCs */
+  return NADC;
+} 
+
+int adc18_getLabel(int id) {
+/* Get label of ADC #id */
+  if (id < 0 || id >= ADC18_MAXBOARDS) {
+    printf("ADC18:ERR:  Board id %d is outside range !!\n",id);
+    return -1;
+  }
+  return ADCLABEL[id];
+}
 
 int adc18_reset(int id) {
 /* Clear the ADC, like a power up condition.
