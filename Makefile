@@ -53,19 +53,25 @@ ADC = adc/HAPADC_ch.o adc/HAPADC_inj.o adc/HAPADC_lspec.o \
 	adc/HAPADC_rspec.o adc/HAPADC_config.o
 BMW = bmw/bmwClient.o bmw/bmw_config.o 
 TB = timebrd/HAPTB_util.o timebrd/HAPTB_config.o
+AUXTB = auxtimebrd/AUXTB_util.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
 SCAN = scan/SCAN_util.o scan/SCAN_config.o
-#CAFFB = caFFB/caFFB.o
-CAFFB = 
+CAFFB = caFFB/caFFB.o
+AUTO = auto/auto.o
+FLEXIO = flexio/flexio_lib.o
+#CAFFB = 
 
 adc: $(ADC)
 timebrd: $(TB)
+auxtimebrd: $(AUXTB)
 bmw: $(BMW)
 socket: $(SOCK)
 scan: $(SCAN)
 caFFB: $(CAFFB)
-vxall: $(ADC) $(BMW) $(SOCK) $(TB)  $(SCAN) $(CAFFB)
-all:  $(ADC) $(BMW) $(SOCK) $(TB) $(SCAN) $(CAFFB) $(PROGS) $(SHLIB)
+auto: $(AUTO)
+flexio: $(FLEXIO)
+vxall: $(ADC) $(BMW) $(SOCK) $(TB)  $(SCAN) $(CAFFB) $(AUXTB) $(AUTO) $(FLEXIO)
+all:  $(ADC) $(BMW) $(SOCK) $(TB) $(SCAN) $(CAFFB) $(PROGS) $(SHLIB) $(AUXTB) $(AUTO) $(FLEXIO)
 dict:
 #dict: config/GreenMonsterDict.C
 
@@ -89,8 +95,10 @@ clean:
 	rm -f bmw/core bmw/*.o bmw/*.d
 	rm -f cfSock/core cfSock/*.o cfSock/*.d
 	rm -f timebrd/core timebrd/*.o timebrd/*.d
+	rm -f auxtimebrd/core auxtimebrd/*.o auxtimebrd/*.d
 	rm -f scan/core scan/*.o scan/*.d
 	rm -f caFFB/core caFFB/*.o caFFB/*.d
+	rm -f flexio/flexio_lib.o
 
 realclean:  clean
 	rm -f *.d
@@ -129,6 +137,10 @@ bmw/bmw_config.o : bmw/bmw_config.c bmw/bmw_config.h bmw/bmw_cf_commands.h
 	rm -f $@
 	ccppc -o $@ -c $(CCVXFLAGS) bmw/bmw_config.c
  
+flexio/flexio_lib.o : flexio/flexio_lib.c
+	rm -f $@
+	ccppc -o $@ -c $(CCVXFLAGS) flexio/flexio_lib.c
+
 cfSock/cfSockCli.o : cfSock/cfSockCli.c cfSock/cfSock.h cfSock/cfSock_types.h
 	rm -f $@
 	$(CC) -o $@ -c $(CFLAGS) $(SWFLAGS) cfSock/cfSockCli.c 
@@ -155,8 +167,16 @@ scan/SCAN_config.o: scan/SCAN_config.c scan/SCAN_cf_commands.h
 	cd scan; rm -f $@; \
 	ccppc  -c $(CCVXFLAGS) SCAN_config.c
 
-#caFFB/caFFB.o: caFFB/caFFB.c caFFB/caFFB.h
-#	ccppc  -c $(CCVXFLAGS) $(EPICS_INC) $< -o $@
+caFFB/caFFB.o: caFFB/caFFB.c caFFB/caFFB.h
+	ccppc  -c $(CCVXFLAGS) $(EPICS_INC) $< -o $@
+
+auxtimebrd/AUXTB_util.o: auxtimebrd/AUXTB_util.c auxtimebrd/AUXTB.h   
+	cd auxtimebrd; rm -f $@; \
+	ccppc  -c $(CCVXFLAGS) AUXTB_util.c
+
+auto/auto.o: auto/auto.c
+	cd auto; rm -f $@; \
+	ccppc -c $(CCVXFLAGS) auto.c
 
 #.SUFFIXES:
 #.SUFFIXES: .c .cc .cpp .C .o .d
