@@ -1,0 +1,265 @@
+#  -*- c -*-
+# 
+# CODA Readout list for testing Qweak ADC by itself.
+#
+#    Bob Michaels, July 2008
+# 
+
+readout list VME1
+maximum 10240,100
+  vme readout
+
+include "usrstrutils.c"
+  
+# if LINUXHOST=1(0) host is linux(not)
+  const LINUXHOST = 1
+  const TRIG_ADDR = hex 0ed0
+  
+  const OPORT_BUSY = 1   /* bit 1 = busy output */
+  const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
+  const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
+
+%%
+  int oport_state;   /* output port state (global variable) */
+
+static int nsamples;
+
+extern int bigendian_out;
+static FUNCPTR handlerPtr;
+
+unsigned long ncnt=0;
+
+VOIDFUNCPTR isr;
+
+%%
+
+begin download
+
+%%  
+
+unsigned long addr_vqwk;
+
+printf("Development version (July 11, 08)\n");
+
+if (LINUXHOST) {
+  printf("Assuming EB is on a Little-Endian cpu\n");      
+  bigendian_out = 0;
+}
+
+init_strings();
+
+nsamples=0;
+nsamples = getint(NSAMPLES);  /* number of samples for Qweak ADC */
+
+printf("*** User String Configuration ***\n");
+printf("nsamples = %d \n",nsamples);
+
+if (nsamples==0) {
+  printf("nsamples zero, setting to 3700\n");
+  nsamples = 3700;
+}
+
+/* Setup Devices */
+
+/* Setup TIR */
+
+printf("About to initialize TIR for TRIG_ADDR=0x%x\n",TRIG_ADDR);
+
+tirInit(TRIG_ADDR);
+
+
+/* TIR Pointer  - the old way (CODA v<2.2.1)
+   res = sysBusToLocalAdrs(0x29,TRIG_ADDR,&laddr);
+   if (res != 0) {
+   printf("Error in sysBusToLocalAdrs res=%d \n",res);
+   printf("ERROR:  TIR POINTER NOT INITIALIZED");
+   } else {
+   printf("Trigger Interface address = 0x%x\n",laddr);
+   tir[1] = (struct vme_tir *)laddr;
+   }
+*/
+
+/* Qweak ADC */
+ 
+
+  addr_vqwk = 0xa00000;
+
+  vqwkInit(addr_vqwk, 0, 1);
+
+  vqwkSetSamplePeriod(0,0);
+  vqwkSetNumberOfBlocks(0,4);
+  vqwkSetSamplesPerBlock(0,nsamples);
+  vqwkSetGateDelay(0,10);
+  vqwkSetGateClockSources(0,1,0);  /* ext gate, int. clock */
+
+  setTimeHAPTB(1000,500);  /* using base to trigger DAQ */
+
+  vqwkPrintStatus(0);
+
+
+/* Clear TIR */
+tir[1]->tir_csr = 0x80;
+/* inhibit bit */
+oport_state |= OPORT_INB;   
+/* tir[1]->tir_oport=oport_state; */
+
+%%
+
+log inform "User Download Executed (bobqweak.crl)"
+
+end download
+    
+begin prestart
+
+log inform "Entering User Prestart"
+
+%%
+int i,j;
+
+
+%%
+
+init trig source VME
+
+%%
+/* The following replaces the line
+   "link async trig source VME 1 to partrig and partrig_done"
+   which was erroneously clearing the TIR outputs 
+   This is some code we might not need anymore - Bryan 02Apr04
+
+   { void partrig (); void partrig_done (); 
+   doneRtns[trigId] = (FUNCPTR) ( partrig_done ) ; 
+   trigRtns[trigId] = (FUNCPTR) ( partrig ) ; 
+   Tcode[trigId] = ( 1 ) ; ttypeRtn = tirttype ; 
+   {  printf("Linking async VME trigger to id %d \n", trigId ); 
+   VME_handlers = ( trigId ); VME_isAsync = 1;
+   handlerPtr = (FUNCPTR) 0;
+   if (handlerPtr) free(handlerPtr);
+   tir[1]->tir_vec = 0xec ;
+   if((intDisconnect(((VOIDUNCPTR *) ( 0xec  )) ) !=0))
+   printf("Error disconnecting Interrupt\n");
+   isr = VME_int_handler;
+   intConnect(((VOIDFUNCPTR *) ( 0xec  )) ,isr,0);
+   };
+   trigId++;
+   };  
+*/
+
+%%
+link async trig source VME 1 to partrig and partrig_done
+event type 1 then read VME 1
+
+tir[1]->tir_oport=0;
+
+log inform "User Prestart Executed"
+
+end prestart
+
+begin end
+
+CDODISABLE(VME,1,0);
+
+# inhibit bit
+oport_state |= OPORT_INB;   
+# tir[1]->tir_oport=oport_state; 
+
+/* Disable LNE Flag */
+oport_state |= oport_state & 0xfb;
+# tir[1]->tir_oport=oport_state; 
+
+log inform "User End Executed"
+
+end end
+
+begin pause
+
+CDODISABLE(VME,1,0);
+log inform "User Pause Executed"
+
+end pause
+
+begin go
+  
+log inform "Entering User Go Go (bob)"
+  
+%% 
+
+
+/* Enable LNE Flag */
+oport_state |= OPORT_LNE;
+
+CDOENABLE(VME,1,0);
+
+%%
+
+end go
+
+begin trigger partrig
+
+int i, itime, itimeout, dataready; 
+int numvalues;
+unsigned long adcdata[200];
+
+itimeout = 50000;
+
+rol->dabufp = (long *)0;
+open event type EVTYPE of BT_UI4
+
+%%
+
+  tir[1]->tir_oport=1;
+
+  itime = vqwkWaitForDataReady(0, 0xFF, 600000);  
+
+  if (itime < 0) {
+    dataready = 0;
+  } else {
+    dataready = 1;
+  }    
+
+  numvalues = vqwkReadRegisters(0, 0xFF, adcdata);
+
+  *rol->dabufp++ = 0xfab0b444;   /* header */
+  *rol->dabufp++ = dataready;    /* data is bogus unless dataready = 1 */
+  *rol->dabufp++ = numvalues;
+  for (i = 0; i<numvalues; i++ ) {
+     *rol->dabufp++ = adcdata[i];
+  }
+
+  itime = 0;
+  while (vqwkProbeDataReady(0) != 0 ) {
+    numvalues = vqwkReadRegisters(0, 0xFF, adcdata);
+    if (itime++ > itimeout) break;
+  }
+
+  *rol->dabufp++ = itime;
+
+  tir[1]->tir_oport=0;
+%%
+
+
+close event
+
+sysTempeVeatClear(0);
+
+end trigger
+
+begin done partrig
+
+end done
+
+begin done
+
+# Acknowledge tir register
+CDOACK(VME,1,0);
+
+# Here's the old way (2.2.1)
+# poolEmpty = 0;
+# tirtack(0);
+
+end done
+
+begin status
+
+end status
+
