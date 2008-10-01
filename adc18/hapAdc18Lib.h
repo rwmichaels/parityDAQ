@@ -11,21 +11,21 @@
 
 #define ADC18_MAXBOARDS 10
 
-/* number of HAPPEX ADCs */
+/* number of HAPPEX 18-bit ADCs */
 #ifdef  TESTCRATE
 #define NADC 1   
 #endif
 #ifdef  COUNTINGHOUSE
-#define NADC 9    
+#define NADC 0    //changed 11/27/07 B. Hahn
 #endif
 #ifdef  INJECTOR
-#define NADC 3    
+#define NADC 0    //changed 11/27/07 B. Hahn
 #endif
 #ifdef  LEFTSPECT
-#define NADC 0    
+#define NADC 0    //changed 11/27/07 B. Hahn
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 2    
+#define NADC 1    
 #endif
 
 #define TIME_INT 11.0	 /* sample time (us) for internal timing sequence */	
@@ -128,10 +128,10 @@
 #endif
 
 #ifdef   RIGHTSPECT
-#define  ADC0 0x840000
-#define  ADC1 0x8F0000
-#define  ADC2 0x8F0000
-#define  ADC3 0x810000
+#define  ADC0 0xee000
+#define  ADC1 0xed0000
+#define  ADC2 0xed4000
+#define  ADC3 0xee000
 #define  ADC4 0x4B0700
 #define  ADC5 0x480000
 #define  ADC6 0x4c0000
@@ -164,6 +164,9 @@ struct adc18_struct {
 		 long spare[3];		/* 24,28,2C */
 		 long delay_1;		/* 30 */
 		 long delay_2;		/* 34 */
+                 long reserved_2;	/* 38 */
+		 long reserved_3;	/* 3C */
+		 long pedestal[4];	/* 40,44,48,4C  (New, Jan 2008) */
 		 };
 
 volatile struct adc18_struct *adc18p[ADC18_MAXBOARDS];

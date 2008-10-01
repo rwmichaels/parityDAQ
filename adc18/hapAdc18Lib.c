@@ -12,12 +12,15 @@
 #include "vxLib.h"
 
 #include "hapAdc18Lib.h"
+#include "ADC18_cf_commands.h"
 
 /* default ADC config bits */
 #define DEFAULT_CONFIG_BITS 0xC00
 
-/* function prototypes */
-
+/* set the pedestal */
+int adc18_setpedestal(int id, int ped1, int ped2, int ped3, int ped4);
+/* get a pedestal */
+int adc18_getpedestal(int id, int pednum);
 /* Define memory state (power up condition) */
 void adc18_zeromem();
 /* Generic Init  (knows what to do for this crate */
@@ -28,6 +31,10 @@ int adc18_init(int id, UINT32 adc_addr, UINT32 data_addr);
 int adc18_getNum();
 /* Get label of ADC #id */
 int adc18_getLabel(int id);
+/*Get the Conv Gain*/ 
+int adc18_getconv(int id);
+/*Get the Int Gain*/
+int adc18_getintgain(int id);
 /* Reset the ADC */
 int adc18_reset(int id);
 /* Soft reset of the ADC */
@@ -84,6 +91,7 @@ void adc18_pulser();
 int adc18_test3();
 int adc18_test4();
 
+
 void adc18_zeromem() {
 /* This has to be done when you reboot the VME board, to define zero memory */
   int id;
@@ -95,6 +103,69 @@ void adc18_zeromem() {
   }
 }
 
+
+void taskADC18_CF(long* command, long *par1, long *par2)
+{
+  int junk1;
+  int junk2;
+  int gainbit;
+  int ped;
+  int ibrd;
+  int flag;
+
+  printf("\n HI !!   I'm into taskADC18_CF !!! \n");
+  switch (*command)
+    {
+    case ADC18_GET_NUMADC:
+      *par2 = adc18_getNum();
+      break;
+    case ADC18_GET_LABEL:
+      ibrd = *par1;
+      *par2 = adc18_getLabel(ibrd);
+      break;
+    case ADC18_GET_CSR:
+      ibrd = *par1;
+      adc18_getcsr(ibrd);
+      break;
+    case ADC18_SET_CONV:
+      ibrd = *par1;
+      gainbit = *par2;
+      adc18_setconv(ibrd,gainbit);
+      // figure out later
+      break;
+    case ADC18_SET_INT:
+      ibrd = *par1;
+      gainbit = *par2;
+      adc18_intgain(ibrd,gainbit);
+      // figure out later
+      break;
+    case ADC18_SET_PED:
+      ibrd = *par1;
+      ped = *par2 & 0x2;
+      //adc18_setped(ibrd,gainbit);
+      // figure out later
+      break;
+    case ADC18_GET_CONV:
+      ibrd = *par1;
+      *par2= adc18_getconv(ibrd);
+      // figure out later
+      break;
+    case ADC18_GET_INT:
+      ibrd = *par1;
+      *par2 = adc18_getintgain(ibrd);
+      // figure out later
+      break;
+    case ADC18_GET_PED:
+      ibrd = *par1;
+      ped = *par2 & 0x2;
+      //*par2= adc18_getped(ibrd,gainbit);
+      // figure out later
+      break;
+    }
+}
+
+
+
 int adc18_initall() {
 /* Generic Init  (knows what to do for this crate) */
   int id;
@@ -105,9 +176,13 @@ int adc18_initall() {
     printf("No ADCs initialized !!\n");
     return -1;
   }
+  printf("(Jan 19, x11)  Num ADC18 = %d \n",NADC);
   for (id = 0; id < NADC; id++) {
     adc_addr = ADCADDR[id];
-    data_addr = adc_addr + 0x200;
+    if (id==0) data_addr = adc_addr + 0x0100;
+    if (id==1) data_addr = adc_addr + 0x1000;
+    if (id==2) data_addr = adc_addr + 0x1000;
+    printf("Init ADC18 # %d   adc_addr = 0x%x    data_addr = 0x%x\n",id,adc_addr,data_addr);
     adc18_init(id, adc_addr, data_addr);
     adc18_reset(id);
     adc18_softreset(id);
@@ -136,7 +211,7 @@ int adc18_init(int id, UINT32 adc_addr, UINT32 data_addr) {
     printf("ADC18:ERR: No addressable board %d  at addr 0x%x\n",id,adc_addr);
     return -1;
   } else {
-    printf("ADC18:Init: Board ID = %s \n",rdata);
+    printf("ADC18:Init: Board ID = 0x%x \n",rdata);
   }
   sysBusToLocalAdrs(0x39,data_addr,&laddr);
   printf("ADC18 board %d   data local address = 0x%x\n",id,laddr);  
@@ -176,6 +251,7 @@ int adc18_reset(int id) {
   adc18p[id]->delay_2 = 0;
   return 0;
 }
+
 
 int adc18_softreset(int id) {
   if (adc18_chkid(id) < 1) return -1;
@@ -378,6 +454,16 @@ void adc18_reg_decode(id)
 	
       value = adc18p[id]->evt_word_ct;
       printf("Event Word Count = %d\n", (value & 0xFF));
+
+      value = adc18p[id]->pedestal[0];
+      printf("Pedestal for CH 0 is %d\n", (value & 0x3FFF));
+      value = adc18p[id]->pedestal[1];
+      printf("Pedestal for CH 1 is %d\n", (value & 0x3FFF));
+      value = adc18p[id]->pedestal[2];
+      printf("Pedestal for CH 2 is %d\n", (value & 0x3FFF));
+      value = adc18p[id]->pedestal[3];
+      printf("Pedestal for CH 3 is %d\n", (value & 0x3FFF));
+
 	
 }
 
@@ -520,13 +606,19 @@ int adc18_setdac(int id, long dac_value) {
   return 0;
 }
 
+
 int adc18_intgain(int id, long gain) {
 /* Set integrator gain factor   */
 /* note: a gain of '3' is minimum, '0' is max (in terms of result per volt) */
-
+  long conv;
   long config;
      
   if (adc18_chkid(id) < 1) return -1;
+
+  conv=adc18_getconv(id);
+  config=adc18p[id]->config;
+
+  adc18_reset(id);
 
   printf("adc18_intgain  adc %d   gain = %d \n",id,gain);
 
@@ -534,23 +626,76 @@ int adc18_intgain(int id, long gain) {
       printf("ADC18:ERR:  int_gain is outside of range. \n",id,gain);
       return -1;
   }
-   
-  config = adc18p[id]->config;
- 
-  config |= gain << 1;
+  config=adc18p[id]->config;
+  config |= gain << 1;  //set the int gain
+  config |= conv << 4;  //set the conv gain
   config |= DEFAULT_CONFIG_BITS;
-
   adc18p[id]->config = config;
   return 0;
 }
 
+
+
+int adc18_getpedestal(int id, int pednum) {
+
+  return adc18p[id]->pedestal[pednum] & 0x3FFF;
+
+}
+
+
+int adc18_setpedestal(int id, int ped1, int ped2, int ped3, int ped4) {
+/* Set the pedestal, value between 0 and 4095 */
+/* Only works before 'go' (ctrl[0] = 0) */
+/* We'll needs some sort of switch here to distinguish between
+   version1 (has no pedestal register) and version2 */
+
+  printf("Loading ADC pedestals %d %d %d %d successfully\n",ped1,ped2,ped3,ped4);
+
+  if (adc18_chkid(id) < 1) return -1;
+
+  if (ped1 < 0 || ped1 > 4095 || ped2 < 0 || ped2 > 4095 ||
+      ped3 < 0 || ped3 > 4095 || ped4 < 0 || ped4 > 4095 ) {
+    printf("adc18_setpedstal::ERROR  pedestals must be 0 - 4095 \n");
+    return -1;
+  }
+
+
+  adc18p[id]->pedestal[0] = ped1;    
+  taskDelay(1);
+    adc18p[id]->csr = 0x10000;   /* load FPGA */
+  taskDelay(1);
+
+  adc18p[id]->pedestal[1] = ped2;    
+  taskDelay(1);
+    adc18p[id]->csr = 0x10000;   
+  taskDelay(1);
+
+  adc18p[id]->pedestal[2] = ped3;    
+  taskDelay(1);
+    adc18p[id]->csr = 0x10000;   
+  taskDelay(1);
+
+  adc18p[id]->pedestal[3] = ped4;    
+  taskDelay(1);
+
+  adc18p[id]->csr = 0x10000;   
+
+
+}
+
+
 int adc18_setconv(int id, long conv) {
 /* Set V-to-C conversion */
 /* The gain is linear in 'conv' */
-
+  long intgain;
   long config;
 
   if (adc18_chkid(id) < 1) return -1;
+
+  intgain=adc18_getintgain(id);
+  config=adc18p[id]->config;
+
+  adc18_reset(id);
 
   printf("adc18_setconv  adc %d   conv = %d \n",id,conv);
 
@@ -560,8 +705,8 @@ int adc18_setconv(int id, long conv) {
   }
    
   config = adc18p[id]->config;
- 
-  config |= conv << 4;
+  config |= intgain << 1;  //set the int gain
+  config |= conv << 4;  //set the conv gain
   config |= DEFAULT_CONFIG_BITS;
 
   adc18p[id]->config = config;
@@ -780,9 +925,9 @@ int adc18_flush(int id) {
   }
 
   while (adc18_DataAvail(id)) {
-      rdata = adc18_getdata(0);
+      rdata = adc18_getdata(id);
       if (i++ > timeout) {
-	printf("adc18_flush::ERROR:  Too much data ?!\n");
+	printf("adc18_flush::ERROR:  Too much data %d %d  ?!\n",i,timeout);
         return -1;
       }
   }
@@ -1059,7 +1204,9 @@ int adc18_test3(int rannum) {
 
   for (iev = 0; iev < 100000; iev++) {
 
-    printf("Enter any number when ready to get an event \n");
+    printf("Enter any number whint adc18_getconv(ibrd,gainbit);
+/*Get the Conv Gain*/ 
+int adc18_getintgain(ibrd);en ready to get an event \n");
     scanf("%d",&iinput);
 
     adc18_softreset(0);
@@ -1255,3 +1402,11 @@ int adc18_test4(int sample, int oversample) {
 return 0;
 }
 
+
+int adc18_getconv(int id){
+  return ((adc18p[id]->config >> 4) & 0xF);
+}
+ 
+int adc18_getintgain(int id){
+  return (( adc18p[id]->config >> 1) & 0x3);
+}
