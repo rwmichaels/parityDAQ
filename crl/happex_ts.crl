@@ -41,9 +41,20 @@ const FIFO_EMPTY = hex 100
 const OPORT_BUSY = 1   /* bit 1 = busy output */
 const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
+
+  /* 18-Bit ADC Parameters*/ 
+
+const MAX18CNT = 100
+const BAD18DATA = 9999
+const INTERNAL=0
+const EXTERNAL=1
+const TIME18 = INTERNAL
+
+
 int oport_state;   /* output port state (global variable) */
 
 static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
+static int adc18bit, numadc18, adc16bit, mtread;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -96,7 +107,8 @@ begin download
 
 init_strings();
 
-noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0;flexio2=0;
+noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0,flexio2=0;
+adc18bit=0;adc16bit=0;mtread=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 scaler2   = getflag(SCALER2);    /* Use 2 scalers for this crate */
 bmwscan   = getflag(BMWSCAN);    /* Readout Beam Modulation and Scan Words */
@@ -104,9 +116,15 @@ tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
 evtypefix = getflag(EVTYPEFIX);  /* Correct event type for Injector DAQ */
 flexio    = getflag(FLEXIO);     /* Readout Flexible I/O Module */
 flexio2   = getflag(FLEXIO2);    /* Readout Flexible I/O Module */
+adc18bit  = getflag(ADC18BIT);   /* 18-bit ADC tests  */
+adc16bit  = getflag(ADC16BIT);   /* 16-bit ADC exists(1) or not(0)   */
+mtread    = getflag(MTREAD);     /* Empty readout ?  (1).  For tests */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
+if (adc18bit) {
+  printf("Will use 18-bit ADC \n");
+} 
 if(noscaler == 0) {
   printf("WILL readout scaler: %d\n",noscaler);
 } else {
@@ -145,8 +163,6 @@ if(flexio2==1) {
 /* Setup Device Pointers */
 
 /* Setup TIR */
-printf("About to initialize TIR for TRIG_ADDR=0x%x\n",TRIG_ADDR);
-
 tirInit(TRIG_ADDR);
 
 
@@ -191,9 +207,11 @@ if(flexio2 == 1) {
   flex_io->csr2 = 0x3;    /* Enable External Strobe and Latch Mode */
 }
 
-/* ADC Configuration */
+/* ADC16 Configuration */
 // show default configurations
-  showHAPADC(-1);
+  if (adc16bit) {
+    showHAPADC(-1);
+  }
 
 /* Timing Board configuration */
 // all timing configuration should be done in separate routines, to avoid ambiguity
@@ -281,9 +299,7 @@ srand(9421);       /* seed random num generator */
 tir[1]->tir_csr = 0x80;
 /* inhibit bit */
 oport_state |= OPORT_INB;   
-
-/*************************/
- tir[1]->tir_oport=oport_state;
+tir[1]->tir_oport=oport_state;
 
 %%
 
@@ -298,68 +314,56 @@ log inform "Entering User Prestart"
 %%
   int j;
   unsigned short tmp_rand;
+  int iadc;
   int bad_randmake=0;
   extern void srand();
   extern int rand();
 
+  CODA_RUN_IN_PROGRESS = 0;
+ 
+/* If no Green Monster Timing Board should get set here
+   setTimeHAPTB(800,1250);
+   setOverSampleHAPTB(4);
+   printf("Setting Oversampleing");
+*******************************************************/
+
 /* Fill Random Integer Array 
    Do this during prestart, so that each run has a different ranny array*/
 
-printf("Generating Random Integer Array\n");
-printf("Number of Array elements = %d\n",RANDNUM);
-srand(ncnt);  /* seed random number generator with the event counter */
-bad_randmake=0;
-for (j=0;j<RANDNUM;j++) {
-  /* Generate random integers from 2048 to 63488 */
-  tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
-  while(tmp_rand==0 || tmp_rand==-1) {
-    bad_randmake=1;
+if (adc16bit) {
+  printf("Generating Random Integer Array\n");
+  printf("Number of Array elements = %d\n",RANDNUM);
+  srand(ncnt);  /* seed random number generator with the event counter */
+  bad_randmake=0;
+  for (j=0;j<RANDNUM;j++) {
+    /* Generate random integers from 2048 to 63488 */
     tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
+    while(tmp_rand==0 || tmp_rand==-1) {
+      bad_randmake=1;
+      tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
+    }
+    ranny[j] = 2048 + tmp_rand;
   }
-  ranny[j] = 2048 + tmp_rand;
-}
 
-if(bad_randmake==1) {
-  int badfile;
+  if(bad_randmake==1) {
+    int badfile;
   
-  badfile=fopen("~apar/bryan/badrand/badrand.hist","a");
-  fprintf(badfile,"Another bad random number generation at ncnt=%d\n",
+    badfile=fopen("~apar/bryan/badrand/badrand.hist","a");
+    fprintf(badfile,"Another bad random number generation at ncnt=%d\n",
 	  ncnt);
-  fclose(badfile);
+    fclose(badfile);
+  }
 }
 %%
 
   init trig source VME
-
-%%
-/* The following replaces the line
-   "link async trig source VME 1 to partrig and partrig_done"
-   which was erroneously clearing the TIR outputs 
-   This is some code we might not need anymore - Bryan 02Apr04
-
-    { void partrig (); void partrig_done (); 
-      doneRtns[trigId] = (FUNCPTR) ( partrig_done ) ; 
-      trigRtns[trigId] = (FUNCPTR) ( partrig ) ; 
-      Tcode[trigId] = ( 1 ) ; ttypeRtn = tirttype ; 
-      {  printf("Linking async VME trigger to id %d \n", trigId ); 
-         VME_handlers = ( trigId ); VME_isAsync = 1;
-         handlerPtr = (FUNCPTR) 0;
-         if (handlerPtr) free(handlerPtr);
-         tir[1]->tir_vec = 0xec ;
-         if((intDisconnect(((VOIDFUNCPTR *) ( 0xec  )) ) !=0))
-               printf("Error disconnecting Interrupt\n");
-         isr = VME_int_handler;
-         intConnect(((VOIDFUNCPTR *) ( 0xec  )) ,isr,0);
-      };
-      trigId++;
-     };  
-*/
-
-%%
   link async trig source VME 1 to partrig and partrig_done
   event type 1 then read VME 1
 
 %%
+
+  /* dont know why I need this (int iadc) a 2nd time */
+  int iadc, ped_test;
 
   if(tbreadout==1) {
     /* Send timing board information to ~apar/db/timebrd/timebrd.cfg */
@@ -374,6 +378,40 @@ if(bad_randmake==1) {
     fclose(fdbfile);
   }
 
+  numadc18 = 0;
+
+  if (adc18bit) {
+
+/* Set up 18-bit ADC */
+
+     adc18_zeromem();
+     adc18_initall();
+     numadc18 = adc18_getNum();
+
+     for (iadc = 0; iadc < numadc18; iadc++) {
+       printf("Setting up ADC18 # %d \n",iadc);
+       adc18_timesrc(iadc,0,0,0);  /* External time source */
+       adc18_gatemode(iadc,1);            
+       adc18_intgain(iadc,3);   /* intgain: 0-3, where 3 is minimum */
+       adc18_setconv(iadc,0);  /* conv (gain): 0-15 where 0 is minimum */
+       adc18_setsample(iadc,1);
+       adc18_loaddac(iadc,0);      
+       ped_test = 1900;
+
+       if (iadc==1) adc18_setpedestal(iadc, 2250, 2087, 2520, 1690);  // V2, #1
+
+       if (iadc==2) {
+	 adc18_setpedestal(iadc, 1927, 1994, 2228, 1985);
+       }
+       
+       //adc18_setpedestal(iadc, ped_test, ped_test, ped_test, ped_test);
+       adc18_flush(iadc);
+     }
+
+  }
+
+
+
 %%
 
   log inform "User Prestart Executed"
@@ -385,14 +423,12 @@ begin end
   CDODISABLE(VME,1,0);
 
 # inhibit bit
-  oport_state |= OPORT_INB; 
-/*****************************/  
+  oport_state |= OPORT_INB;   
   tir[1]->tir_oport=oport_state;
 
 /* Disable LNE Flag */
    oport_state |= oport_state & 0xfb;
-/*****************************/  
-  tir[1]->tir_oport=oport_state;
+   tir[1]->tir_oport=oport_state;
 
   CODA_RUN_IN_PROGRESS = 0;
 
@@ -412,7 +448,7 @@ begin go
   log inform "Entering User Go Go (bob)"
   
 %% 
-  int i, nscaler;
+  int i, iadc, nscaler;
   unsigned short temp;
 
 if(noscaler == 0) {
@@ -457,6 +493,11 @@ if(flexio2 == 1) {
   flex_io->csr2 = 0x03; /* Re-Activate Strobe */
 }
 
+for (iadc = 0; iadc<numadc18; iadc++) {
+  printf("Flushing adc18 number %d\n",iadc);
+  adc18_flush(iadc);
+}
+
 /* remove the inhibit */
 %%  
 /* We dont actually use this anymore.. */
@@ -465,12 +506,10 @@ if(flexio2 == 1) {
    //   taskDelay(600);
    log inform "about to remove inhibit"
    oport_state = oport_state & 0xfd; 
-/*****************************/  
    tir[1]->tir_oport=oport_state;
 
 /* Enable LNE Flag */
    oport_state |= OPORT_LNE;
-/*****************************/  
    tir[1]->tir_oport=oport_state;
 
   CDOENABLE(VME,1,0);
@@ -480,26 +519,36 @@ end go
 
 begin trigger partrig
 
-variable i,j, event_ty, event_no
+variable i,j, iadc, event_ty, event_no
+variable icnt, nevt, nword, ncnt, nadc18cnt, csrA, csrB
 unsigned long ltest;
 unsigned short junk;
 static int dac16val=DEF_DAC16;
 static int dac12val=DEF_DAC12;
 static int maxdac16=65535;
 static int maxdac12=3650;
+int inumdat,ioverflow;
 int timeout;
+int maxloop=50000;
 unsigned short rannum;
 int tirdata;
 static int k;
 static int rannyint;
 int errstat;
 unsigned long sdata[NSCALER*32*12];
+unsigned long adc18data[MAX18CNT];
 int pulseclean;
 int localBMWobj;
 int localBMWval;
 int localBMWcycnum;
 int nscaler;
 int iocTime;
+static int dacnoise18=10000;
+static int MINDAC18=10000;
+static int MAXDAC18=30000;
+static int dacsign18 = 1;
+static int setdac18_local = 0;
+ int what1=0;
 
 int* intpointer;
 
@@ -512,42 +561,43 @@ if(evtypefix==1) EVTYPE &= 1;  /* Fix event type for Injector DAQ */
 event_ty = EVTYPE;
 event_no = *rol->nevents;
 iocTime = vxTicks;
+
 %%
+
+
 
 rol->dabufp = (long *)0;
 open event type EVTYPE of BT_UI4
 
-# DEBUGGING PURPOSES ONLY 
-# output hex ffbb0000
-# output event_ty
-# output event_no
+*rol->dabufp++ = 0xffb0b444;    
+
+%%
+
+
+if ( !mtread )  {
 
 ncnt++;
 
-%%
 // Read out TIR inputs FIRST!  It contains helicity info. 
-*rol->dabufp++ = 0xffdaf000;    /* Header for TIR */
-
+*rol->dabufp++ = 0xffdaff000;    /* Header for TIR */
 if(flexio==1) {
-*rol->dabufp++ = flex_io->data1;
-  /*  flex_io->csr1 = 0x8000; */ /* Reset Module */
-flex_io->csr1 = 0x100;
-flex_io->csr1 = 0x03;
-junk = flex_io->csr1;
+  *rol->dabufp++ = flex_io->data1;
+  flex_io->csr1 = 0x100;
+  flex_io->csr1 = 0x03;
+  junk = flex_io->csr1;
 } else if(flexio2==1) {
-*rol->dabufp++ = flex_io->data2;
+  *rol->dabufp++ = flex_io->data2;
 /*   flex_io->csr1 = 0x100; */
 /*   flex_io->csr1 = 0x03; */
-flex_io->csr2 = 0x100;
-flex_io->csr2 = 0x03;
-junk = flex_io->csr2;
+  flex_io->csr2 = 0x100;
+  flex_io->csr2 = 0x03;
+  junk = flex_io->csr2;
 } else {
-
   /* In TS Control, readout from IPORT */
   tirdata = tir[1]->tir_iport;
-  //printf("Reading Out TIR data\n");
   *rol->dabufp++ = tirdata & 0xfff;
-}
+  }
+
 
 if(bmwscan==1) {
   //////////////////////////////////////////////////
@@ -609,8 +659,6 @@ if(noscaler == 0) {
       *rol->dabufp++ = pscaler[i]->readCounter[j];
     }
   }
-  /* FOR TESTING PURPOSES... clear scalers after counters are read out */
-  for (i=0; i<NSCALER; i++) pscaler[i]->clear = 1; 
 #endif
 #ifdef TYPE_LEC1151
   /* LeCroy 1151 scaler */
@@ -632,12 +680,101 @@ if(noscaler == 0) {
 #endif
 }
 
-*rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
-//readoutHAPADC(rol->dabufp,ADC_NUMSLOTS-1);
-for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
-//for (i=ADC_NUMSLOTS-1; i>=0; i--) rol->dabufp = readoutHAPADC(rol->dabufp,i);
+
+  if (adc18bit) {  /* read out the 18-bit ADCs.  */
+     *rol->dabufp++ = 0xfadc1800+numadc18;
+     for (iadc = 0; iadc < numadc18; iadc++) {
+
+            
+       adc18_softreset(iadc);
+       adc18_go(iadc); 
+
+       csrA = adc18_getcsr(iadc); 
+
+       if (setdac18_local) {
+         dacnoise18 = dacnoise18 + dacsign18 * 10;
+         if (dacnoise18 > MAXDAC18) dacsign18 = -1;
+         if (dacnoise18 < MINDAC18) dacsign18 = 1;
+         adc18_setdac(iadc,dacnoise18);
+       }
+
+       icnt=0;
+       for (j=0; j<maxloop; j++) {
+         icnt++;
+         if ( !adc18_Busy(iadc) ) break;
+       } 
+
+       /* Put a little more delay, once through is ~10 usec */
+
+       for (j=0; j<5; j++) {
+         adc18_Busy(iadc);
+       } 
+             
+       
+       csrB = adc18_getcsr(iadc); 
+  
+       *rol->dabufp++ = 0xfb0b4000; 
+       *rol->dabufp++ = tirdata & 0xfff;
+       *rol->dabufp++ = iadc;
+       *rol->dabufp++ = maxloop;
+       *rol->dabufp++ = icnt;
+       *rol->dabufp++ = csrA;
+       *rol->dabufp++ = csrB;
+   
+       nevt = adc18_getevtcnt(iadc);
+       nword = adc18_getwordcnt(iadc);
+       nadc18cnt = nevt*nword; 
+
+       *rol->dabufp++ = nevt;
+       *rol->dabufp++ = nword;
+
+       if(icnt > maxloop-10 ) { 
+           *rol->dabufp++ = 0xfa180bad; 
+       } else {
+           *rol->dabufp++ = nadc18cnt;
+
+           ioverflow = 0;  /* flag indicating an overflow */
+         
+// Put only 'nword' data into datastream. Decoding requires event size does not change.
+// Possible flaw if nword is changing which it doesnt seem to.
+
+           for (j=0; j<nword; j++) {
+             if (adc18_DataAvail(iadc)) {
+                *rol->dabufp++ =  adc18_getdata(iadc);
+	     } else {
+ 	        *rol->dabufp++ =  BAD18DATA;  /* should not happen ! */
+	     }
+	   }
+
+// If data still available, flag this event and flush the buffer (but not forever, timeout)
+// We'll need to figure out what this means.
+         
+           timeout = 0;
+           while (adc18_DataAvail(iadc) && timeout++ < 10000)  {
+ 	      ioverflow = 1; 
+              adc18_flush(iadc); 
+           }
+           if (ioverflow) {
+                *rol->dabufp++ = 0xfa18bad1;  /* Might be a bad event (deadtime ?)  */
+           } else {
+                *rol->dabufp++ = 0xfa18b0b1; 
+           }
+
+       }
+
+     }
+
+  }  /* end of 18-bit ADC */
 
 
+  if (adc16bit) {
+    
+    *rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
+    
+    for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
+    
+  }
+  
 *rol->dabufp++ = 0xfffbd000;    /*  Header for timing board info */
 *rol->dabufp++ = getDataHAPTB();
 *rol->dabufp++ = getRampDelayHAPTB();
@@ -665,8 +802,9 @@ if(bmwscan==1) {
   *rol->dabufp++ = ncnt;
 }
 
-for (i = 0; i < ADC_NUMSLOTS; i++) {  
-  if (usesDACHAPADC(i)==1) {
+if (adc16bit) {
+  for (i = 0; i < ADC_NUMSLOTS; i++) {  
+    if (usesDACHAPADC(i)==1) {
     // lookup table of random numbers
     rannum = ranny[rannyint];   /* rand goes from 0 to 32768 */
     rannyint++;
@@ -685,6 +823,7 @@ for (i = 0; i < ADC_NUMSLOTS; i++) {
     //        }             
     //
   }
+}
 }
 
 
@@ -720,11 +859,19 @@ getDACHAPTB(1);
 /* getDACHAPTB(2); */
 
 
+
+
+
+
 /* Disable BUSY Flag */
 oport_state = oport_state & 0xfe;
 tir[1]->tir_oport=oport_state;
 
+
+}  /* matches   "if ( !mtread )  {"   */
+
 %%
+
 
 close event
 
