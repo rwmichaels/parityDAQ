@@ -27,6 +27,16 @@
  *                          Add sis3320SetN5N6() to set interval for accum 5,6
  *                          Add sis3320GetNumAcc() to get num entries in accumulator
  *                          Add sis3320Test2, 3, ..  for new accum.
+ * Mar 2008  G. Franklin
+ *                          sis3320SetupMode
+ *                          sis3320StartSampling
+ *                          sis3320StopSampling
+ *                          sis3320SetGain
+ *                          sis3320WriteAdcSPI
+ *                           (also added adcSPI register to structure of
+ *                                 adcGroup_struct in header file
+ * May 2008 G. Franlin     reorganized
+ *                         see protypes for documentation
  */
 
 #include "vxWorks.h"
@@ -83,6 +93,8 @@ unsigned int repacked_adc_data[SIS3320_MAX_NUMBER_LWORDS];
 /*===========================================================================*/
 /* Prototypes                                                                */
 /*===========================================================================*/
+/*            */
+/* Data Reads */
 int 
 sis3320_Read_ADC_Channel (unsigned int id,
 			  unsigned int adc_channel /* 0 to 7 */, 
@@ -97,36 +109,75 @@ sis3320_Sum_ADC_Channel (unsigned int id,
 			 unsigned int event_sample_start_addr, 
 			 unsigned int event_sample_length,
 			 unsigned int evc);
+int sis3320ReadEvent (int id, UINT32 *data, int nsamp, int adc, int evt) ;
+/* get single sample word at memory location index (lohi=0 or 1 for low or hi word*/
+long sis3320GetData(int id, int adc_channel, int index, int lohi);
+/* get value of accumulator which_accum */
+unsigned long sis3320GetAccum(int id, int adcgr, int adc, int which_accum, int hilo);
+long sis3320GetAccum_V1(int id, int adcgr, int adc, int which);  /*for old 3320 firmware*/
+/* get number of samples summed into accumulator which_ccum */
+long sis3320GetNumAcc(int id, int adcgr, int adc, int which_accum);
+int sis3320GetBufLength(int id);
 
+
+/* Get Status and Setup Parameters */
 int sis3320IsSampling(int id);
 int sis3320IsRunning();
 int sis3320SetRunFlag(int arg);
-
-int sis3320Test1();  /* Bob's test code */
-int sis3320Test2();  /* Bob's test code */
-int sis3320Test3();  /* more test code */
-
-long sis3320GetData(int id, int adc, int index, int lohi);
-
-long sis3320GetAccum_V1(int id, int adcgr, int adc, int which);
-
-long sis3320GetAccum(int id, int adcgr, int adc, int which, int hilo);
-long sis3320GetNumAcc(int id, int adcgr, int adc, int which);
-
-int sis3320DefaultSetup(int id);
-
 int sis3320Finished(int id);
 int sis3320Busy(int id);
+int sis3320DacCsrBusy(int id);   /*used for setting DAC */
+int sis3320GetDac(int id, int chan);   /* get DAC setting */
+int sis3320GetThresh(int id, int chan, int which_thresh); /* which_thresh= 1 or 2 */
+unsigned int sis3320GetN5N6(int id, int chan);  /*Accum 5 and 6 before pre- count*/
+/*                       and post-count settings (packed in 4 bytes word*/         
 
-int sis3320GetBufLength(int id);
-
+/* printout status and other info (Debugging tools) */
+void sis3320Status (int id, int sflag); 
+int sis3320PrintEvent (int id, int adc, int evt, int flag); /*flag=0 no unpacking, 1 hex, 2 for dec*/
+int sis3320PrintEventDir (int id, int adc); 
+void sis3320Display (int id);  /* print out configuration info */
+void sis3320PrintChannelSettings(int id, int chan); /*print DAC and accumulator settings*/
+ 
+/* Set parameters and mode  */
+int sis3320SetRunFlag(int arg);   
+int sis3320Init (UINT32 addr, UINT32 addr_inc, int nadc) ;
+int sis3320DefaultSetup(int id);
+int sis3320SetupMode(int id, int Mode);  /* Sets standard trigger modes*/
+int sis3320SetGain(int id, int adc, int data);/*    accumulator setup */
 int sis3320SetDac(int id, int data);
-
+int sis3320SetDacChan(int id, int chan, int data);
 int sis3320SetThresh_V1(int id, int adc, int lohi, int data);
-int sis3320SetThresh(int id, int adc, int thresh1, int thresh2);
-
+int sis3320SetThresh(
+int id, int adc, int thresh1, int thresh2);
 int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after);
+int sis3320StopDelay (int id, unsigned long delay); /* step # samples after stop signal */
+int sis3320StartDelay (int id, unsigned long delay); 
+void sis3320Reset (int id); 
+void sis3320Start (int id);  /* Arm Sampling Logic and wait for LEMO or software start */
+/*                            (this could have been caled "Arm" */
+void sis3320Stop (int id);   /* Stop Sampling */
+void sis3320StopSampling (int id);   /*Stop Sampling  (same as sis3320Stop) */
+void sis3320Enable (int id);
+void sis3320Disable (int id);
 
+/* interrupt and acquisition mode related routines */
+int sis3320IntSet (int id, int iLevel, int iVec, int iSource);/* Set Intrpt Level, Vector,  Source */
+void sis3320IntAck (int intMask);
+void sis3320Int (void); /* disable interrups */
+STATUS sis3320IntConnect (int id, VOIDFUNCPTR routine, int arg, UINT16 level,
+			  UINT16 vector);
+void sis3320IntEnable (int intMask);
+void sis3320RORA();
+void sis3320ROAK();
+void sis3320IntDisable (int intMask);
+void sis3320EventConfig (int id, unsigned long val);
+unsigned int sis3320AcqConfig (int id, unsigned long val); 
+
+
+/* internal  routines */
+int sis3320WriteAdcSPI(int id, int adc, unsigned int spi_address, unsigned int data);
+int sis3320ReadAdcSPI(int id, int adc, unsigned int* spi_address);
 int sis3320GetMapping(unsigned int id,
 		      unsigned int adc,
 		      unsigned int index,
@@ -134,7 +185,9 @@ int sis3320GetMapping(unsigned int id,
 		      unsigned int* sub_page,    /* return memory subpage*/
 		      unsigned int* sub_index,  /* return index of first data word*/
 		      unsigned int* sub_length); /* return # of words this subpage*/
-		      
+
+/* Misc unknown */
+ void sis3320Run (int id, int rflag, int whichadc); 		      
 
 /*******************************************************************************
  *
@@ -303,7 +356,8 @@ sis3320Status (int id, int sflag)
   printf ("  ACQ CONTROL register = 0x%08x \n", acqreg);
   printf ("\n");
   printf ("  External Start Delay = %d clocks\n", sis3320p[id]->extStartDelay);
-  printf ("  External Stop  Delay = %d clocks\n", sis3320p[id]->extStopDelay);
+  printf ("  External Stop  Delay = %d clocks\n", sis3320p[id]->extStopDelay
+);
 
   printf ("\n  Event Configuration Information \n");
   printf ("  ------------------------------- \n");
@@ -367,8 +421,8 @@ int sis3320IntSet (int id, int iLevel, int iVec, int iSource)
   return (iVal);
 }
 
-void
-sis3320IntAck (int intMask) 
+/* *********************************** */
+void sis3320IntAck (int intMask) 
 {
 
   if (sis3320IntID < 0) 
@@ -385,7 +439,7 @@ sis3320IntAck (int intMask)
   SIS3320_IRQ_ENABLE (sis3320IntID);
 
 }
-
+/* *********************************** */
 void
 sis3320Int (void) 
 {
@@ -417,7 +471,7 @@ sis3320Int (void)
   sysIntEnable (sis3320IntLevel);
 
 }
-
+/* *********************************** */
 STATUS
 sis3320IntConnect (int id, VOIDFUNCPTR routine, int arg, UINT16 level,
 		   UINT16 vector) 
@@ -482,6 +536,7 @@ sis3320IntConnect (int id, VOIDFUNCPTR routine, int arg, UINT16 level,
   sis3320IntSet (id, sis3320IntLevel, sis3320IntVec, 0);
   return (OK);
 }
+/* *********************************** */
 
 void
 sis3320IntEnable (int intMask) 
@@ -525,7 +580,7 @@ sis3320IntEnable (int intMask)
 
   return;
 }
-
+/* *********************************** */
 void
 sis3320RORA() 
 {
@@ -551,7 +606,7 @@ sis3320RORA()
 
   return;
 }
-
+/* *********************************** */
 void
 sis3320ROAK() 
 {
@@ -574,7 +629,7 @@ sis3320ROAK()
 
   return;
 }
-
+/* *********************************** */
 void
 sis3320IntDisable (int intMask) 
 {
@@ -617,8 +672,10 @@ sis3320Reset (int id)
    sis3320SetDac(0,-99999); /* reset DAC */
 }
 
+/* *********************************** */
 void
 sis3320Start (int id) 
+/* Arm Sampling Logic and wait for LEMO or software start */
 {
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
     {
@@ -630,7 +687,7 @@ sis3320Start (int id)
   sis3320p[id]->armSampLogic = 1;
 
 }
-
+/* *********************************** */
 void
 sis3320Stop (int id) 
 {
@@ -643,8 +700,40 @@ sis3320Stop (int id)
   sis3320p[id]->stopSample = 1;
 }
 
+/* *********************************** */
+void
+sis3320StartSampling (int id) 
+/* Start Sampling */
+{
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      logMsg ("sis3320Start: ERROR : ADC id %d not initialized \n",
+	      id, 0, 0, 0, 0, 0);
+      return;
+    }
+
+  sis3320p[id]->startSample = 1;
+
+}
+/* *********************************** */
+void
+sis3320StopSampling (int id) 
+/* Stop Sampling */
+{
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      logMsg ("sis3320Start: ERROR : ADC id %d not initialized \n",
+	      id, 0, 0, 0, 0, 0);
+      return;
+    }
+
+  sis3320p[id]->stopSample = 1;
+
+}
+
 /* Acquisition/Mode Functions */
 
+/* *********************************** */
 void
 sis3320Enable (int id)
 {
@@ -660,9 +749,9 @@ sis3320Enable (int id)
 
 }
 
+/* *********************************** */
 void
-sis3320Disable (int id)
-     
+sis3320Disable (int id)     
 {
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL))
     {
@@ -674,6 +763,7 @@ sis3320Disable (int id)
   sis3320p[id]->disarmSampLogic = 1;
 }
 
+/* *********************************** */
 int
 sis3320StopDelay (int id, unsigned long delay) 
 {
@@ -691,6 +781,7 @@ sis3320StopDelay (int id, unsigned long delay)
   return ((int) (sis3320p[id]->extStopDelay));
 }
 
+/* *********************************** */
 int
 sis3320StartDelay (int id, unsigned long delay) 
 {
@@ -709,6 +800,7 @@ sis3320StartDelay (int id, unsigned long delay)
 }
 
 
+/* *********************************** */
 unsigned int
 sis3320AcqConfig (int id, unsigned long val) 
 {
@@ -728,6 +820,7 @@ sis3320AcqConfig (int id, unsigned long val)
   return (sis3320p[id]->acqCsr);
 }
 
+/* *********************************** */
 void
 sis3320EventConfig (int id, unsigned long val) 
 {
@@ -745,6 +838,7 @@ sis3320EventConfig (int id, unsigned long val)
 
 #define SIS3320_MAX_PRINT_VALS    256
 
+/* *********************************** */
 int
 sis3320PrintEvent (int id, int adc, int evt, int flag) 
 {
@@ -815,6 +909,7 @@ sis3320PrintEvent (int id, int adc, int evt, int flag)
 
 }
 
+/* *********************************** */
 int
 sis3320PrintEventDir (int id, int adc) 
 {
@@ -863,6 +958,7 @@ sis3320PrintEventDir (int id, int adc)
   return (nevents);
 }
 
+/* *********************************** */
 int
 sis3320ReadEvent (int id, UINT32 *data, int nsamp, int adc, int evt) 
 {
@@ -905,6 +1001,7 @@ sis3320ReadEvent (int id, UINT32 *data, int nsamp, int adc, int evt)
   return (pagesize);
 }
 
+/* *********************************** */
 void
 sis3320Display (int id)
 {
@@ -914,24 +1011,30 @@ sis3320Display (int id)
       return;
     }
 
-  printf ("FADC module %d ==========================\n", id);
-  printf ("csr                    0x%x\n", sis3320p[id]->csr);
-  printf ("id                     0x%x\n", sis3320p[id]->id);
-  printf ("intConfig              0x%x\n", sis3320p[id]->intConfig);
-  printf ("intControl             0x%x\n", sis3320p[id]->intControl);
-  printf ("acqCsr                 0x%x\n", sis3320p[id]->acqCsr);
-  printf ("extStartDelay          0x%x\n", sis3320p[id]->extStartDelay);
-  printf ("extStopDelay           0x%x\n", sis3320p[id]->extStopDelay);
-  printf ("maxNofEvReg            0x%x\n", sis3320p[id]->maxNofEvReg);
-  printf ("actEvtCounter          0x%x\n", sis3320p[id]->actEvtCounter);
-  printf ("cbltBxReg              0x%x\n", sis3320p[id]->cbltBxReg);
-  printf ("adcMemPageReg          0x%x\n", sis3320p[id]->adcMemPageReg);
-  printf ("dacCsr                 0x%x\n", sis3320p[id]->dacCsr);
-  printf ("dacDataReg             0x%x\n", sis3320p[id]->dacDataReg);
-  printf ("adcGainReg             0x%x\n", sis3320p[id]->adcGainReg);
-  printf ("xilJtagTestDataIn      0x%x\n", sis3320p[id]->xilJtagTestDataIn);
+  printf ("FADC module %d ==========================%10u\n", id);
+  printf ("csr                    0x%10x \n", sis3320p[id]->csr);
+  printf ("id                     0x%10x \n", sis3320p[id]->id);
+  printf ("intConfig              0x%10x \n", sis3320p[id]->intConfig);
+  printf ("intControl             0x%10x \n", sis3320p[id]->intControl);
+  printf ("acqCsr                 0x%10x \n", sis3320p[id]->acqCsr);
+  printf ("extStartDelay          0x%10x %10u \n", 
+	  sis3320p[id]->extStartDelay,sis3320p[id]->extStartDelay);
+  printf ("extStopDelay           0x%10x %10u\n",
+	 sis3320p[id]->extStopDelay ,sis3320p[id]->extStopDelay);
+  printf ("maxNofEvReg            0x%10x %10u\n",
+	  sis3320p[id]->maxNofEvReg,sis3320p[id]->maxNofEvReg);
+  printf ("actEvtCounter          0x%10x %10u\n", 
+	  sis3320p[id]->actEvtCounter,sis3320p[id]->actEvtCounter);
+  printf ("cbltBxReg              0x%10x \n", sis3320p[id]->cbltBxReg);
+  printf ("adcMemPageReg          0x%10x \n", sis3320p[id]->adcMemPageReg);
+  printf ("dacCsr                 0x%10x \n", sis3320p[id]->dacCsr);
+  printf ("dacDataReg             0x%10x %10u\n", 
+	 sis3320p[id]->dacDataReg ,sis3320p[id]->dacDataReg);
+  printf ("adcGainReg             0x%10x \n", sis3320p[id]->adcGainReg);
+  printf ("xilJtagTestDataIn      0x%10x \n", sis3320p[id]->xilJtagTestDataIn);
 }
 
+/* *********************************** */
 void
 sis3320GrpDisplay (int id, int grp)
 {
@@ -976,7 +1079,42 @@ sis3320GrpDisplay (int id, int grp)
     }
 }
 
-
+void
+sis3320PrintChannelSettings(int id, int chan){
+  /* prints out DAC and accumulator settings */
+  unsigned int n5n6;
+  int n5_before, n5_after,n6_before, n6_after;
+  int lochan,hichan;
+  int i;
+  if(chan==-1){
+    lochan=0;
+    hichan=7;
+  }else if (chan>=0 && chan<8){
+    lochan=chan;
+    hichan=chan;
+  } else {
+    return;
+  }
+  for( i=lochan; i<=hichan; i++){
+    n5n6=sis3320GetN5N6(id,i);
+    n6_after=n5n6 & 0xff;
+    n5n6=n5n6>>8;
+    n6_before=n5n6 & 0xff;
+    n5n6=n5n6>>8;
+    n5_after=n5n6 & 0xff;
+    n5n6=n5n6>>8;
+    n5_before=n5n6 & 0xff;
+    printf("Module     %d  Channel %d\n",id,i);
+    printf("DAC          %d\n", sis3320GetDac(id,i));
+    printf("Threshhold 1 %d\n",sis3320GetThresh(id,i,1));
+    printf("Threshhold 2 %d\n",sis3320GetThresh(id,i,2));
+    printf(" Accum 5 Precount %8d    Postcount %8d\n",n5_before,n5_after);
+    printf(" Accum 6 Precount %8d    Postcount %8d\n",n6_before,n6_after);
+    printf("\n");
+  }
+  return;
+}
+/* *********************************** */
 int
 sis3320GetMapping(unsigned int id,
 		  unsigned int adc_channel,
@@ -1042,6 +1180,7 @@ sis3320GetMapping(unsigned int id,
   return rtn;
 }
 
+/* *********************************** */
 void
 testmap(int index, int length){
   unsigned int id, adc_channel;
@@ -1053,6 +1192,7 @@ testmap(int index, int length){
   printf(" return %d ", rtn);
 return;
 }
+/* *********************************** */
 int 
 sis3320_Read_ADC_Channel (unsigned int id,
 			  unsigned int adc_channel /* 0 to 7 */, 
@@ -1178,6 +1318,7 @@ sis3320_Read_ADC_Channel (unsigned int id,
 }
 
 
+/* *********************************** */
 unsigned int 
 sis3320_Sum_ADC_Channel (unsigned int id,
 			 unsigned int adc_channel /* 0 to 7 */, 
@@ -1313,6 +1454,7 @@ sis3320_Sum_ADC_Channel (unsigned int id,
 }
 
 
+/* *********************************** */
 void
 sis3320Run (int id, int rflag, int whichadc) 
 {
@@ -1404,6 +1546,7 @@ sis3320Run (int id, int rflag, int whichadc)
    */
 
   event_sample_length = SIS3320_16M; /* Wrap half memory */
+  //event_sample_length = SIS3320_512; /* try 512 */
   switch (event_sample_length)
     {
     case SIS3320_64:
@@ -1461,6 +1604,7 @@ sis3320Run (int id, int rflag, int whichadc)
       return;
     }
 
+/* *********************************** */
   sis3320Reset (id);             /* Reset */
   /* Program for multi Event, External start/Stop, 200 MHz */
 
@@ -1493,6 +1637,7 @@ sis3320Run (int id, int rflag, int whichadc)
     sis3320EventConfig (id, 
 		      SIS3320_EVENT_CONF_ENABLE_SAMPLE_LENGTH_STOP |
 		      page_size_wrap |
+ 		      SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE |
                       SIS3320_EVENT_CONF_ENABLE_USER_IN_ACCUM_GATE | 
 		      SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR |
 		      0);
@@ -1503,7 +1648,7 @@ sis3320Run (int id, int rflag, int whichadc)
   /* Program Start Delay, Stop Delay (example: 110 clocks ->550nsec)  */
   sis3320StopDelay (id, 0);
   sis3320StopDelay (id, 0);
-
++
   /* max. Sample Length*/
   data = (event_sample_length & 0xfffffffc) - 4;
 
@@ -1760,7 +1905,7 @@ sis3320Run (int id, int rflag, int whichadc)
 #endif
       
       /*       break; */
-      /*       taskDelay (300); */
+      /*       taskDelay (300); */ 
     }
   
 
@@ -1772,6 +1917,7 @@ sis3320Run (int id, int rflag, int whichadc)
 }
 
 
+/* *********************************** */
 int sis3320IsSampling(int id) {
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
     {
@@ -1781,274 +1927,18 @@ int sis3320IsSampling(int id) {
   return (sis3320p[id]->acqCsr)&0x20000;
 }
 
+/* *********************************** */
 int sis3320IsRunning() {
   return s3320RunFlag;
 }
 
+/* *********************************** */
 int sis3320SetRunFlag(int arg) {
   s3320RunFlag = arg;
+  return 0;
 }
 
-int sis3320Test1(int which_adc) {
-/* Bob's test code, April 25, 2006
-   Something like this for the CRL code eventually  */
-
-  int id = 0;   /* which board */
-  int icnt,itimeout;
-  int i1,i2, buf_len, lohi, ichan, adc, adcval1, adcval2;
-  int nprint, MAX_PRINT;
-  unsigned int adc_sum;
-  unsigned int adc_accum;
- 
-  MAX_PRINT = 20;
-
-  sis3320Reset(id);
-
-  sis3320DefaultSetup(id);
-
-  sis3320SetThresh_V1(0,0,-1,0);
-  /* threshold condition is an "OR".  lower<low .OR. higher>hi */
-  /*  sis3320SetThresh_V1(0,0,0,2000);   lower threshold */
-  /*  sis3320SetThresh_V1(0,0,1,2000);   higher threshold */
-
-
-  sis3320SetRunFlag(1);
-
-  icnt=0;
-
-  while (sis3320IsRunning()) {
-
-    sis3320Start(id);
-
-    icnt++;
-    printf("Start %d \n",icnt);
-
-    itimeout = 0;
-    while ( sis3320Finished(0) == 0 ) {
-       if (itimeout++ > 500000) break;
-    }
-
-    if ( sis3320Finished(id) ) {
-
-      buf_len = sis3320GetBufLength(id);
-      printf("\n\nBuffer length = %d = 0x%x\n",buf_len,buf_len);
-
-      adc_sum = sis3320_Sum_ADC_Channel (id, which_adc, 0, buf_len, 0);
-      printf("ADC sum = %u   which_adc = %d  buf_len = %d = 0x%x \n",adc_sum,which_adc,buf_len,buf_len); 
-
-      printf("Test info %d %d %d \n",which_adc,which_adc>>1,which_adc%2);
-      adc_accum = sis3320GetAccum_V1(id, (which_adc >> 1), which_adc%2, 0);
-      printf("ADC accumulator(1) = %u \n",adc_accum);
-      adc_accum = sis3320GetAccum_V1(id, (which_adc >> 1), which_adc%2, 1);
-      printf("ADC accumulator(2) = %u \n",adc_accum);
-
-
-      if (which_adc < 0) {
-
-        i1 = 0;  i2 = 8;
-      } else {
-        i1 = which_adc; i2 = i1+1;
-      }    
-
-      nprint = buf_len/2;
-      if (nprint > MAX_PRINT) nprint = MAX_PRINT;
-      for (adc = i1; adc < i2; adc++) { 
-	/* n = 0;*/
-         for (ichan = 0; ichan < nprint; ichan++) {
-	   adcval1 = sis3320GetData(id, adc, ichan, 0);
-           adcval2 = sis3320GetData(id, adc, ichan, 1);
-	   printf("ADC %d  Read %d   Data[hi] = (dec)%d = 0x%x  ||  Data[lo] = (dec)%d = 0x%x \n", adc+1, ichan+1, adcval1, adcval1, adcval2, adcval2);
-	 }
-      }
-
-    }
-
-    taskDelay(4*60);
-
-  }
-
-  printf("\n\n All done with sis3320Test1 \n");
-
-}
-
-
-int sis3320Test2(int which_adc) {
-/* Bob's test code, Dec 2007
-   Something like this for the CRL code eventually 
-   aaaaaaaaa  */
-
-  int id = 0;   /* which board */
-  int icnt,itimeout;
-  int iacc;
-  unsigned long numa, acc1, acc2;
-  double accum[6];
-  int i1,i2, buf_len, lohi, ichan, adc, adcval1, adcval2;
-  int nprint, MAX_PRINT;
-  unsigned int adc_sum;
-  unsigned int adc_accum;
- 
-  MAX_PRINT = 20;
-
-  sis3320Reset(id);
-
-  sis3320DefaultSetup(id);
-
-  sis3320SetThresh(0,0,-1,0);
-
-  sis3320SetThresh(0,0,1200,1000);  
-
-  sis3320SetRunFlag(1);
-
-  icnt=0;
-
-  while (sis3320IsRunning()) {
-
-    sis3320Start(id);
-
-    icnt++;
-    printf("Start %d \n",icnt);
-
-    itimeout = 0;
-    while ( sis3320Finished(0) == 0 ) {
-       if (itimeout++ > 500000) break;
-    }
-
-    if ( sis3320Finished(id) ) {
-
-      buf_len = sis3320GetBufLength(id);
-      printf("\n\nBuffer length = %d = 0x%x\n",buf_len,buf_len);
-
-      adc_sum = sis3320_Sum_ADC_Channel (id, which_adc, 0, buf_len, 0);
-      printf("ADC sum = %u   which_adc = %d  buf_len = %d = 0x%x \n",adc_sum,which_adc,buf_len,buf_len); 
-      printf("\nAccumulators 1 - 6 \n");
-      for (iacc = 0; iacc < 6; iacc++) {
-   	  accum[iacc] = 0;
-          numa = sis3320GetNumAcc(id, (which_adc >> 1), which_adc%2, iacc);
-          acc1 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 0);
-          acc2 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 1);
-	  accum[iacc] = acc1*4294967296 + acc2;
-	  printf("# %d   Num Cnts = %d  ;  Hi: 0x%x = %d       Lo = 0x%x = %d     Tot = %f\n",iacc+1,numa,acc1,acc1,acc2,acc2,accum[iacc]); 
-      }
-      
-
-      if (which_adc < 0) {
-
-        i1 = 0;  i2 = 8;
-      } else {
-        i1 = which_adc; i2 = i1+1;
-      }    
-
-      nprint = buf_len/2;
-      if (nprint > MAX_PRINT) nprint = MAX_PRINT;
-      for (adc = i1; adc < i2; adc++) { 
-	/* n = 0;*/
-         for (ichan = 0; ichan < nprint; ichan++) {
-	   adcval1 = sis3320GetData(id, adc, ichan, 0);
-           adcval2 = sis3320GetData(id, adc, ichan, 1);
-	   printf("ADC %d  Read %d   Data[hi] = (dec)%d = 0x%x  ||  Data[lo] = (dec)%d = 0x%x \n", adc+1, ichan+1, adcval1, adcval1, adcval2, adcval2);
-	 }
-      }
-
-    }
-
-    taskDelay(4*60);
-
-  }
-
-  printf("\n\n All done with sis3320Test2 \n");
-
-}
-
-
-
-int sis3320Test3(int which_adc) {
-/* More test code, Dec 2007
-   Something like this for the CRL code eventually 
-   1111111111  */
-
-  int id = 0;   /* which board */
-  int icnt,itimeout;
-  int iacc;
-  unsigned long numa, acc1, acc2;
-  double accum[6];
-  int i1,i2, buf_len, lohi, ichan, adc, adcval1, adcval2;
-  int nprint, MAX_PRINT;
-  unsigned int adc_sum;
-  unsigned int adc_accum;
- 
-  MAX_PRINT = 20;
-
-  sis3320Reset(id);
-
-  sis3320DefaultSetup(id);
-
-  sis3320SetThresh(0,0,-1,0);
-
-  sis3320SetThresh(0,0,1200,1000);  
-
-  sis3320SetRunFlag(1);
-
-  icnt=0;
-
-  while (sis3320IsRunning()) {
-
-    /*    sis3320Start(id); */
-
-    icnt++;
-    printf("Start (Test3)   %d \n",icnt);
-
-    itimeout = 0;
-    while ( sis3320Finished(0) == 0 ) {
-       if (itimeout++ > 500000) break;
-    }
-
-    if ( sis3320Finished(id) ) {
-
-      buf_len = sis3320GetBufLength(id);
-      printf("\n\nBuffer length = %d = 0x%x\n",buf_len,buf_len);
-
-      adc_sum = sis3320_Sum_ADC_Channel (id, which_adc, 0, buf_len, 0);
-      printf("ADC sum = %u   which_adc = %d  buf_len = %d = 0x%x \n",adc_sum,which_adc,buf_len,buf_len); 
-      printf("\nAccumulators 1 - 6 \n");
-      for (iacc = 0; iacc < 6; iacc++) {
-   	  accum[iacc] = 0;
-          numa = sis3320GetNumAcc(id, (which_adc >> 1), which_adc%2, iacc);
-          acc1 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 0);
-          acc2 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 1);
-	  accum[iacc] = acc1*4294967296 + acc2;
-	  printf("# %d   Num Cnts = %d  ;  Hi: 0x%x = %d       Lo = 0x%x = %d     Tot = %f\n",iacc+1,numa,acc1,acc1,acc2,acc2,accum[iacc]); 
-      }
-      
-
-      if (which_adc < 0) {
-
-        i1 = 0;  i2 = 8;
-      } else {
-        i1 = which_adc; i2 = i1+1;
-      }    
-
-      nprint = buf_len/2;
-      if (nprint > MAX_PRINT) nprint = MAX_PRINT;
-      for (adc = i1; adc < i2; adc++) { 
-	/* n = 0;*/
-         for (ichan = 0; ichan < nprint; ichan++) {
-	   adcval1 = sis3320GetData(id, adc, ichan, 0);
-           adcval2 = sis3320GetData(id, adc, ichan, 1);
-	   printf("ADC %d  Read %d   Data[hi] = (dec)%d = 0x%x  ||  Data[lo] = (dec)%d = 0x%x \n", adc+1, ichan+1, adcval1, adcval1, adcval2, adcval2);
-	 }
-      }
-
-    }
-
-    taskDelay(4*60);
-
-  }
-
-  printf("\n\n All done with sis3320Test3 \n");
-
-}
-
-
+/* *********************************** */
 int sis3320Finished(id) {
   /* returns 0 --> finished,  non-zero --> not finished */
 
@@ -2081,6 +1971,7 @@ int sis3320Busy(id) {
   return (sis3320p[id]->acqCsr & SIS3320_ADC_SAMPLING_BUSY); 
 }
 
+/* *********************************** */
 int sis3320GetBufLength(int id) {
 
   int event_sample_length, evdir, buf_len;
@@ -2104,6 +1995,7 @@ int sis3320GetBufLength(int id) {
 }
 
 
+/* *********************************** */
 long sis3320GetData(int id, int adc, int index, int lohi) {
 
   int jj, tmp, idx;
@@ -2143,6 +2035,7 @@ long sis3320GetData(int id, int adc, int index, int lohi) {
 
 }
 
+/* *********************************** */
 int sis3320DefaultSetup(int id) {
 
   /* Default setup for ADC, for the time being (April 27, 2006) */
@@ -2178,6 +2071,7 @@ int sis3320DefaultSetup(int id) {
     sis3320EventConfig (id, 
 		      SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE |
 		      SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR |
+		      SIS3320_EVENT_CONF_PAGE_SIZE_16M_WRAP |
 		      0);
 
     /*  What it was ............
@@ -2229,7 +2123,90 @@ int sis3320DefaultSetup(int id) {
 }
 
 
+/* *********************************** */
+int sis3320SetupMode(int id,int Mode) {
+  /* gbf feb 29, 2008 */
+  /* based on DefaultSetup, but allows multiple predefined modes of running*/
+  /* Mode 1 for long buffers, lemo start and stop */
+  /* Mode 2 for short wrapped buffers, autostart */
+ 
+  unsigned int registerbits;
+  unsigned int data;
+  unsigned int event_sample_length;
+  printf("Setting FADC DAQ MODE %d \n",Mode);
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320SetupMode: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  if(Mode==1) {
+    registerbits= SIS3320_ACQ_ENABLE_LEMO_START_STOP |
+			 SIS3320_ACQ_DISABLE_INTERNAL_TRIGGER |
+		         SIS3320_ACQ_DISABLE_AUTOSTART |
+		         SIS3320_ACQ_ENABLE_MULTIEVENT |
+		         SIS3320_ACQ_SET_CLOCK_TO_250MHZ;   
+    printf("Arg for Acq Config = 0x%x \n", registerbits);
+    sis3320AcqConfig (id, registerbits);
 
+    registerbits=SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE |
+      SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR |
+      SIS3320_EVENT_CONF_PAGE_SIZE_16M_WRAP;
+    printf("page size = 0x%x\n",SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE);
+    printf("Arg for Event Config = 0x%x\n",registerbits);
+    sis3320EventConfig (id,  registerbits) ;
+
+    sis3320p[id]->maxNofEvReg = 1; /* Program 1 event maximum */
+                                   /* max. Sample Length*/  
+    event_sample_length = SIS3320_16M; /* Wrap half memory */
+    data = (event_sample_length & 0xfffffffc) - 4;
+    printf("Sample length = %d = 0x%x \n",data,data);
+    sis3320p[id]->sampLength = data;
+    sis3320p[id]->sampStart = 0; /* sample start Address  */
+/*     data = 0;  /\* 0 for full gain, 1 for half *\/ */
+/*     sis3320p[id]->adcGainReg = data; */
+/*     sis3320SetThresh(0,0,-1,0);   /\* clear thresholds *\/ */
+/*     /\* Give an offset to the signals *\/ */
+/*     data =50000; */
+/*     sis3320SetDac(0, data);   /\* Note, 50000 gives pedestal ~3600 *\/ */
+/*                               /\* 40600 is approximately the midpoint*\/ */
+  }else if (Mode==2){
+    /* small memory wrap mode with autostart */
+    /* Data type 2 */
+    registerbits= SIS3320_ACQ_ENABLE_LEMO_START_STOP |
+			 SIS3320_ACQ_DISABLE_INTERNAL_TRIGGER |
+		         SIS3320_ACQ_DISABLE_AUTOSTART |
+		         SIS3320_ACQ_ENABLE_MULTIEVENT |
+		         SIS3320_ACQ_SET_CLOCK_TO_250MHZ;   
+    printf("Arg for Acq Config = 0x%x \n", registerbits);
+    sis3320AcqConfig (id, registerbits);
+
+    registerbits=SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE |
+      SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR |
+      SIS3320_EVENT_CONF_PAGE_SIZE_512_WRAP;
+    printf("page size = 0x%x\n",SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE);
+    printf("Arg for Event Config = 0x%x\n",registerbits);
+    sis3320EventConfig (id,  registerbits) ;
+
+    sis3320p[id]->maxNofEvReg = 1; /* Program 1 event maximum */
+                                   /* max. Sample Length*/  
+    event_sample_length = SIS3320_512; /* Wrap size */
+    data = (event_sample_length & 0xfffffffc) - 4;
+    printf("Sample length = %d = 0x%x \n",data,data);
+    sis3320p[id]->sampLength = data;
+    sis3320p[id]->sampStart = 0; /* sample start Address*/
+/*     data = 0;  /\* 0 for full gain, 1 for half *\/ */
+/*     sis3320p[id]->adcGainReg = data; */
+/*     sis3320SetThresh(0,0,-1,0);   /\* clear thresholds *\/ */
+/*     /\* Give an offset to the signals *\/ */
+/*     data =50000; */
+/*     sis3320SetDac(0, data);   /\* Note, 50000 gives pedestal ~3600 *\/ */
+/*                               /\* 40600 is approximately the midpoint*\/ */
+  }
+}
+
+
+
+/* *********************************** */
 long sis3320GetAccum_V1(int id, int adcgr, int adc, int which) {
   /* version 1 (V1) for the 2006 version of FADC */
   int i,j;
@@ -2260,7 +2237,8 @@ long sis3320GetAccum_V1(int id, int adcgr, int adc, int which) {
 };
 
 
-long sis3320GetAccum(int id, int adcgr, int adc, int which, int hilo) {
+/* *********************************** */
+unsigned long sis3320GetAccum(int id, int adcgr, int adc, int which, int hilo) {
   /*  New version, Dec 2007
       which = 0-5  (for 6 accumulators)
       hilo ==  0=bits 32-36,   1 = lower 32 bits */
@@ -2304,6 +2282,7 @@ long sis3320GetAccum(int id, int adcgr, int adc, int which, int hilo) {
 
 };
 
+/* *********************************** */
 long sis3320GetNumAcc(int id, int adcgr, int adc, int which) {
   /*  Get the number of values in accum # which
       which = 0-5  (for 6 accumulators)
@@ -2341,7 +2320,9 @@ long sis3320GetNumAcc(int id, int adcgr, int adc, int which) {
 };
 
 
+/* *********************************** */
 int sis3320SetDac(int id, int data) {
+  /* this version sets all 8 DACs to the same value */
   int i,j;
   unsigned int ldata = data;
 
@@ -2350,31 +2331,94 @@ int sis3320SetDac(int id, int data) {
       printf("sis3320SetDac: ERROR : ADC id %d not initialized \n", id);
       return 0;
     }
-
   if (data < -999) {
      printf("sis3320: Reset DAC \n");
      sis3320p[id]->dacCsr = 3;  /* reset */
      return 0;
   }
-
-
-  sis3320p[id]->dacDataReg = ldata;
-
-  sis3320p[id]->dacCsr = 1;  /* write */
-
-  taskDelay(1*60);
-
-  printf("(1) DacCsr  = %d \n",  sis3320p[id]->dacCsr);
-
-  taskDelay(1*60);
-
-  sis3320p[id]->dacCsr = 2;  /* load */
-
-  printf("(2) DacCsr  = %d \n",  sis3320p[id]->dacCsr);
-
+  for( i=0; i<8; i++){
+    sis3320p[id]->dacDataReg = ldata;
+    sis3320p[id]->dacCsr = 1+(i<<4);  /* write data to register*/
+    while( sis3320DacCsrBusy(id) ){
+    }
+    /*taskDelay(1*60);*/
+    sis3320p[id]->dacCsr = 2+(i<<4) ;  /* load data into DAC*/
+    while( sis3320DacCsrBusy(id) ){ /* wait for end of busy bit */
+    }
+  }
 
 };
+/* *********************************** */
+int sis3320SetDacChan(int id, int chan, int data) {
+  /* this version sets DAC for individual channels
+  sets all channels to value "data" if chan=-1 */
+  int i,j;
+  unsigned int ldata = data;
+  int lochan,hichan;
 
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf("sis3320SetDac: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  if (data < -999) {
+     printf("sis3320: Reset DAC \n");
+     sis3320p[id]->dacCsr = 3;  /* reset */
+     return 0;
+  }
+  if(chan==-1){
+    lochan=0;
+    hichan=7;
+  }else if (chan>=0 && chan<8){
+    lochan=chan;
+    hichan=chan;
+  } else {
+    return 0;
+  }
+  for( i=lochan; i<=hichan; i++){
+    printf("setting DAC chan %d to %d\n",i,ldata);
+    sis3320p[id]->dacDataReg = ldata;
+    sis3320p[id]->dacCsr = 1+(i<<4);  /* write data to register*/
+    while( sis3320DacCsrBusy(id) ){
+    }
+    sis3320p[id]->dacCsr = 2+(i<<4) ;  /* load data into DAC*/
+    while( sis3320DacCsrBusy(id)){ /* wait for end of busy bit */
+    }
+  }
+  return 0;
+};
+/* ********************************** */
+int sis3320DacCsrBusy(int id){
+  return ((sis3320p[id]->dacCsr)&0x8000)==0x8000;
+}
+
+
+/* *********************************** */
+int sis3320GetDac(int id, int chan) {
+  /* returns Dac setting */
+  int i,j;
+  unsigned int ldata;
+  int lobits, hibits;
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf("sis3320GetDac: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  
+  sis3320p[id]->dacCsr = 1 +(chan<<4);  /* Needed to set DAC channel*/
+  while( sis3320DacCsrBusy(id)){
+  }
+  ldata=sis3320p[id]->dacDataReg;
+  while( sis3320DacCsrBusy(id)){
+  }
+  lobits= ldata&0xffff;
+  hibits= (ldata>>16)&0xffff;
+  
+  return hibits;
+};
+
+
+/* *********************************** */
 int sis3320SetThresh_V1(int id, int adc, int lohi, int data) {
 
   /* version 1 (V1) for 2006 version of FADC board */
@@ -2438,52 +2482,108 @@ int sis3320SetThresh_V1(int id, int adc, int lohi, int data) {
 }
 
 
-int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after) {
+/* *********************************** */
+/* int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after) { */
+/*   /\* Does this for all channels */
+/*   /\* Set the N5_before, N5_after, N6_before, N6_after variables for */
+/*      accumulators 5 and 6 *\/ */
+/*   int grp; */
 
+/*   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL))  */
+/*     {  */
+/*       printf("sis3320SetN5N6: ERROR : ADC id %d not initialized \n", id); */
+/*       return 0; */
+/*     } */
+/*   grp = adc >> 1; */
+/*   if (n5_before == -1 ) {  */
+/*     printf("Clearing N5, N6 variables \n"); */
+/*     sis3320p[id]->adcG[grp].n5n6befaft1 = 0; */
+/*     sis3320p[id]->adcG[grp].n5n6befaft2 = 0; */
+/*     return 0; */
+/*   } */
+
+/*   sis3320p[id]->adcG[grp].n5n6befaft1 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff); */
+/*   sis3320p[id]->adcG[grp].n5n6befaft2 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff); */
+
+/*   printf("N5, N6 before/after registers = 0x%x  and 0x%x \n", */
+/* 	 sis3320p[id]->adcG[grp].n5n6befaft1, */
+/* 	 sis3320p[id]->adcG[grp].n5n6befaft2); */
+
+/*   return 1; */
+
+/* } */
+/* *********************************** */
+int sis3320SetN5N6(int id, int chan, int n5_before, int n5_after, int n6_before, int n6_after) {
   /* Set the N5_before, N5_after, N6_before, N6_after variables for
-     accumulators 5 and 6 */
+     accumulators 5 and 6.
+     Does this for all channels if chan=-1 */
 
   int grp;
-
+  int lochan, hichan;
+  int i;
+  unsigned int dataword;
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
     { 
       printf("sis3320SetN5N6: ERROR : ADC id %d not initialized \n", id);
       return 0;
     }
- 
-  grp = adc >> 1;
-   
-  if (n5_before == -1 ) { 
-
-    printf("Clearing N5, N6 variables \n");
-    sis3320p[id]->adcG[grp].n5n6befaft1 = 0;
-    sis3320p[id]->adcG[grp].n5n6befaft2 = 0;
-
-    return 0;
-
+  if(chan==-1){
+    lochan=0;
+    hichan=7;
+  }else if (chan>=0 && chan<8){
+    lochan=chan;
+    hichan=chan;
+  } else {
+    printf("illegal channel in call to sis3320SetN5N6\n");
+    return -1;
   }
-
-  sis3320p[id]->adcG[grp].n5n6befaft1 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff);
-  sis3320p[id]->adcG[grp].n5n6befaft2 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff);
-
-  printf("N5, N6 before/after registers = 0x%x  and 0x%x \n",
-	 sis3320p[id]->adcG[grp].n5n6befaft1,
-	 sis3320p[id]->adcG[grp].n5n6befaft2);
-
+  if (n5_before == -1 ) { 
+    dataword=0;
+    if(chan=-1) {
+      printf("Clearing N5, N6 variables for all channels\n");
+    }else {
+      printf("Clearing N5, N6 variables for channel chan \n");
+    }
+  }else {
+    dataword= ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + 
+      ((n6_before & 0xff) << 8) + (n6_after & 0xff);
+  } 
+  for(i=lochan; i<=hichan; i++){
+    printf("Set N5N6 for channel %d to %x\n",i,dataword);
+    grp = i>> 1;
+    if( (i & 0x1) ==0){
+      sis3320p[id]->adcG[grp].n5n6befaft1 = dataword;  /*even numbered channels*/
+    }else{
+      sis3320p[id]->adcG[grp].n5n6befaft2 = dataword;  /*odd numbered channels*/
+    }
+  }
   return 1;
-
+}
+/* *********************************** */
+unsigned int sis3320GetN5N6(int id, int chan){
+  int grp;
+  unsigned int dataword;
+  if(chan>=0 & chan<8){
+    grp=chan>>1;
+    if( (chan&0x1)==0){
+      dataword=sis3320p[id]->adcG[grp].n5n6befaft1;
+    }else{
+      dataword=sis3320p[id]->adcG[grp].n5n6befaft2;
+    }
+    return dataword;
+  }else {
+    return 0;
+  }
 }
 
-   
 
-
+/* *********************************** */
 int sis3320SetThresh(int id, int adc, int thresh1, int thresh2) {
   /* Version for Dec 2007 version of the FADC board */
-  /* Notice the variables are "accThresh*" instead of "accumThresh*" 
-     bbbbbbbbb  */
 
-  int grp;
-
+  int grp,oddeven;
+  unsigned int ldata;
+  
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
     { 
       printf("sis3320SetThresh: ERROR : ADC id %d not initialized \n", id);
@@ -2491,6 +2591,7 @@ int sis3320SetThresh(int id, int adc, int thresh1, int thresh2) {
     }
  
   grp = adc >> 1;
+  oddeven=adc & 0x1;
 
   if ( (thresh1 > 4095) || (thresh2 > 4095) )  {
     printf("sis3320SetThresh:: warning:  thresholds cannot be > 4095 \n");
@@ -2499,49 +2600,102 @@ int sis3320SetThresh(int id, int adc, int thresh1, int thresh2) {
   if (thresh1 == -1 ) { 
 
     printf("Clearing thesholds \n");
-    sis3320p[id]->adcG[grp].accThresh1 = 0;
-    sis3320p[id]->adcG[grp].accThresh2 = 0;
-
+  if( oddeven==0){
+    sis3320p[id]->adcG[grp].accThresh1=0;
+  }else {
+    sis3320p[id]->adcG[grp].accThresh2=0;
+  }
     return 0;
 
   }
 
-  sis3320p[id]->adcG[grp].accThresh1 = ((thresh1 & 0xfff) << 16) + (thresh2 & 0xfff) ;
-  sis3320p[id]->adcG[grp].accThresh2 = ((thresh1 & 0xfff) << 16) + (thresh2 & 0xfff) ;
-
-  printf("Thresholds settings = 0x%x  and 0x%x \n",
-	 sis3320p[id]->adcG[grp].accThresh1,
-	 sis3320p[id]->adcG[grp].accThresh2);
-
+  ldata = ((thresh1 & 0xfff) << 16) + (thresh2 & 0xfff) ;
+  if(oddeven==0){
+    sis3320p[id]->adcG[grp].accThresh1=ldata;
+  }else {
+    sis3320p[id]->adcG[grp].accThresh2=ldata;
+  }
   return 1;
 
+}
+/* *********************************** */
+int sis3320SetGain(int id, int adc, int data) {
+  //sets "CML" bit
+  //replaces old sis3320 instruction with 250MHz model
+  //sis3320p[id]->adcGainReg = data; /* 0 for full gain, 1 for half */
+  // adc= channel number (0 to 7) or =-1 to set all 8 channels
+  int adclo;
+  int adchi;
+  int adc_channel;
+  if(adc==-1){
+    adclo=0;
+    adchi=7;
+  }else {
+    adclo=adc;
+    adchi=adc;
+  }
+  for(adc_channel=adclo; adc_channel<=adchi; adc_channel++){
+    if(data==1){
+      sis3320WriteAdcSPI(id,adc_channel,0xf,0x2);  //set CML  bit in register
+    } else {
+      sis3320WriteAdcSPI(id,adc_channel,0xf,0x0);  //clear CML bit in register
+    }
+    sis3320WriteAdcSPI(id,adc_channel,0xff,0x1);  //issue update command
+  }
+  return 0;
 }
 
    
 
-int sis3320GetThresh(int id, int adc, int which) {
+/* *********************************** */
+int sis3320GetThresh(int id, int chan, int which) {
   /* Obtain threshold (which = 1,2) */
 
-  int grp;
-  int thresh1,thresh2;
-
+  int grp,oddeven;
+  int thresh;
+  unsigned int ldata;
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
     { 
       printf("sis3320SetThresh: ERROR : ADC id %d not initialized \n", id);
       return 0;
     }
  
-  grp = adc >> 1;
-
-  thresh1 = ((sis3320p[id]->adcG[grp].accThresh1 & 0xfff0000)>>16);
-  thresh2 = (sis3320p[id]->adcG[grp].accThresh1 & 0xfff);
-
-  if (which == 0) {
-      return thresh1;
+  grp = chan >> 1;
+  oddeven=chan & 0x1;
+  if(oddeven==0){
+    ldata=sis3320p[id]->adcG[grp].accThresh1;
+  }else{
+    ldata=sis3320p[id]->adcG[grp].accThresh2;
+  }
+  if (which == 1) {
+    thresh = (ldata>>16) & 0xfff;
   } else { 
-      return thresh2;
+    thresh = ldata & 0xfff;
+  }
+  return thresh;
+}
+/* *********************************** */
+int sis3320WriteAdcSPI(int id, int adc, unsigned int spi_addr, unsigned int data){
+  /* set ADC Serial Buss registers.  Needed for Version 2 gain control gbf*/
+  int adc_channel;
+  int which_one;
+  int group;
+  unsigned int vme_addr;
+  unsigned int vme_data;
+  unsigned int tmp;
+  volatile struct adcGroup_struct* adcg;
+  adc_channel= adc & 0x7;   //0 to 7 are valid
+  group= adc_channel >>1;   // 0 and 1 are pair 0, 2 and 3 are pair 2, etc.
+  which_one= adc_channel & 0x1;  //lowest bit is which of channel within pair
+  adcg=&sis3320p[id]->adcG[group];
+  vme_data= (data&0xff)+((spi_addr<<8)& 0x1fff00);
+//bit22=1  ADC channel 2,4,6,8(adc=1,3,5,7)
+  if(which_one==1) vme_data=vme_data + 0x400000;
+  adcg->adcSPI=vme_data;
+  while( adcg->adcSPI& 0x800000){
+    //wait for busy bit to clear
+    //    printf("adcSPI register busy \n");
   }
 
+  return 0;
 }
-
-   

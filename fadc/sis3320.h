@@ -9,6 +9,8 @@
 *
 *  Based on David Abbott's sis3300.h and Strück's sis3320.h
 *
+* Version 2 accumulator stuff added 12/2007
+* API register offsets added 4/2/2008  gbf
 */
 
 #define SIS3320_MAX_BOARDS           8
@@ -34,7 +36,9 @@ struct adcGroup_struct
   volatile unsigned int ddr2MemLogVerify;      /* 0x0??00028 */
   volatile unsigned int trigFlagClearCtr;      /* 0x0??0002C */
   volatile unsigned int trigReg[2][2];         /* 0x0??00030 */
-  unsigned int blank2[4];                      /* 0x0??00040 */
+  volatile unsigned int adcSPI;                /* 0x0??00040 */
+  unsigned int blank2[3];                      /* 0x0??00044 */
+
 /* Accum thresholds and N5_N6_before_after for vers. 2 of accum (Dec 2007) */
   volatile unsigned int accThresh1;            /* 0x0??00050 */
   volatile unsigned int n5n6befaft1;           /* 0x0??00054 */
@@ -201,13 +205,29 @@ const char *sis3320_clksrc_string[] = {"100 MHz", "50 MHz", "25 MHz", "12.5 MHz"
 #define SIS3320_TRIGGER_FLAG_CLR_CNT_ALL_ADC        0x0100002C      
 
 #define SIS3320_ADC_INPUT_MODE_ADC12                0x0200000C    
+#define SIS3320_ADC_INPUT_MODE_ADC34                0x0280000C    
+#define SIS3320_ADC_INPUT_MODE_ADC56                0x0300000C    
+#define SIS3320_ADC_INPUT_MODE_ADC78                0x0380000C    
 
 #define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC1          0x02000010    
 #define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC2          0x02000014    
+#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC3          0x02800010    
+#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC4          0x02800014    
+#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC5          0x03000010    
+#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC6          0x03000014    
+#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC7          0x03800010    
+#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC8          0x03800014    
 
 #define SIS3320_ACTUAL_SAMPLE_VALUE_ADC12           0x02000020    
+#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC34           0x02800020    
+#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC56           0x03000020    
+#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC78           0x03800020
 
-#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC12           0x02000020    
+#define SIS3320_ADC_SPI_ADC12                       0x02000040
+#define SIS3320_ADC_SPI_ADC34                       0x02800040
+#define SIS3320_ADC_SPI_ADC56                       0x03000040
+#define SIS3320_ADC_SPI_ADC78                       0x03800040
+
 #define SIS3320_DDR2_TEST_REGISTER_ADC12            0x02000028      
 #define SIS3320_TRIGGER_FLAG_CLR_CNT_ADC12          0x0200002C      
 
@@ -219,12 +239,6 @@ const char *sis3320_clksrc_string[] = {"100 MHz", "50 MHz", "25 MHz", "12.5 MHz"
 #define SIS3320_EVENT_DIRECTORY_ADC1                0x02010000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 #define SIS3320_EVENT_DIRECTORY_ADC2                0x02018000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 
-#define SIS3320_ADC_INPUT_MODE_ADC34                0x0280000C    
-
-#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC3          0x02800010    
-#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC4          0x02800014    
-
-#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC34           0x02800020    
 #define SIS3320_DDR2_TEST_REGISTER_ADC34            0x02800028      
 #define SIS3320_TRIGGER_FLAG_CLR_CNT_ADC34          0x0280002C      
 
@@ -236,37 +250,23 @@ const char *sis3320_clksrc_string[] = {"100 MHz", "50 MHz", "25 MHz", "12.5 MHz"
 #define SIS3320_EVENT_DIRECTORY_ADC3                0x02810000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 #define SIS3320_EVENT_DIRECTORY_ADC4                0x02818000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 
-#define SIS3320_ADC_INPUT_MODE_ADC56                0x0300000C    
 
-#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC5          0x03000010    
-#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC6          0x03000014    
-
-#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC56           0x03000020    
 #define SIS3320_DDR2_TEST_REGISTER_ADC56            0x03000028      
 #define SIS3320_TRIGGER_FLAG_CLR_CNT_ADC56          0x0300002C      
-
 #define SIS3320_TRIGGER_SETUP_ADC5                  0x03000030    
 #define SIS3320_TRIGGER_THRESHOLD_ADC5              0x03000034    
 #define SIS3320_TRIGGER_SETUP_ADC6                  0x03000038    
 #define SIS3320_TRIGGER_THRESHOLD_ADC6              0x0300003C    
-
 #define SIS3320_EVENT_DIRECTORY_ADC5                0x03010000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 #define SIS3320_EVENT_DIRECTORY_ADC6                0x03018000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 
-#define SIS3320_ADC_INPUT_MODE_ADC78                0x0380000C    
 
-#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC7          0x03800010    
-#define SIS3320_ACTUAL_SAMPLE_ADDRESS_ADC8          0x03800014    
-
-#define SIS3320_ACTUAL_SAMPLE_VALUE_ADC78           0x03800020    
 #define SIS3320_DDR2_TEST_REGISTER_ADC78            0x03800028      
 #define SIS3320_TRIGGER_FLAG_CLR_CNT_ADC78          0x0380002C      
-
 #define SIS3320_TRIGGER_SETUP_ADC7                  0x03800030    
 #define SIS3320_TRIGGER_THRESHOLD_ADC7              0x03800034    
 #define SIS3320_TRIGGER_SETUP_ADC8                  0x03800038    
 #define SIS3320_TRIGGER_THRESHOLD_ADC8              0x0380003C    
-
 #define SIS3320_EVENT_DIRECTORY_ADC7                0x03810000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 #define SIS3320_EVENT_DIRECTORY_ADC8                0x03818000    /* read only; D32, BLT32, MBLT64; size: 512Lwords 0x800 Bytes */
 
