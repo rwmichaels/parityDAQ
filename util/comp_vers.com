@@ -12,7 +12,7 @@ echo "Comparsion of $VERS1 and $VERS2 at `date`">$COMP_LOG
 echo "< in $VERS1,  > in $VERS2">>$COMP_LOG
 echo " ">>$COMP_LOG
 cd $VERS1
-  for file in `ls *.c *.crl *.h Makefile` 
+  for file in `ls *.C *.c *.crl *.h Makefile` 
   do      
     echo "****** file: $(pwd)/$file ******" >> $COMP_LOG
     echo " " >> $COMP_LOG
@@ -26,7 +26,7 @@ cd $VERS1
   done
 # Now see if file in $VERS2 is also in $VERS1
 cd $VERS2
-  for file in `ls *.c *.crl *.h Makefile` 
+  for file in `ls *.C *.c *.crl *.h Makefile` 
   do      
     echo "****** file: $(pwd)/$file ******" >> $COMP_LOG
     echo " " >> $COMP_LOG
