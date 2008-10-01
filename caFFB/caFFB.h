@@ -7,8 +7,12 @@
  ***********************************************************************/
 
 // Function Prototypes
-int cagetFFB(void);
-int caputFFB(int);
+int cagetFFB(int);
+int caputFFB(int,double);
+int cagetFFBverbose(int);
+int caputFFBverbose(int,double);
+double caget(int);
+int caput(int,double);
 
 #define MY_SEVCHK(status)    \
 {                            \
