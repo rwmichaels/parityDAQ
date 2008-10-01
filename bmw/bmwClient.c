@@ -46,14 +46,14 @@ LOCAL objlist             bmwObjlist;              /* the object list */
 
 /***** globals *****/
 
-int bmw_coil_0_amplitude=50;
-int bmw_coil_1_amplitude=50;
-int bmw_coil_2_amplitude=50;
+int bmw_coil_0_amplitude=150;
+int bmw_coil_1_amplitude=150;
+int bmw_coil_2_amplitude=75;
 int bmw_coil_3_amplitude=150;
-int bmw_coil_4_amplitude=150;
-int bmw_coil_5_amplitude=50;
-int bmw_coil_6_amplitude=100;
-int bmw_coil_7_amplitude=20;
+int bmw_coil_4_amplitude=75;
+int bmw_coil_5_amplitude=500;
+int bmw_coil_6_amplitude=150;
+int bmw_coil_7_amplitude=0; //20;
 // int bmw_coil_0_amplitude=150;
 // int bmw_coil_1_amplitude=150;
 // int bmw_coil_2_amplitude=150;
@@ -70,7 +70,7 @@ int bmw_coil_3_cycles_per_pulse=1;
 int bmw_coil_4_cycles_per_pulse=1;
 int bmw_coil_5_cycles_per_pulse=1;
 int bmw_coil_6_cycles_per_pulse=1;
-int bmw_coil_7_cycles_per_pulse=1;
+int bmw_coil_7_cycles_per_pulse=0;
 
 
 int bmw_c_verbose = 0;                /* 1 to get lots of diagnostics */
@@ -130,8 +130,8 @@ int bmw_coil_offset      =    0; /* DC offset for coil modulation (milliamps)*/
 int bmw_e_offset         =    0; /* DC offset for energy modulation */
 //                                 * (keV per pass)
 int bmw_starting_object  =    0; /* Which object to start with */ 
-int bmw_ending_object =       7; /* Which object to end with */ 
-//int bmw_ending_object =       6; /* skipping energy dithering */
+//int bmw_ending_object =       7; /* Which object to end with */ 
+int bmw_ending_object =       6; /* skipping energy dithering */
 
 int bmw_FFBpause_wait    =    5; /* number of steps before/after cycle for FFB pause*/
 
@@ -424,8 +424,8 @@ STATUS bmwClient_script ()
 	//  pause Hall C FFB, and wait for period to assure pause
 	//
 	//fprintf ( stderr, "bmwClient::: Here I (do not) Pause Hall C FFB\n");
-	fprintf ( stderr, "bmwClient::: Here I Pause Hall C FFB\n");
-	caputFFB(1,1);  // pause Hall C FFB.
+	fprintf ( stderr, "bmwClient::: Here I would Pause Hall C FFB\n");
+    //NovTest	caputFFB(1,1);  // pause Hall C FFB.
     
 	//   (copied kludge to avoid server timeout.)
 	for ( i = 0; i < bmw_FFBpause_wait && !bmw_die_die_die; ++i)  {
@@ -484,8 +484,8 @@ STATUS bmwClient_script ()
 	  //
 
 	  //fprintf ( stderr, "bmwClient:::Would release Hall C FFB \n");
-	  fprintf ( stderr, "bmwClient:::Release Hall C FFB \n");
-	  caputFFB(1,0);  // restart Hall C FFB
+	  fprintf ( stderr, "bmwClient:::I would Release Hall C FFB \n");
+    //NovTest	  caputFFB(1,0);  // restart Hall C FFB
 	  //   (copying kludge to avoid server timeout.
 	  for ( i = 0; i < bmw_FFBresume_wait && !bmw_die_die_die; ++i) {
 	    bmw_alive =1;
@@ -518,10 +518,10 @@ STATUS bmwClient_script ()
     // After last object (whether successful or not) 
     // un-pause FFB, and wait for period to assure resumption
     // before releasing cycle notification
-    fprintf ( stderr, "bmwClient::: Here I would Release FFB\n");
+    fprintf ( stderr, "bmwClient::: Here I Release FFB\n");
     caputFFB(0,0);  // restart FFB
 
-    fprintf ( stderr, "bmwClient::: Here I would Release Compton Orbit Lock\n");
+    fprintf ( stderr, "bmwClient::: Here I Release Compton Orbit Lock\n");
     caputFFB(2,0);  // restart Compton Lock
     //   (copying kludge to avoid server timeout.
     for ( i = 0; i < bmw_FFBpause_wait && !bmw_die_die_die; ++i) {
@@ -576,10 +576,10 @@ STATUS bmwClient_script ()
   // make sure that all FFB are unpaused and all notices cleared, in
   // case clear switch set during cycle:
 
-  caputFFB(0,0);  // make sure Hall A FFB isn't paused
-  caputFFB(2,0);  // make sure Compton Lock isn't paused
+    caputFFB(0,0);  // make sure Hall A FFB isn't paused
+    caputFFB(2,0);  // make sure Compton Lock isn't paused
   if (bmw_ending_object>6) {
-    caputFFB(1,0);  // make sure Hall C FFB isn't paused
+    //NovTest    caputFFB(1,0);  // make sure Hall C FFB isn't paused
   }
   //
   // Be sure that world isn't thinking that I'm still modulating energy
