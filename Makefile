@@ -4,6 +4,8 @@ VERS=1.0
 # Uncomment if to profile (warning: this will slow down the code)
 # export PROFILE = 1
 
+# Use vxWorks 5.5 for 6100 boards, else use 5.4 until further notice
+# export USE55=1
 
 ROOTLIBS   = $(shell root-config --libs --new)
 ROOTGLIBS  = $(shell root-config --glibs --new)
@@ -28,10 +30,19 @@ CC = gcc
 SWFLAGS = -DLINUX
 LIBS = -lieee -ldl -lresolv
 #VXDIR = /adaqfs/halla/apar/tornado
-#VXDIR = /adaqfs/halla/apar/vxworks/5.4/h
-VXDIR = $(VXWORKS_INC)
+#VXDIR = $(VXWORKS_INC)
+ifdef USE55
+#  VXDIR = /adaqfs/halla/apar/vxworks/5.5/5.5
+  VXDIR = /adaqfs/halla/a-onl/vxworks/headers/5.5/h
+else
+#  VXDIR = /adaqfs/halla/apar/vxworks/5.4/h
+  VXDIR = /adaqfs/halla/a-onl/vxworks/headers/5.4/h
+endif
 #CCVXFLAGS =  -I$(VXDIR) -DCPU_FAMILY=PPC -DCPU=PPC604
 CCVXFLAGS =  -I$(VXDIR)
+ifdef USE55
+  CCVXFLAGS += -c -mlongcall
+endif
 
 ifdef PROFILE
   CXXFLAGS += -pg
@@ -76,8 +87,8 @@ scan: $(SCAN)
 caFFB: $(CAFFB)
 auto: $(AUTO)
 flexio: $(FLEXIO)
-vxall: $(ADC) $(BMW) $(SOCK) $(TB)  $(SCAN) $(CAFFB) $(AUXTB) $(AUTO) $(FLEXIO)
-all:  $(ADC) $(BMW) $(SOCK) $(TB) $(SCAN) $(CAFFB) $(PROGS) $(SHLIB) $(AUXTB) $(AUTO) $(FLEXIO)
+vxall: $(ADC) $(ADC18) $(BMW) $(SOCK) $(TB)  $(SCAN) $(CAFFB) $(AUXTB) $(AUTO) $(FLEXIO)
+all:  $(ADC) $(ADC18) $(BMW) $(SOCK) $(TB) $(SCAN) $(CAFFB) $(PROGS) $(SHLIB) $(AUXTB) $(AUTO) $(FLEXIO)
 dict:
 #dict: config/GreenMonsterDict.C
 
@@ -133,7 +144,7 @@ adc/HAPADC_rspec.o : adc/HAPADC.c adc/HAPADC.h
 	ccppc -o $@ $(CCVXFLAGS) -DRIGHTSPECT adc/HAPADC.c
 
 adc/HAPADC_config.o : adc/HAPADC_config.c adc/HAPADC_cf_commands.h
-	cd adc; rm -f $@
+	rm -f $@
 	ccppc -o $@ $(CCVXFLAGS) adc/HAPADC_config.c
 
 adc18/hapAdc18Lib.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
@@ -170,7 +181,7 @@ bmw/bmw_config.o : bmw/bmw_config.c bmw/bmw_config.h bmw/bmw_cf_commands.h
  
 flexio/flexio_lib.o : flexio/flexio_lib.c
 	rm -f $@
-	ccppc -o $@ -c $(CCVXFLAGS) flexio/flexio_lib.c
+	ccppc -c $@ -c $(CCVXFLAGS) flexio/flexio_lib.c
 
 cfSock/cfSockCli.o : cfSock/cfSockCli.c cfSock/cfSock.h cfSock/cfSock_types.h
 	rm -f $@

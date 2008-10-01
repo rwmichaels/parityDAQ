@@ -4,6 +4,10 @@
 //  global, from timeboard utilities
 extern int CODA_RUN_IN_PROGRESS;
 
+//  global, vxWorks clock
+extern int vxTicks;
+extern unsigned long ncnt;
+
 // HAPPEX ADC utilities
 extern int ADC_NUMSLOTS;   // number of HAPPEX ADCs
 extern int showHAPADC();   // dump registers of adcs
@@ -24,8 +28,16 @@ extern int setTimeHAPTB(int, int);
 extern int setOverSampleHAPTB(int);
 
 // EPICS Channel Access utilities
-extern int cagetFFB();
-extern int caputFFB(int);
+// extern int cagetFFB();
+// extern int caputFFB(double);
+extern int cagetFFB(int);
+extern int caputFFB(int,double);
+extern double caget(int);
+extern int caput(int,double);
+
+
+// Flexio access libraries
+extern void FIO_WriteChan(int chan, int data);
 
 // global variables for bmw
 extern int  bmw_object;
@@ -33,6 +45,18 @@ extern int  bmw_clean;
 extern int  bmw_clean_pulse;
 extern int  bmw_value;
 extern int  bmw_cycle_number;
+
+// Auxillary Timing Board utilities
+extern int InitAUXTB();
+extern int dumpRegAUXTB();
+extern int getAUXFLAG();
+extern int setAUXFLAG(int, int);
+
+// scan utilities 
+extern int getDataScan(int);
+extern int getCleanScan();
+extern int setDataScan(int,int);
+extern int setCleanScan(int);
 
 
 /* Flexible VME Input/Output Module */
