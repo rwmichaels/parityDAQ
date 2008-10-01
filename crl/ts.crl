@@ -1,0 +1,225 @@
+#  Source for VME control of Trigger Supervisor
+#    (CODA 2.0 readout list)
+#    David Abbott, CEBAF 1996
+#    Modified for HAPPEX by
+#    R. Michaels and B. Moffit  Nov 2002
+#
+#  This TS cannot be run as a ROC.  
+#
+#  Modifications
+
+
+readout list TSL
+maximum 256,512
+polling
+vme readout
+
+
+# Motorola 2400 addressing.
+const TIR_ADDR = 0x0ad0
+const TS_ADDR = hex faed0000
+const MEM_ADDR = hex faed4000
+const MASK_01 = hex 0000ffff
+const MASK_02 = hex 000003ff
+
+include "usrstrutils.c"
+
+static int debug = 1;   /* to debug(1) or not(0) */
+
+static int gdh, inj, happex2, highE;
+
+extern int bigendian_out; 
+
+
+begin download
+
+
+%% 
+/* send data from big endian VME cpu to little endian host (linux)*/
+bigendian_out = 0; 
+
+  init_strings();
+
+  tsmem = (long *)MEM_ADDR;
+  ts = (struct vme_ts *)TS_ADDR;
+  ts->csr = 0x8000;     /* reset Trigger Supervisor*/
+
+%% 
+  log inform " User Download Executed"
+
+end download
+    
+begin prestart
+
+  variable isca
+  variable jj, kk, laddr, mem_value
+  unsigned short temp;
+
+
+  log inform "Entering User Prestart"
+
+  init_strings();
+
+  init trig source VME
+  link sync trig source VME 1 to ts_trig and ts_trig_done
+  event type 1 then read VME 1
+
+  rol->poll = 1;
+  *rol->async_roc = 1;
+  VMEflag = 0;
+  VME_prescale = 1;
+
+%%
+
+  ts->csr = 0x8000;  /* reset */
+  ts->csr = 0x0200;  /* ROC Lock mode on all BRANCHES*/
+  ts->trig = 0x1FFF;  /* Enable ALL triggers. */
+
+/* Get usrstring to determine TS Setup */
+gdh=0;happex2=0;highE=0;inj=0;
+gdh     = getflag(GDH);
+happex2 = getflag(HAPPEX2);
+highE   = getflag(HIGHE);
+inj     = getflag(INJ);
+
+/* Here's a key:
+   ROC0 branch 1  -  Counting House crate
+   ROC1 branch 4  -  LHRS crate
+   ROC2 branch 4  -  RHRS crate
+   ROC0 branch 2  -  Injector crate
+   ROC1 branch 3  -  Test crate
+*/
+
+  jj = 0;
+/* Always include the Counting House DAQ */
+  jj |= 0x01;   /* enable ROC0 on branch 1 */
+
+if(gdh) {
+  jj |= 0x4000000;  /* enable ROC2 on branch 4 */
+  printf("GDH Configuration: 0x%x\n",jj);
+}
+
+if(happex2) {
+  jj |= 0x100;      /* enable ROC0 on branch 2 */
+  jj |= 0x2000000;  /* enable ROC1 on branch 4 */
+  jj |= 0x4000000;  /* enable ROC2 on branch 4 */
+  printf("happex2 Configuration: 0x%x\n",jj);
+}
+
+if(highE) {
+  jj |= 0x2000000;  /* enable ROC1 on branch 4 */
+  jj |= 0x4000000;  /* enable ROC2 on branch 4 */
+  printf("highE Configuration: 0x%x\n",jj);
+}
+
+if(inj) {
+  jj |= 0x100;      /* enable ROC0 on branch 2 */
+  printf("Including Injector Configuration: 0x%x\n",jj);
+}
+
+
+  ts->roc = jj;
+
+  ts->timer[1] = 0x05;   /* Level 2 Timer */
+  ts->timer[2] = 0x05;   /* Level 3 Timer */
+
+/* Set all prescale factors = 1  for HAPPEX */
+
+  for (jj = 0;  jj < 8; jj++) {
+      ts->prescale[jj] = 0;
+  }
+
+/* Front End Busy timer 40ns/count */
+  ts->timer[3] = 10;     
+
+  ts->csr = 0x0080;      /* Enable Timer */
+
+/*  construct memory data  ---  in the following model, all trigger patterns 
+    that form the memory address are assigned to trigger class 1.  For those 
+    trigger patterns with a single hit, the ROC code is set to be the trigger 
+    input number.  For any overlap we set the coda event type to 1 for safety.
+    All level 1 accept (L1A) signals are asserted for every pattern */
+   
+  ts_memory[0] = 0;
+  for( laddr = 1; laddr <= 4095;  laddr++ )          /*  assign data to all memory addresses  */
+	ts_memory[laddr] = 0xFF13;
+  jj = 0;
+  for( laddr = 1; laddr <= 4095;  laddr = 2*laddr )   /*  fix ROC code for single hit patterns  */
+     {
+        jj++;
+        ts_memory[laddr] = 0xFF03 + (0x10)*jj;
+     }
+/* load and test memory */        
+  for( laddr = 0; laddr <= 4095;  laddr++ )
+     {
+        tsmem[laddr] = ts_memory[laddr];
+        mem_value = tsmem[laddr];
+        if( ts_memory[laddr] != ( MASK_01 & mem_value ) )
+                  printf("***** TS memory error %x %x\n",ts_memory[laddr],MASK_01&mem_value);
+     }
+
+/* Enable level 1 hardware */
+    ts->csr = 0x20;
+
+%%
+
+
+  log inform "User Prestart Executed in ts.crl"
+
+end prestart
+
+begin end
+
+
+# Go turned off  
+  ts->csr = 0x10000;   
+  VMEflag = 0;
+
+
+  log inform "User End Executed"
+
+end end
+
+begin pause
+
+  ts->csr = 0x10000;
+  VMEflag = 0;
+
+  log inform "User Pause Executed"
+
+end pause
+
+begin go
+
+%%
+  VMEflag = 0;  /* don't enable dummy triggers */
+  taskDelay(60*3); 
+  ts->csr = 0x21;
+%%
+
+end go
+
+begin trigger ts_trig
+
+end trigger
+
+begin done ts_trig
+
+end done
+
+begin done
+
+  poolEmpty = 0;
+
+end done
+
+begin status
+
+end status
+
+
+
+
+
+
+
