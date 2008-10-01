@@ -41,19 +41,9 @@ const FIFO_EMPTY = hex 100
 const OPORT_BUSY = 1   /* bit 1 = busy output */
 const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
-
-# We'll do just one 18-bit ADC for now
-const ADC18_NUM = 0
-const MAX18CNT = 5000
-const INTERNAL=0
-const EXTERNAL=1
-const TIME18 = INTERNAL
-
-
 int oport_state;   /* output port state (global variable) */
 
 static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
-static int adc18bit, adc16bit, mtread;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -106,8 +96,7 @@ begin download
 
 init_strings();
 
-noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0,flexio2=0;
-adc18bit=0;adc16bit=0;mtread=0;
+noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0;flexio2=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 scaler2   = getflag(SCALER2);    /* Use 2 scalers for this crate */
 bmwscan   = getflag(BMWSCAN);    /* Readout Beam Modulation and Scan Words */
@@ -115,15 +104,9 @@ tbreadout = getflag(TBREADOUT);  /* Write Timing Board config to file */
 evtypefix = getflag(EVTYPEFIX);  /* Correct event type for Injector DAQ */
 flexio    = getflag(FLEXIO);     /* Readout Flexible I/O Module */
 flexio2   = getflag(FLEXIO2);    /* Readout Flexible I/O Module */
-adc18bit  = getflag(ADC18BIT);   /* 18-bit ADC tests  */
-adc16bit  = getflag(ADC16BIT);   /* 16-bit ADC exists(1) or not(0)   */
-mtread    = getflag(MTREAD);     /* Empty readout ?  (1).  For tests */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
-if (adc18bit) {
-  printf("Will use 18-bit ADC \n");
-} 
 if(noscaler == 0) {
   printf("WILL readout scaler: %d\n",noscaler);
 } else {
@@ -162,6 +145,8 @@ if(flexio2==1) {
 /* Setup Device Pointers */
 
 /* Setup TIR */
+printf("About to initialize TIR for TRIG_ADDR=0x%x\n",TRIG_ADDR);
+
 tirInit(TRIG_ADDR);
 
 
@@ -206,11 +191,9 @@ if(flexio2 == 1) {
   flex_io->csr2 = 0x3;    /* Enable External Strobe and Latch Mode */
 }
 
-/* ADC16 Configuration */
+/* ADC Configuration */
 // show default configurations
-  if (adc16bit) {
-    showHAPADC(-1);
-  }
+  showHAPADC(-1);
 
 /* Timing Board configuration */
 // all timing configuration should be done in separate routines, to avoid ambiguity
@@ -298,7 +281,9 @@ srand(9421);       /* seed random num generator */
 tir[1]->tir_csr = 0x80;
 /* inhibit bit */
 oport_state |= OPORT_INB;   
-tir[1]->tir_oport=oport_state;
+
+/*************************/
+ tir[1]->tir_oport=oport_state;
 
 %%
 
@@ -320,29 +305,27 @@ log inform "Entering User Prestart"
 /* Fill Random Integer Array 
    Do this during prestart, so that each run has a different ranny array*/
 
-if (adc16bit) {
-  printf("Generating Random Integer Array\n");
-  printf("Number of Array elements = %d\n",RANDNUM);
-  srand(ncnt);  /* seed random number generator with the event counter */
-  bad_randmake=0;
-  for (j=0;j<RANDNUM;j++) {
-    /* Generate random integers from 2048 to 63488 */
+printf("Generating Random Integer Array\n");
+printf("Number of Array elements = %d\n",RANDNUM);
+srand(ncnt);  /* seed random number generator with the event counter */
+bad_randmake=0;
+for (j=0;j<RANDNUM;j++) {
+  /* Generate random integers from 2048 to 63488 */
+  tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
+  while(tmp_rand==0 || tmp_rand==-1) {
+    bad_randmake=1;
     tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
-    while(tmp_rand==0 || tmp_rand==-1) {
-      bad_randmake=1;
-      tmp_rand = (unsigned short) (61440.0*rand()/(32768+1.0));
-    }
-    ranny[j] = 2048 + tmp_rand;
   }
+  ranny[j] = 2048 + tmp_rand;
+}
 
-  if(bad_randmake==1) {
-    int badfile;
+if(bad_randmake==1) {
+  int badfile;
   
-    badfile=fopen("~apar/bryan/badrand/badrand.hist","a");
-    fprintf(badfile,"Another bad random number generation at ncnt=%d\n",
+  badfile=fopen("~apar/bryan/badrand/badrand.hist","a");
+  fprintf(badfile,"Another bad random number generation at ncnt=%d\n",
 	  ncnt);
-    fclose(badfile);
-  }
+  fclose(badfile);
 }
 %%
 
@@ -391,32 +374,6 @@ if (adc16bit) {
     fclose(fdbfile);
   }
 
-  if (adc18bit) {
-/* Set up 18-bit ADC */
-
-     adc18_zeromem();
-
-     adc18_init(ADC18_NUM,0xed000,0xed100);  /* VME address of board */
-     adc18_reset(ADC18_NUM);    
-
-     if (TIME18 == INTERNAL) {
-       adc18_timesrc(ADC18_NUM,1,3000,26000);  /* Internal time source */
-     } else {
-       adc18_timesrc(ADC18_NUM,0,0,0);  /* External time source */
-     }
-
-     adc18_gatemode(ADC18_NUM,1);            
-     adc18_intgain(ADC18_NUM,2);    /* intgain: 0-3, where 3 is minimum */
-     adc18_setconv(ADC18_NUM,10);    /* conv (gain): 0-15 where 0 is minimum */
-     adc18_setsample(ADC18_NUM,1);
-
-     printf("Loading DAC noise ... \n");
-     adc18_loaddac(ADC18_NUM,2);      
-
-  }
-
-
-
 %%
 
   log inform "User Prestart Executed"
@@ -428,12 +385,14 @@ begin end
   CDODISABLE(VME,1,0);
 
 # inhibit bit
-  oport_state |= OPORT_INB;   
+  oport_state |= OPORT_INB; 
+/*****************************/  
   tir[1]->tir_oport=oport_state;
 
 /* Disable LNE Flag */
    oport_state |= oport_state & 0xfb;
-   tir[1]->tir_oport=oport_state;
+/*****************************/  
+  tir[1]->tir_oport=oport_state;
 
   CODA_RUN_IN_PROGRESS = 0;
 
@@ -506,10 +465,12 @@ if(flexio2 == 1) {
    //   taskDelay(600);
    log inform "about to remove inhibit"
    oport_state = oport_state & 0xfd; 
+/*****************************/  
    tir[1]->tir_oport=oport_state;
 
 /* Enable LNE Flag */
    oport_state |= OPORT_LNE;
+/*****************************/  
    tir[1]->tir_oport=oport_state;
 
   CDOENABLE(VME,1,0);
@@ -520,7 +481,6 @@ end go
 begin trigger partrig
 
 variable i,j, event_ty, event_no
-variable icnt, ncnt, csrA, csrB
 unsigned long ltest;
 unsigned short junk;
 static int dac16val=DEF_DAC16;
@@ -540,11 +500,6 @@ int localBMWval;
 int localBMWcycnum;
 int nscaler;
 int iocTime;
-static int dacnoise18=10000;
-static int MINDAC18=10000;
-static int MAXDAC18=30000;
-static int dacsign18 = 1;
-static int setdac18_local = 0;
 
 int* intpointer;
 
@@ -557,91 +512,42 @@ if(evtypefix==1) EVTYPE &= 1;  /* Fix event type for Injector DAQ */
 event_ty = EVTYPE;
 event_no = *rol->nevents;
 iocTime = vxTicks;
-
 %%
-
-
 
 rol->dabufp = (long *)0;
 open event type EVTYPE of BT_UI4
 
-%%
-
-
-if ( !mtread )  {
+# DEBUGGING PURPOSES ONLY 
+# output hex ffbb0000
+# output event_ty
+# output event_no
 
 ncnt++;
 
+%%
 // Read out TIR inputs FIRST!  It contains helicity info. 
 *rol->dabufp++ = 0xffdaf000;    /* Header for TIR */
+
 if(flexio==1) {
-  *rol->dabufp++ = flex_io->data1;
-  flex_io->csr1 = 0x100;
-  flex_io->csr1 = 0x03;
-  junk = flex_io->csr1;
+*rol->dabufp++ = flex_io->data1;
+  /*  flex_io->csr1 = 0x8000; */ /* Reset Module */
+flex_io->csr1 = 0x100;
+flex_io->csr1 = 0x03;
+junk = flex_io->csr1;
 } else if(flexio2==1) {
-  *rol->dabufp++ = flex_io->data2;
+*rol->dabufp++ = flex_io->data2;
 /*   flex_io->csr1 = 0x100; */
 /*   flex_io->csr1 = 0x03; */
-  flex_io->csr2 = 0x100;
-  flex_io->csr2 = 0x03;
-  junk = flex_io->csr2;
+flex_io->csr2 = 0x100;
+flex_io->csr2 = 0x03;
+junk = flex_io->csr2;
 } else {
+
   /* In TS Control, readout from IPORT */
   tirdata = tir[1]->tir_iport;
+  //printf("Reading Out TIR data\n");
   *rol->dabufp++ = tirdata & 0xfff;
 }
-
-  if (adc18bit) {  /* read out the 18-bit ADC.  Only 1 for now */
-
-     adc18_softreset(ADC18_NUM);
-     adc18_go(ADC18_NUM); 
-
-     csrA = adc18_getcsr(ADC18_NUM); 
-
-     if (setdac18_local) {
-       dacnoise18 = dacnoise18 + dacsign18 * 10;
-       if (dacnoise18 > MAXDAC18) dacsign18 = -1;
-       if (dacnoise18 < MINDAC18) dacsign18 = 1;
-       adc18_setdac(ADC18_NUM,dacnoise18);
-     }
-
-     icnt = 0;
-     while ( adc18_Busy(ADC18_NUM) ) {
-         if (icnt++ > 500000) break;
-     }
-
-     for (i = 0; i < 50; i++) {
-        adc18_Busy(ADC18_NUM); /* each is ~10 usec */
-     }
-
-     csrB = adc18_getcsr(ADC18_NUM); 
-
-     *rol->dabufp++ = 0xfb0b4000; 
-     *rol->dabufp++ = tirdata & 0xfff;
-     *rol->dabufp++ = icnt;
-     *rol->dabufp++ = csrA;
-     *rol->dabufp++ = csrB;
-
-     ncnt = adc18_getcnt(ADC18_NUM);
-     if (ncnt > MAX18CNT) ncnt = MAX18CNT;  
-  
-     *rol->dabufp++ = 0xfadc1800; 
-
-     *rol->dabufp++ = csrB;
-
-     if(icnt > 500000 ) { 
-         *rol->dabufp++ = 0xfa180bad; 
-     } else {
-       *rol->dabufp++ = ncnt;
-       for (icnt = 0; icnt < ncnt; icnt++) {
-           *rol->dabufp++ = adc18_getdata(ADC18_NUM);
-       }
-     }
-
-  }  /* end of 18-bit ADC */
-
-
 
 if(bmwscan==1) {
   //////////////////////////////////////////////////
@@ -726,14 +632,10 @@ if(noscaler == 0) {
 #endif
 }
 
-
-if (adc16bit) {
-
-  *rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
-
-  for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
-
-}
+*rol->dabufp++ = 0xffadc000 + ADC_NUMSLOTS;   /* Header for ADC */  
+//readoutHAPADC(rol->dabufp,ADC_NUMSLOTS-1);
+for (i=0; i < ADC_NUMSLOTS; i++) rol->dabufp = readoutHAPADC(rol->dabufp,i);
+//for (i=ADC_NUMSLOTS-1; i>=0; i--) rol->dabufp = readoutHAPADC(rol->dabufp,i);
 
 
 *rol->dabufp++ = 0xfffbd000;    /*  Header for timing board info */
@@ -763,9 +665,8 @@ if(bmwscan==1) {
   *rol->dabufp++ = ncnt;
 }
 
-if (adc16bit) {
-  for (i = 0; i < ADC_NUMSLOTS; i++) {  
-    if (usesDACHAPADC(i)==1) {
+for (i = 0; i < ADC_NUMSLOTS; i++) {  
+  if (usesDACHAPADC(i)==1) {
     // lookup table of random numbers
     rannum = ranny[rannyint];   /* rand goes from 0 to 32768 */
     rannyint++;
@@ -784,7 +685,6 @@ if (adc16bit) {
     //        }             
     //
   }
-}
 }
 
 
@@ -824,11 +724,7 @@ getDACHAPTB(1);
 oport_state = oport_state & 0xfe;
 tir[1]->tir_oport=oport_state;
 
-
-}  /* matches   "if ( !mtread )  {"   */
-
 %%
-
 
 close event
 
