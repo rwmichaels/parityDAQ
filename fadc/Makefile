@@ -1,9 +1,9 @@
 #  Build system for SIS3320 FADC
-#  June 5, 2006  Switch to vxWorks 5.5
+#  June 5, 2007  Switch to vxWorks 5.5
 
 export OSNAME       := $(shell uname)
 
-VXDIR=/home/adaq/vxworks/5.5
+VXDIR=/adaqfs/halla/apar/vxworks/5.5/5.5
 CCVXFLAGS =  -I$(VXDIR) -DCPU_FAMILY=PPC -DCPU=PPC604 -mlongcall
 
 

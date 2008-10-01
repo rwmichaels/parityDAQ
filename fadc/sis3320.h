@@ -26,7 +26,7 @@ struct adcGroup_struct
   volatile unsigned int sampStart;             /* 0x0??00008 */
   volatile unsigned int adcInputMode;          /* 0x0??0000C */
   volatile unsigned int nextSampAdr[2];        /* 0x0??00010 */
-  /* these next 2 new, Sept 2006 */
+  /* these next 2 are for vers.1 of accum (Sept 2006) */
   volatile unsigned int accumThresh1;          /* 0x0??00018 */
   volatile unsigned int accumThresh2;          /* 0x0??0001C */
   volatile unsigned int actSampVal;            /* 0x0??00020 */
@@ -34,9 +34,15 @@ struct adcGroup_struct
   volatile unsigned int ddr2MemLogVerify;      /* 0x0??00028 */
   volatile unsigned int trigFlagClearCtr;      /* 0x0??0002C */
   volatile unsigned int trigReg[2][2];         /* 0x0??00030 */
-  unsigned int blank2[16368];                  /* 0x0??00040 */
+  unsigned int blank2[4];                      /* 0x0??00040 */
+/* Accum thresholds and N5_N6_before_after for vers. 2 of accum (Dec 2007) */
+  volatile unsigned int accThresh1;            /* 0x0??00050 */
+  volatile unsigned int n5n6befaft1;           /* 0x0??00054 */
+  volatile unsigned int accThresh2;            /* 0x0??00058 */
+  volatile unsigned int n5n6befaft2;           /* 0x0??0005C */
+  unsigned int blank3[16360];                  /* 0x0??00060 */
   volatile unsigned int eventDir[2][512];      /* 0x0??10000 */
-  unsigned int blank3[2079744];                /* 0x0??00000 */
+  unsigned int blank4[2079744];                /* 0x0??00000 */
 };  
 
 
@@ -276,7 +282,8 @@ const char *sis3320_clksrc_string[] = {"100 MHz", "50 MHz", "25 MHz", "12.5 MHz"
 #define SIS3320_NEXT_ADC_OFFSET                     0x00800000    
 
 /* define sample clock */
-#define SIS3320_ACQ_SET_CLOCK_TO_200MHZ             0x70000000  /* default after Reset  */
+#define SIS3320_ACQ_SET_CLOCK_TO_250MHZ             0x70008000  
+#define SIS3320_ACQ_SET_CLOCK_TO_200MHZ             0xf0000000  /* default after Reset  */
 #define SIS3320_ACQ_SET_CLOCK_TO_100MHZ             0x60001000
 #define SIS3320_ACQ_SET_CLOCK_TO_50MHZ              0x50002000
 #define SIS3320_ACQ_SET_CLOCK_TO_LEMO_CLOCK_IN      0x10006000

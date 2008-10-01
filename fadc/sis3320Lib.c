@@ -19,6 +19,14 @@
  *                              sis3320GetBufLength(), sis3320SetDac(),
  *                              sis3320SetThresh()
  *
+ * December 2007  G.Franklin   Add sis3320GetMapping();
+ *                             modify debug prints in sis3320_Sum_ADC_Channel
+ *
+ * Dec ´07    R. Michaels   Deprecate old GetAccum, and SetThresh for new
+ *                          version of FADC.  Old one is *_V1 (version 1).
+ *                          Add sis3320SetN5N6() to set interval for accum 5,6
+ *                          Add sis3320GetNumAcc() to get num entries in accumulator
+ *                          Add sis3320Test2, 3, ..  for new accum.
  */
 
 #include "vxWorks.h"
@@ -95,10 +103,15 @@ int sis3320IsRunning();
 int sis3320SetRunFlag(int arg);
 
 int sis3320Test1();  /* Bob's test code */
+int sis3320Test2();  /* Bob's test code */
+int sis3320Test3();  /* more test code */
 
 long sis3320GetData(int id, int adc, int index, int lohi);
 
-long sis3320GetAccum(int id, int adcgr, int adc, int which);
+long sis3320GetAccum_V1(int id, int adcgr, int adc, int which);
+
+long sis3320GetAccum(int id, int adcgr, int adc, int which, int hilo);
+long sis3320GetNumAcc(int id, int adcgr, int adc, int which);
 
 int sis3320DefaultSetup(int id);
 
@@ -109,7 +122,19 @@ int sis3320GetBufLength(int id);
 
 int sis3320SetDac(int id, int data);
 
-int sis3320SetThresh(int id, int adc, int lohi, int data);
+int sis3320SetThresh_V1(int id, int adc, int lohi, int data);
+int sis3320SetThresh(int id, int adc, int thresh1, int thresh2);
+
+int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after);
+
+int sis3320GetMapping(unsigned int id,
+		      unsigned int adc,
+		      unsigned int index,
+		      unsigned int length,
+		      unsigned int* sub_page,    /* return memory subpage*/
+		      unsigned int* sub_index,  /* return index of first data word*/
+		      unsigned int* sub_length); /* return # of words this subpage*/
+		      
 
 /*******************************************************************************
  *
@@ -952,6 +977,82 @@ sis3320GrpDisplay (int id, int grp)
 }
 
 
+int
+sis3320GetMapping(unsigned int id,
+		  unsigned int adc_channel,
+		  unsigned int sample_index,
+		  unsigned int sample_length,
+		  unsigned int* sub_page_rtn,    /* rtn memory subpage*/
+       	          unsigned int* sub_index_rtn,  /*rtn  address of first data word*/
+		  unsigned int* sub_length_rtn) /* rtn # of samples this subpage*/
+{
+  /* returns info need to read out set of data words from FADC 
+   * inputs:
+   * id  FADC module number
+   * adc_channel  adc channel (0 - 7)
+   * sample_index   index of first data sample desired
+   * sample_length  number of data samples desired
+   * output:
+   * sub_page_rtn  use "sis3320p[id]->adcMemPageReg=sub_page" to set to correct page
+   * sub_index_rtn  index of first WORD corresponding to data sample "index"
+   * sub_length_rtn  Number of data WORDS (two data samples per word)
+   *
+   * NOTE: reading out "sub_words" number of data words will either correspond
+   * to readding out "length" number of samples OR it will bring us to the end
+   * of the address page.  In the latter case, this routine will have to be
+   * called again to get mapping for the next set of data.
+   */
+ 
+  unsigned int max_page_sample_length;
+  unsigned int page_sample_length_mask;
+
+  int sub_index;
+  int sub_page;
+  int sub_length;
+  int rtn;
+ 
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      logMsg ("sis3320EventConfig: ERROR : ADC id %d not initialized \n",
+	      id, 0, 0, 0, 0, 0);
+      return;
+    }
+  /*
+   * max_page_sample_length
+   * Maximum # of samples per address space page = 4M.  Not to be
+   * confused with length of wrap page or with event sample length!
+   * Don't change this.
+   */
+  max_page_sample_length  = SIS3320_4M;  
+  page_sample_length_mask = max_page_sample_length - 1;
+  
+  sub_index =  
+    (sample_index &  page_sample_length_mask) ; /* max 32 MSample*/
+  sub_page = (sample_index>>22) & 0x7;    /*upper 3 bits determine memory page */
+  sub_length     =  SIS3320_4M-sample_index;  /*# remaining samples this page*/
+  if(sub_length>sample_length) {
+    sub_length=sample_length; /*finish with this page*/
+    rtn=0;                    /*flag for last set of data*/
+  } else {
+    rtn=1;                    /*flag for more data after this page*/
+  }
+  *sub_page_rtn=sub_page;
+  *sub_index_rtn=sub_index;
+  *sub_length_rtn=sub_length;
+  return rtn;
+}
+
+void
+testmap(int index, int length){
+  unsigned int id, adc_channel;
+  unsigned int sub_page, sub_index,sub_length;
+  int rtn;
+  rtn=sis3320GetMapping(0,0,index,length,&sub_page,&sub_index,&sub_length);
+  printf(" index %d length %d gives sub_page %d sub_index %d sub_length %d ",
+	 sub_page,sub_index,sub_length);
+  printf(" return %d ", rtn);
+return;
+}
 int 
 sis3320_Read_ADC_Channel (unsigned int id,
 			  unsigned int adc_channel /* 0 to 7 */, 
@@ -1094,6 +1195,7 @@ sis3320_Sum_ADC_Channel (unsigned int id,
    * data enabled)
    */
 
+  static int debug=0;    /* to print debug stuff, set to 1 or 2 */
   unsigned int i, idx;
   unsigned int data;
   unsigned int addr;
@@ -1118,11 +1220,12 @@ sis3320_Sum_ADC_Channel (unsigned int id,
 	      id, 0, 0, 0, 0, 0);
       return;
     }
-
-  printf ("id = 0x%x\n", id);
-  printf ("adc_channel  = 0x%x\n", adc_channel);
-  printf ("event_sample_start_addr  = 0x%x\n", event_sample_start_addr);
-  printf ("event_sample_length  = 0x%x\n", event_sample_length);
+  if(debug) {
+    printf ("Sum_ADC_Channel called with id = 0x%x\n", id);
+    printf ("adc_channel  = 0x%x\n", adc_channel);
+    printf ("event_sample_start_addr  = 0x%x\n", event_sample_start_addr);
+    printf ("event_sample_length  = 0x%x\n", event_sample_length);
+  }
 
   /*
    * max_page_sample_length
@@ -1140,7 +1243,7 @@ sis3320_Sum_ADC_Channel (unsigned int id,
   if (rest_event_sample_length  >= SIS3320_32M) 
     rest_event_sample_length =  SIS3320_32M;
   
-  printf ("next_event_sample_start_addr = 0x%08x  rest_event_sample_length = 0x%08x \n", next_event_sample_start_addr, rest_event_sample_length);
+  if(debug) printf ("next_event_sample_start_addr = 0x%08x  rest_event_sample_length = 0x%08x \n", next_event_sample_start_addr, rest_event_sample_length);
   
   sum = 0;
   while (rest_event_sample_length > 0)
@@ -1162,7 +1265,7 @@ sis3320_Sum_ADC_Channel (unsigned int id,
       /* set page*/
       data = sub_page_addr_offset;
       sis3320p[id]->adcMemPageReg = data;
-      printf ("Set hardware page 0x%x\n", data);
+      if(debug>1) printf ("Set hardware page 0x%x\n", data);
 
       /* sum         */
       req_nof_lwords = (sub_event_sample_length) / 2 ; /* Lwords*/
@@ -1198,10 +1301,12 @@ sis3320_Sum_ADC_Channel (unsigned int id,
       
       next_event_sample_start_addr += sub_event_sample_length    ;  
       rest_event_sample_length     -= sub_event_sample_length    ;  
-      printf ("next_event_sample_start_addr = 0x%08x  rest_event_sample_length = 0x%08x \n",next_event_sample_start_addr, rest_event_sample_length);
+      if(debug>1){
+	printf ("next_event_sample_start_addr = 0x%08x  rest_event_sample_length = 0x%08x \n",next_event_sample_start_addr, rest_event_sample_length);
       
       /*printf ("addr           = 0x%08x \n",addr);*/
       /*printf ("req_nof_lwords = 0x%08x \n",req_nof_lwords);*/
+      }
     }
   
   return sum;
@@ -1222,9 +1327,12 @@ sis3320Run (int id, int rflag, int whichadc)
   int return_code;
 
   unsigned int gl_loop_counter;
+ 
+  int iacc;
   
   unsigned int data;
   unsigned int addr;
+  unsigned long numa,acc1,acc2;
   
   unsigned int ADC_InputTestMode_array[4];
   unsigned int event_sample_length;
@@ -1581,7 +1689,13 @@ sis3320Run (int id, int rflag, int whichadc)
 	      SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR)
 	    printf ("ievt %d   Accumulator sum = 0x%x\n", ievt, evdircopy[ievt]);
 	  
-          printf("Accum(2) = %d = 0x%x\n",sis3320GetAccum(id, (i_adc >> 1), i_adc%2, 0),sis3320GetAccum(id, (i_adc >> 1), i_adc%2, 0));
+          printf("\nAccumulators 1 - 6 \n");
+          for (iacc = 0; iacc < 6; iacc++) {
+            numa = sis3320GetNumAcc(id, (i_adc >> 1), i_adc%2, iacc);
+            acc1 = sis3320GetAccum(id, (i_adc >> 1), i_adc%2, iacc, 0);
+            acc2 = sis3320GetAccum(id, (i_adc >> 1), i_adc%2, iacc, 1);
+               printf("Num:  %d    Hi: 0x%x = %d      Lo = 0x%x = %d \n",numa,acc1,acc1,acc2,acc2);
+	  }
 
 	  printf ("Software sum =    0x%x\n", 
 	    sis3320_Sum_ADC_Channel (id,
@@ -1692,10 +1806,10 @@ int sis3320Test1(int which_adc) {
 
   sis3320DefaultSetup(id);
 
-  sis3320SetThresh(0,0,-1,0);
+  sis3320SetThresh_V1(0,0,-1,0);
   /* threshold condition is an "OR".  lower<low .OR. higher>hi */
-  /*  sis3320SetThresh(0,0,0,2000);   lower threshold */
-  /*  sis3320SetThresh(0,0,1,2000);   higher threshold */
+  /*  sis3320SetThresh_V1(0,0,0,2000);   lower threshold */
+  /*  sis3320SetThresh_V1(0,0,1,2000);   higher threshold */
 
 
   sis3320SetRunFlag(1);
@@ -1723,13 +1837,14 @@ int sis3320Test1(int which_adc) {
       printf("ADC sum = %u   which_adc = %d  buf_len = %d = 0x%x \n",adc_sum,which_adc,buf_len,buf_len); 
 
       printf("Test info %d %d %d \n",which_adc,which_adc>>1,which_adc%2);
-      adc_accum = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, 0);
+      adc_accum = sis3320GetAccum_V1(id, (which_adc >> 1), which_adc%2, 0);
       printf("ADC accumulator(1) = %u \n",adc_accum);
-      adc_accum = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, 1);
+      adc_accum = sis3320GetAccum_V1(id, (which_adc >> 1), which_adc%2, 1);
       printf("ADC accumulator(2) = %u \n",adc_accum);
 
 
       if (which_adc < 0) {
+
         i1 = 0;  i2 = 8;
       } else {
         i1 = which_adc; i2 = i1+1;
@@ -1753,6 +1868,183 @@ int sis3320Test1(int which_adc) {
   }
 
   printf("\n\n All done with sis3320Test1 \n");
+
+}
+
+
+int sis3320Test2(int which_adc) {
+/* Bob's test code, Dec 2007
+   Something like this for the CRL code eventually 
+   aaaaaaaaa  */
+
+  int id = 0;   /* which board */
+  int icnt,itimeout;
+  int iacc;
+  unsigned long numa, acc1, acc2;
+  double accum[6];
+  int i1,i2, buf_len, lohi, ichan, adc, adcval1, adcval2;
+  int nprint, MAX_PRINT;
+  unsigned int adc_sum;
+  unsigned int adc_accum;
+ 
+  MAX_PRINT = 20;
+
+  sis3320Reset(id);
+
+  sis3320DefaultSetup(id);
+
+  sis3320SetThresh(0,0,-1,0);
+
+  sis3320SetThresh(0,0,1200,1000);  
+
+  sis3320SetRunFlag(1);
+
+  icnt=0;
+
+  while (sis3320IsRunning()) {
+
+    sis3320Start(id);
+
+    icnt++;
+    printf("Start %d \n",icnt);
+
+    itimeout = 0;
+    while ( sis3320Finished(0) == 0 ) {
+       if (itimeout++ > 500000) break;
+    }
+
+    if ( sis3320Finished(id) ) {
+
+      buf_len = sis3320GetBufLength(id);
+      printf("\n\nBuffer length = %d = 0x%x\n",buf_len,buf_len);
+
+      adc_sum = sis3320_Sum_ADC_Channel (id, which_adc, 0, buf_len, 0);
+      printf("ADC sum = %u   which_adc = %d  buf_len = %d = 0x%x \n",adc_sum,which_adc,buf_len,buf_len); 
+      printf("\nAccumulators 1 - 6 \n");
+      for (iacc = 0; iacc < 6; iacc++) {
+   	  accum[iacc] = 0;
+          numa = sis3320GetNumAcc(id, (which_adc >> 1), which_adc%2, iacc);
+          acc1 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 0);
+          acc2 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 1);
+	  accum[iacc] = acc1*4294967296 + acc2;
+	  printf("# %d   Num Cnts = %d  ;  Hi: 0x%x = %d       Lo = 0x%x = %d     Tot = %f\n",iacc+1,numa,acc1,acc1,acc2,acc2,accum[iacc]); 
+      }
+      
+
+      if (which_adc < 0) {
+
+        i1 = 0;  i2 = 8;
+      } else {
+        i1 = which_adc; i2 = i1+1;
+      }    
+
+      nprint = buf_len/2;
+      if (nprint > MAX_PRINT) nprint = MAX_PRINT;
+      for (adc = i1; adc < i2; adc++) { 
+	/* n = 0;*/
+         for (ichan = 0; ichan < nprint; ichan++) {
+	   adcval1 = sis3320GetData(id, adc, ichan, 0);
+           adcval2 = sis3320GetData(id, adc, ichan, 1);
+	   printf("ADC %d  Read %d   Data[hi] = (dec)%d = 0x%x  ||  Data[lo] = (dec)%d = 0x%x \n", adc+1, ichan+1, adcval1, adcval1, adcval2, adcval2);
+	 }
+      }
+
+    }
+
+    taskDelay(4*60);
+
+  }
+
+  printf("\n\n All done with sis3320Test2 \n");
+
+}
+
+
+
+int sis3320Test3(int which_adc) {
+/* More test code, Dec 2007
+   Something like this for the CRL code eventually 
+   1111111111  */
+
+  int id = 0;   /* which board */
+  int icnt,itimeout;
+  int iacc;
+  unsigned long numa, acc1, acc2;
+  double accum[6];
+  int i1,i2, buf_len, lohi, ichan, adc, adcval1, adcval2;
+  int nprint, MAX_PRINT;
+  unsigned int adc_sum;
+  unsigned int adc_accum;
+ 
+  MAX_PRINT = 20;
+
+  sis3320Reset(id);
+
+  sis3320DefaultSetup(id);
+
+  sis3320SetThresh(0,0,-1,0);
+
+  sis3320SetThresh(0,0,1200,1000);  
+
+  sis3320SetRunFlag(1);
+
+  icnt=0;
+
+  while (sis3320IsRunning()) {
+
+    /*    sis3320Start(id); */
+
+    icnt++;
+    printf("Start (Test3)   %d \n",icnt);
+
+    itimeout = 0;
+    while ( sis3320Finished(0) == 0 ) {
+       if (itimeout++ > 500000) break;
+    }
+
+    if ( sis3320Finished(id) ) {
+
+      buf_len = sis3320GetBufLength(id);
+      printf("\n\nBuffer length = %d = 0x%x\n",buf_len,buf_len);
+
+      adc_sum = sis3320_Sum_ADC_Channel (id, which_adc, 0, buf_len, 0);
+      printf("ADC sum = %u   which_adc = %d  buf_len = %d = 0x%x \n",adc_sum,which_adc,buf_len,buf_len); 
+      printf("\nAccumulators 1 - 6 \n");
+      for (iacc = 0; iacc < 6; iacc++) {
+   	  accum[iacc] = 0;
+          numa = sis3320GetNumAcc(id, (which_adc >> 1), which_adc%2, iacc);
+          acc1 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 0);
+          acc2 = sis3320GetAccum(id, (which_adc >> 1), which_adc%2, iacc, 1);
+	  accum[iacc] = acc1*4294967296 + acc2;
+	  printf("# %d   Num Cnts = %d  ;  Hi: 0x%x = %d       Lo = 0x%x = %d     Tot = %f\n",iacc+1,numa,acc1,acc1,acc2,acc2,accum[iacc]); 
+      }
+      
+
+      if (which_adc < 0) {
+
+        i1 = 0;  i2 = 8;
+      } else {
+        i1 = which_adc; i2 = i1+1;
+      }    
+
+      nprint = buf_len/2;
+      if (nprint > MAX_PRINT) nprint = MAX_PRINT;
+      for (adc = i1; adc < i2; adc++) { 
+	/* n = 0;*/
+         for (ichan = 0; ichan < nprint; ichan++) {
+	   adcval1 = sis3320GetData(id, adc, ichan, 0);
+           adcval2 = sis3320GetData(id, adc, ichan, 1);
+	   printf("ADC %d  Read %d   Data[hi] = (dec)%d = 0x%x  ||  Data[lo] = (dec)%d = 0x%x \n", adc+1, ichan+1, adcval1, adcval1, adcval2, adcval2);
+	 }
+      }
+
+    }
+
+    taskDelay(4*60);
+
+  }
+
+  printf("\n\n All done with sis3320Test3 \n");
 
 }
 
@@ -1868,13 +2160,13 @@ int sis3320DefaultSetup(int id) {
 			 SIS3320_ACQ_DISABLE_INTERNAL_TRIGGER |
 		         SIS3320_ACQ_DISABLE_AUTOSTART |
 		         SIS3320_ACQ_ENABLE_MULTIEVENT |
-                 	 SIS3320_ACQ_SET_CLOCK_TO_200MHZ);   
+                 	 SIS3320_ACQ_SET_CLOCK_TO_250MHZ);   
 
      sis3320AcqConfig (id,  SIS3320_ACQ_ENABLE_LEMO_START_STOP |
 			 SIS3320_ACQ_DISABLE_INTERNAL_TRIGGER |
 		         SIS3320_ACQ_DISABLE_AUTOSTART |
 		         SIS3320_ACQ_ENABLE_MULTIEVENT |
-		         SIS3320_ACQ_SET_CLOCK_TO_200MHZ);   
+		         SIS3320_ACQ_SET_CLOCK_TO_250MHZ);   
 
      printf("page size = 0x%x\n",SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE);
 
@@ -1929,8 +2221,7 @@ int sis3320DefaultSetup(int id) {
 
 
   /* Give an offset to the signals */
-    data =40000;
-    printf("Setting DAC to %d \n",data);
+    data =50000;
     sis3320SetDac(0, data);   /* Note, 50000 gives pedestal ~3600 */
                               /* 40600 is approximately the midpoint*/
 
@@ -1939,8 +2230,42 @@ int sis3320DefaultSetup(int id) {
 
 
 
-long sis3320GetAccum(int id, int adcgr, int adc, int which) {
+long sis3320GetAccum_V1(int id, int adcgr, int adc, int which) {
+  /* version 1 (V1) for the 2006 version of FADC */
   int i,j;
+  volatile struct adcGroup_struct* adcg;
+
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+    if((adcgr<0)||(adcgr>3)) {
+      logMsg("s3320GetAccum_V1: ERROR: adc group %d out of range (0-3)\n",adcgr,0,0,0,0,0);
+      return(-1);
+    }
+    if (adc < 0 || adc > 1) {
+      printf("ss3320GetAccum_V1: need to pick 0 or 1 for adc idx\n");
+      return -1;
+    }
+    if (which < 0 || which > 1) {
+      printf("ss3320GetAccum_V1: need to pick 0 or 1 for which accum\n");
+      return -1;
+    }
+
+    adcg = &(sis3320p[id]->adcG[adcgr]);
+
+    return adcg->eventDir[adc][which]; 
+
+};
+
+
+long sis3320GetAccum(int id, int adcgr, int adc, int which, int hilo) {
+  /*  New version, Dec 2007
+      which = 0-5  (for 6 accumulators)
+      hilo ==  0=bits 32-36,   1 = lower 32 bits */
+  int i,j;
+  unsigned long temp,value;
   volatile struct adcGroup_struct* adcg;
 
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
@@ -1953,17 +2278,65 @@ long sis3320GetAccum(int id, int adcgr, int adc, int which) {
       return(-1);
     }
     if (adc < 0 || adc > 1) {
-      printf("ss3320GetAccum: need to pick 0 or 1 for nextSampAddr idx\n");
+      printf("ss3320GetAccum: need to pick 0 or 1 for adc idx\n");
       return -1;
     }
-    if (which < 0 || which > 1) {
-      printf("ss3320GetAccum: need to pick 0 or 1 for nextSampAddr idx\n");
+    if (which < 0 || which > 5) {
+      printf("ss3320GetAccum: need to pick 0 - 5 for which accum index\n");
+      return -1;
+    }
+    if (hilo < 0 || hilo > 1) {
+      printf("ss3320GetAccum: need to pick 0 - 1 for hilo \n");
       return -1;
     }
 
     adcg = &(sis3320p[id]->adcG[adcgr]);
 
-    return adcg->eventDir[0][which]; 
+    temp = adcg->eventDir[adc][1+(2*which)+hilo]; 
+
+    if (hilo == 0) {
+      value = ((temp & 0xf0000000) >> 28);
+    } else {
+      value = temp;
+    }
+
+   return value;
+
+};
+
+long sis3320GetNumAcc(int id, int adcgr, int adc, int which) {
+  /*  Get the number of values in accum # which
+      which = 0-5  (for 6 accumulators)
+      hilo ==  0=bits 32-36,   1 = lower 32 bits */
+  int i,j;
+  long temp,value;
+  volatile struct adcGroup_struct* adcg;
+
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+    if((adcgr<0)||(adcgr>3)) {
+      logMsg("s3320GetAccum: ERROR: adc group %d out of range (0-3)\n",adcgr,0,0,0,0,0);
+      return(-1);
+    }
+    if (adc < 0 || adc > 1) {
+      printf("ss3320GetAccum: need to pick 0 or 1 for adc idx\n");
+      return -1;
+    }
+    if (which < 0 || which > 5) {
+      printf("ss3320GetAccum: need to pick 0 - 5 for which accum index\n");
+      return -1;
+    }
+
+    adcg = &(sis3320p[id]->adcG[adcgr]);
+
+    temp = adcg->eventDir[adc][1+(2*which)]; 
+
+    value = temp & 0xffffff;
+
+    return value;
 
 };
 
@@ -2002,13 +2375,15 @@ int sis3320SetDac(int id, int data) {
 
 };
 
-int sis3320SetThresh(int id, int adc, int lohi, int data) {
+int sis3320SetThresh_V1(int id, int adc, int lohi, int data) {
+
+  /* version 1 (V1) for 2006 version of FADC board */
 
   int grp, thresh1, thresh2;
 
   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
     {
-      printf("sis3320SetDac: ERROR : ADC id %d not initialized \n", id);
+      printf("sis3320SetThresh_V1: ERROR : ADC id %d not initialized \n", id);
       return 0;
     }
  
@@ -2020,7 +2395,7 @@ int sis3320SetThresh(int id, int adc, int lohi, int data) {
 
   if (lohi == -1 ) { 
 
-    printf("Clearing thesholds \n");
+    printf("Clearing thesholds (V1) \n");
     sis3320p[id]->adcG[grp].accumThresh1 = 0;
     sis3320p[id]->adcG[grp].accumThresh2 = 0;
 
@@ -2043,7 +2418,7 @@ int sis3320SetThresh(int id, int adc, int lohi, int data) {
 
   if (lohi == 1 ) {
 
-    printf("Setting hi thresholds to %d \n",data);
+    printf("(V1) Setting hi thresholds to %d \n",data);
  
     thresh1 |= 0x10000000;
     thresh1 |= data<<16;
@@ -2054,11 +2429,118 @@ int sis3320SetThresh(int id, int adc, int lohi, int data) {
 
   }
 
-  printf("Thresholds settings = 0x%x  and 0x%x \n",
+  printf("SetThresh_V1:  Thresholds settings = 0x%x  and 0x%x \n",
 	 sis3320p[id]->adcG[grp].accumThresh1,
 	 sis3320p[id]->adcG[grp].accumThresh2);
 
   return 1;
+
+}
+
+
+int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after) {
+
+  /* Set the N5_before, N5_after, N6_before, N6_after variables for
+     accumulators 5 and 6 */
+
+  int grp;
+
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    { 
+      printf("sis3320SetN5N6: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+ 
+  grp = adc >> 1;
+   
+  if (n5_before == -1 ) { 
+
+    printf("Clearing N5, N6 variables \n");
+    sis3320p[id]->adcG[grp].n5n6befaft1 = 0;
+    sis3320p[id]->adcG[grp].n5n6befaft2 = 0;
+
+    return 0;
+
+  }
+
+  sis3320p[id]->adcG[grp].n5n6befaft1 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff);
+  sis3320p[id]->adcG[grp].n5n6befaft2 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff);
+
+  printf("N5, N6 before/after registers = 0x%x  and 0x%x \n",
+	 sis3320p[id]->adcG[grp].n5n6befaft1,
+	 sis3320p[id]->adcG[grp].n5n6befaft2);
+
+  return 1;
+
+}
+
+   
+
+
+int sis3320SetThresh(int id, int adc, int thresh1, int thresh2) {
+  /* Version for Dec 2007 version of the FADC board */
+  /* Notice the variables are "accThresh*" instead of "accumThresh*" 
+     bbbbbbbbb  */
+
+  int grp;
+
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    { 
+      printf("sis3320SetThresh: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+ 
+  grp = adc >> 1;
+
+  if ( (thresh1 > 4095) || (thresh2 > 4095) )  {
+    printf("sis3320SetThresh:: warning:  thresholds cannot be > 4095 \n");
+  }
+   
+  if (thresh1 == -1 ) { 
+
+    printf("Clearing thesholds \n");
+    sis3320p[id]->adcG[grp].accThresh1 = 0;
+    sis3320p[id]->adcG[grp].accThresh2 = 0;
+
+    return 0;
+
+  }
+
+  sis3320p[id]->adcG[grp].accThresh1 = ((thresh1 & 0xfff) << 16) + (thresh2 & 0xfff) ;
+  sis3320p[id]->adcG[grp].accThresh2 = ((thresh1 & 0xfff) << 16) + (thresh2 & 0xfff) ;
+
+  printf("Thresholds settings = 0x%x  and 0x%x \n",
+	 sis3320p[id]->adcG[grp].accThresh1,
+	 sis3320p[id]->adcG[grp].accThresh2);
+
+  return 1;
+
+}
+
+   
+
+int sis3320GetThresh(int id, int adc, int which) {
+  /* Obtain threshold (which = 1,2) */
+
+  int grp;
+  int thresh1,thresh2;
+
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    { 
+      printf("sis3320SetThresh: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+ 
+  grp = adc >> 1;
+
+  thresh1 = ((sis3320p[id]->adcG[grp].accThresh1 & 0xfff0000)>>16);
+  thresh2 = (sis3320p[id]->adcG[grp].accThresh1 & 0xfff);
+
+  if (which == 0) {
+      return thresh1;
+  } else { 
+      return thresh2;
+  }
 
 }
 
