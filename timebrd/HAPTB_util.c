@@ -22,13 +22,12 @@ int initHAPTB()
   unsigned long laddr;
 
   if (CODA_RUN_IN_PROGRESS==1) return errorPrintHAPTB(2);
-  //  res = sysBusToLocalAdrs(0x39,TIMEBADDR,&laddr);
-  //  if (res != 0) {
-  //    printf("Error in sysBusToLocalAdrs res=%d \n",res);
-  //    printf("initHAPTB:::ERROR:::Timing Board POINTER NOT INITIALIZED");
-  //    return -1;
-  //  }
-  laddr = TIMEBADDR;
+  res = sysBusToLocalAdrs(0x29,TIMEBADDR,&laddr);
+  if (res != 0) {
+      printf("Error in sysBusToLocalAdrs res=%d \n",res);
+      printf("initHAPTB:::ERROR:::Timing Board POINTER NOT INITIALIZED");
+      return -1;
+  }
   printf("HAPPEX Timing Board address = 0x%x ",laddr);
   did_init_TB = 1;
   tboard = (struct vme_happex_tb *) laddr;

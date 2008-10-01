@@ -9,7 +9,7 @@
 #include <vxWorks.h>
 
 /*time board base address (hardware switch: on=0, LSB=12) */
-#define TIMEBADDR 0xfbffb0b0
+#define TIMEBADDR 0xB0B0
 
 // GLOBALS 
 int CODA_RUN_IN_PROGRESS =0;
