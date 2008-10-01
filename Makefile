@@ -73,7 +73,7 @@ AUXTB = auxtimebrd/AUXTB_util.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
 SCAN = scan/SCAN_util.o scan/SCAN_config.o
 CAFFB = caFFB/caFFB.o
-AUTO = auto/auto.o
+AUTO = auto/auto.o auto/auto_filter.o
 FLEXIO = flexio/flexio_lib.o
 #CAFFB = 
 
@@ -117,6 +117,7 @@ clean:
 	rm -f scan/core scan/*.o scan/*.d
 	rm -f caFFB/core caFFB/*.o caFFB/*.d
 	rm -f flexio/flexio_lib.o
+	rm -r auto/auto.o auto/auto_filter.o
 
 realclean:  clean
 	rm -f *.d
@@ -219,6 +220,10 @@ auxtimebrd/AUXTB_util.o: auxtimebrd/AUXTB_util.c auxtimebrd/AUXTB.h
 auto/auto.o: auto/auto.c
 	cd auto; rm -f $@; \
 	ccppc -c $(CCVXFLAGS) auto.c
+
+auto/auto_filter.o: auto/auto_filter.c
+	cd auto; rm -f $@; \
+	ccppc -c $(CCVXFLAGS) auto_filter.c
 
 #.SUFFIXES:
 #.SUFFIXES: .c .cc .cpp .C .o .d
