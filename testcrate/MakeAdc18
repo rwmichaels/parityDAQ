@@ -1,0 +1,28 @@
+#  Build system for HAPPEX 18 bit ADC
+#  Nov, 2006  Switch to vxWorks 5.5
+
+export OSNAME       := $(shell uname)
+
+VXDIR=/adaqfs/halla/a-onl/vxworks/headers/5.5/h
+CCVXFLAGS =  -I$(VXDIR) -DCPU_FAMILY=PPC -DCPU=PPC604 -mlongcall
+
+
+all : hapAdc18Lib.o  adc18_edj.o
+
+
+hapAdc18Lib.o: hapAdc18Lib.c hapAdc18Lib.h
+	rm -f $@
+	ccppc -c $(CCVXFLAGS) hapAdc18Lib.c
+
+adc18_edj.o: adc18_edj.c
+	rm -f $@
+	ccppc -c $(CCVXFLAGS) adc18_edj.c
+
+clean : 
+	rm -f *.o
+
+
+
+
+
+
