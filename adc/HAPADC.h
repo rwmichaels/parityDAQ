@@ -25,16 +25,45 @@
 #define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 2    // must be <10, or requires changes to static arrays.
+#define NADC 4    // must be <10, or requires changes to static arrays.
 #endif
 
-#define MAXRETRY 10   // max number of attempts to write csr
+#ifdef TESTCRATE
+#define NADC 2  
+#endif
+
+#define MAXRETRY 20   // max number of attempts to write csr
 
 #define DEF_TIMEOUT 2000  // max number of polls of done bit during readout
 
 #define DEF_DACVAL 3000  // dac value for non-dac noise adcs
 
 //   Relative Addresses of ADCs
+#ifdef   TESTCRATE
+#define  ADC0 0x820000
+#define  ADC1 0x430000   // Undefined.
+#define  ADC2 0xff0000
+#define  ADC3 0xff0000
+#define  ADC4 0xff0000
+#define  ADC5 0xff0000
+#define  ADC6 0xff0000
+#define  ADC7 0xff0000
+#define  ADC8 0xff0000
+#define  ADC9 0xff0000
+
+#define  ADCLAB0 7
+#define  ADCLAB1 0xf   // Undefined
+#define  ADCLAB2 0xf
+#define  ADCLAB3 0xf
+#define  ADCLAB4 0xf
+#define  ADCLAB5 0xf
+#define  ADCLAB6 0xf
+#define  ADCLAB7 0xf
+#define  ADCLAB8 0xf
+#define  ADCLAB9 0xf
+
+#endif
+
 #ifdef   COUNTINGHOUSE
 #define  ADC0 0x470000
 #define  ADC1 0x850000
@@ -105,23 +134,23 @@
 #endif
 
 #ifdef   RIGHTSPECT
-#define  ADC0 0x840000
-#define  ADC1 0x8F0000
-#define  ADC2 0x8F0000
-#define  ADC3 0x810000
+#define  ADC0 0x4E0000
+#define  ADC1 0x4C0000
+#define  ADC2 0x840000
+#define  ADC3 0x8F0000
 #define  ADC4 0x4B0700
 #define  ADC5 0x480000
-#define  ADC6 0x4c0000
+#define  ADC6 0x820000
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 29
-#define  ADCLAB1 17
-#define  ADCLAB2 62
-#define  ADCLAB3 63
+#define  ADCLAB0 8
+#define  ADCLAB1 13
+#define  ADCLAB2 29
+#define  ADCLAB3 17
 #define  ADCLAB4 64
 #define  ADCLAB5 65
-#define  ADCLAB6 66
+#define  ADCLAB6 27 //66
 #define  ADCLAB7 67
 #define  ADCLAB8 68
 #define  ADCLAB9 69

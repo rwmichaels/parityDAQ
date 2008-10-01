@@ -49,11 +49,13 @@ int initHAPADC()
    int res;
    int csrval;
 
+   printf("Num ADC16 %d \n",NADC);
 
    /* ADC Pointers */
    for (i = 0; i < NADC; i++) {
      did_init[i]=-1;
      res = sysBusToLocalAdrs(0x39,ADCADDR[i],&laddr);
+     printf("ADC16 # %d   Rel. addr = 0x%x    VME addr = 0x%x \n",i,ADCADDR[i],laddr);
      if (res != 0) {
        printf("Error in sysBusToLocalAdrs res=%d \n",res);
        printf("ERROR:  ADC num %d POINTER NOT INITIALIZED",i);
