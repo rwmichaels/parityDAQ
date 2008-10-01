@@ -40,6 +40,14 @@ int dumpRegAUXTB()
 {
   if ( !did_init_AUXTB ) return errorPrintAUXTB(1);
   printf("\nDump of Readable Registers on ADC Timing Board : \n");
+  printf("Ramp Delay %d (dec)  = 0x%x (hex) \n",
+         auxtboard->rampdelay,auxtboard->rampdelay);
+  printf("Integration Time %d (dec)  = 0x%x (hex) \n",
+         auxtboard->integtime,auxtboard->integtime);
+  printf("Oversampling setting %d (dec)  = 0x%x (hex) \n",
+         auxtboard->osample_w,auxtboard->osample_w);
+  printf("Current Oversample %d (dec)  = 0x%x (hex) \n",
+         auxtboard->osample_c,auxtboard->osample_c);
   printf("DAC12 setting %d (dec)  = 0x%x (hex) \n",
     auxtboard->dac12,auxtboard->dac12); 
   printf("DAC16 settings %d (dec)  = 0x%x (hex) \n",
@@ -48,6 +56,34 @@ int dumpRegAUXTB()
   printf("Last DAC16 %d (dec) \n",LAST_DAC16_AUXTB);
   return 1; 
 }
+
+/*****************************************************
+ *  Set up the timing 
+ *      input arguments:   delay = ramp delay
+ *                         time = integrate time
+ *      units of arguments: 2.5 microseconds
+ *****************************************************/
+int setTimeAUXTB(int delay, int time)
+{
+  if ( !did_init_AUXTB ) return errorPrintAUXTB(1);
+  auxtboard->rampdelay = delay;
+  auxtboard->integtime = time;    
+  return 1;
+}
+
+int getRampDelayAUXTB()
+{
+  if ( !did_init_AUXTB ) return errorPrintAUXTB(1);
+  return auxtboard->rampdelay;
+}
+ 
+int getIntTimeAUXTB()
+{
+  if ( !did_init_AUXTB ) return errorPrintAUXTB(1);
+  return auxtboard->integtime;
+}
+
+
 
  int getAUXFLAG(int choice)
 {

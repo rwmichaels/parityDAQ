@@ -23,7 +23,8 @@ struct vme_happex_auxtb {
 };
 
 /*time board base address (hardware switch: on=0, LSB=12) */
-#define AUXTBADDR 0xfbff17c0
+//#define AUXTBADDR 0xfbff17c0
+#define AUXTBADDR 0xfbff4B40
 
 LOCAL int LAST_DAC12_AUXTB;
 LOCAL int LAST_DAC16_AUXTB;
