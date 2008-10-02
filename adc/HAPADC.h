@@ -66,23 +66,23 @@
 
 #ifdef   COUNTINGHOUSE
 #define  ADC0 0x470000
-#define  ADC1 0x850000
-#define  ADC2 0x400000
-#define  ADC3 0x4d0000
-#define  ADC4 0x480000
-#define  ADC5 0x4c0000
-#define  ADC6 0x4b0000
-#define  ADC7 0x510000
+#define  ADC1 0x400000
+#define  ADC2 0x4d0000
+#define  ADC3 0x480000
+#define  ADC4 0x520000
+#define  ADC5 0x4b0000
+#define  ADC6 0x510000
+#define  ADC7 0x490000
 #define  ADC8 0x490000
 #define  ADC9 0x490000
 #define  ADCLAB0 2
-#define  ADCLAB1 26
-#define  ADCLAB2 23
-#define  ADCLAB3 22
-#define  ADCLAB4 15
-#define  ADCLAB5 13
-#define  ADCLAB6 7
-#define  ADCLAB7 12
+#define  ADCLAB1 23
+#define  ADCLAB2 22
+#define  ADCLAB3 15
+#define  ADCLAB4 11
+#define  ADCLAB5 7
+#define  ADCLAB6 12
+#define  ADCLAB7 14
 #define  ADCLAB8 14
 #define  ADCLAB9 14
 #endif
