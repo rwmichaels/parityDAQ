@@ -25,7 +25,7 @@
 #define NADC 0    //changed 11/27/07 B. Hahn
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 1    
+#define NADC 2   
 #endif
 
 #define TIME_INT 11.0	 /* sample time (us) for internal timing sequence */	
@@ -128,9 +128,9 @@
 #endif
 
 #ifdef   RIGHTSPECT
-#define  ADC0 0xee000
-#define  ADC1 0xed0000
-#define  ADC2 0xed4000
+#define  ADC0 0xed4000
+#define  ADC1 0xee000
+#define  ADC2 0xed0000
 #define  ADC3 0xee000
 #define  ADC4 0x4B0700
 #define  ADC5 0x480000

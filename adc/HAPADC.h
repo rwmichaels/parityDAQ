@@ -16,7 +16,7 @@
 
 /* number of HAPPEX ADCs */
 #ifdef  COUNTINGHOUSE
-#define NADC 9    // must be <10, or requires changes to static arrays.
+#define NADC 8    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  INJECTOR
 #define NADC 3    // must be <10, or requires changes to static arrays.
@@ -25,7 +25,7 @@
 #define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 4    // must be <10, or requires changes to static arrays.
+#define NADC 3    // must be <10, or requires changes to static arrays.
 #endif
 
 #ifdef TESTCRATE
@@ -134,20 +134,20 @@
 #endif
 
 #ifdef   RIGHTSPECT
-#define  ADC0 0x4E0000
-#define  ADC1 0x4C0000
-#define  ADC2 0x840000
-#define  ADC3 0x8F0000
+#define  ADC0 0x4C0000
+#define  ADC1 0x840000
+#define  ADC2 0x8F0000
+#define  ADC3 0x4E0000
 #define  ADC4 0x4B0700
 #define  ADC5 0x480000
 #define  ADC6 0x820000
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 8
-#define  ADCLAB1 13
-#define  ADCLAB2 29
-#define  ADCLAB3 17
+#define  ADCLAB0 13
+#define  ADCLAB1 29
+#define  ADCLAB2 17
+#define  ADCLAB3 8
 #define  ADCLAB4 64
 #define  ADCLAB5 65
 #define  ADCLAB6 27 //66
