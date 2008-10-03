@@ -1,0 +1,155 @@
+# 
+#  This readout is for scalers in PVDIS crate.
+#  Version, Sept 26, 2008
+#
+#    Bob Michaels 
+
+readout list VME1
+maximum 1024,1000
+vme readout
+# if LINUXHOST=1(0) host is linux(not)
+const LINUXHOST = 1
+
+const NUMSCALERS = 2
+
+const TIR_ADDR = 0xed0
+extern int bigendian_out;
+extern int rocActivate;
+extern int scaRunReady;
+
+begin download
+
+# Sending data to Little-Endian EB
+%%  
+  if (LINUXHOST) {
+      printf("Assuming EB is on a Little-Endian cpu\n");      
+      bigendian_out = 0;
+  }
+
+  tirInit(TIR_ADDR);
+
+%%
+
+/* initialize scaler(s) */
+  initSIS();
+  initISR_SIS();
+  
+  log inform "User Download Executed"
+
+end download
+    
+begin prestart
+
+  variable id
+  log inform "Entering User Prestart"
+
+  init trig source VME
+  link async trig source VME 1 to partrig and partrig_done
+  event type 1 then read VME 1
+
+  log inform "Setting up Scalers "
+
+#  scalIntDisableAdr(0xface1000);
+  runStartClrSIS();
+  rocActivate = 0;
+
+  log inform "User Prestart Executed"
+
+end prestart
+
+begin end
+
+  CDODISABLE(VME,1,0);
+  log inform "User End Executed"
+#  s3300SetRunFlag(0);
+  rocActivate = 0;
+#  scalIntEnable();
+
+end end
+
+begin pause
+
+  CDODISABLE(VME,1,0);
+  log inform "User Pause Executed"
+  rocActivate = 0;
+
+end pause
+
+begin go
+  
+  log inform "Entering User Go"
+  CDOENABLE(VME,1,0);
+
+  rocActivate = 1;
+  scaRunReady = 1;
+
+end go
+
+begin trigger partrig
+ 
+  variable iscal,ihel,ichan
+
+  volatile unsigned short tir_dat;
+  static int icnt=0;
+
+  tir[1]->tir_oport=0x7;
+
+  SISInterrupt(0); 
+
+  rol->dabufp = (long *)0;
+  open event type EVTYPE of BT_UI4
+
+# Readout of the TIR board
+
+%%
+
+  *rol->dabufp++ = 0xfb0b4444;   
+/* When standalone, get data from tir_dat; when TS-mode use tir_iport */
+  tir_dat = tir[1]->tir_dat; 
+  *rol->dabufp++ = (tir_dat & 0xfff);
+
+/* Readout the 3801 Scalers  */ 
+ 
+  for (iscal = 0; iscal < NUMSCALERS; iscal++) {
+
+  *rol->dabufp++ = 0xff380100 + iscal;
+
+    for (ihel=0; ihel<2; ihel++) {
+      for (ichan = 0; ichan<32; ichan++) {
+        *rol->dabufp++ = Read3801(0,ihel,ichan);
+      }
+    }
+
+  }
+
+  tir[1]->tir_oport=0x0; 
+
+%%
+
+  close event
+
+end trigger
+
+begin done partrig
+
+end done
+
+begin done
+
+# Acknowledge tir register
+   CDOACK(VME,1,0);
+
+
+end done
+
+begin status
+
+end status
+
+
+
+
+
+
+
+
