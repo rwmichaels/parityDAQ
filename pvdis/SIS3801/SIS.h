@@ -5,7 +5,7 @@
 #define TIME_DELAY_SIS 3
 
 /* Debug flags 1=Debug Mode, 0=quiet mode */
-#define DEBUG1 1    /* raw printouts of buffers */
+#define DEBUG1 0   /* raw printouts of buffers */
 #define DEBUG2 0    /* interaction with CODA */
 #define DEBUG3 0    /* loading and checking helicity */
 #define DEBUG4 0    /* same as 3, but only if shreg_init_flag=1 */
