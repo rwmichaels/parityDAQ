@@ -135,11 +135,13 @@ if(scaler2 == 0) {
 } else {
   printf("WILL readout second scaler\n");
 }
+#ifdef BMWSTUFF
 if(bmwscan==1) {
   printf("WILL readout Beam Modulation and Scan Words: %d\n",bmwscan);
 } else {
   printf("Will NOT readout Beam Modulation and Words: %d\n",bmwscan);
 }
+#endif
 if(tbreadout==1) {
   printf("WILL write timing board config to file: %d\n",tbreadout);
 } else {
@@ -598,7 +600,7 @@ if(flexio==1) {
   *rol->dabufp++ = tirdata & 0xfff;
   }
 
-
+#ifdef BMWSTUFF
 if(bmwscan==1) {
   //////////////////////////////////////////////////
   //
@@ -617,6 +619,7 @@ if(bmwscan==1) {
   //  next pulse to be seen as clean
   if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;  
 }
+#endif
 
 if(noscaler == 0) {
 
@@ -783,6 +786,7 @@ if(noscaler == 0) {
 *rol->dabufp++ = getDACHAPTB(2); /* DAC16 */
 *rol->dabufp++ = getDACHAPTB(1); /* DAC12 */
 
+#ifdef BMWSTUFF
 if(bmwscan==1) {
   *rol->dabufp++ = 0xfdacf000;  // Header for daqflags
 
@@ -801,6 +805,7 @@ if(bmwscan==1) {
   *rol->dabufp++ = iocTime;
   *rol->dabufp++ = ncnt;
 }
+#endif
 
 if (adc16bit) {
   for (i = 0; i < ADC_NUMSLOTS; i++) {  
