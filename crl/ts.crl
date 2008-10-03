@@ -26,7 +26,7 @@ include "usrstrutils.c"
 
 static int debug = 1;   /* to debug(1) or not(0) */
 
-static int gdh, inj, happex2, highE;
+static int inj, righthrs, lefthrs, pvdisleft, pvdisright;
 
 extern int bigendian_out; 
 
@@ -76,11 +76,12 @@ begin prestart
   ts->trig = 0x1FFF;  /* Enable ALL triggers. */
 
 /* Get usrstring to determine TS Setup */
-gdh=0;happex2=0;highE=0;inj=0;
-gdh     = getflag(GDH);
-happex2 = getflag(HAPPEX2);
-highE   = getflag(HIGHE);
-inj     = getflag(INJ);
+inj=0; righthrs=0; lefthrs=0; pvdisleft=0; pvdisright=0;
+righthrs = getflag(RIGHTHRS);
+lefthrs  = getflag(LEFTHRS);
+pvdisleft  = getflag(PVDISLEFT);
+pvdisright = getflag(PVDISRIGHT);
+inj = getflag(INJ);
 
 /* Here's a key:
    ROC0 branch 1  -  Counting House crate
@@ -88,34 +89,29 @@ inj     = getflag(INJ);
    ROC2 branch 4  -  RHRS crate
    ROC0 branch 2  -  Injector crate
    ROC1 branch 3  -  Test crate
+   (add PVDIS later ...)
 */
 
   jj = 0;
 /* Always include the Counting House DAQ */
   jj |= 0x01;   /* enable ROC0 on branch 1 */
 
-if(gdh) {
+if(righthrs) {
   jj |= 0x4000000;  /* enable ROC2 on branch 4 */
-  printf("GDH Configuration: 0x%x\n",jj);
+  printf("Add Right HRS crate \n");
 }
 
-if(happex2) {
-  jj |= 0x100;      /* enable ROC0 on branch 2 */
+if(lefthrs) {
   jj |= 0x2000000;  /* enable ROC1 on branch 4 */
-  jj |= 0x4000000;  /* enable ROC2 on branch 4 */
-  printf("happex2 Configuration: 0x%x\n",jj);
-}
-
-if(highE) {
-  jj |= 0x2000000;  /* enable ROC1 on branch 4 */
-  jj |= 0x4000000;  /* enable ROC2 on branch 4 */
-  printf("highE Configuration: 0x%x\n",jj);
+  printf("Add Left HRS crate \n");
 }
 
 if(inj) {
   jj |= 0x100;      /* enable ROC0 on branch 2 */
-  printf("Including Injector Configuration: 0x%x\n",jj);
+  printf("Including Injector Crate \n");
 }
+
+printf("-> TS Crate configuration : 0x%x\n",jj);
 
 
   ts->roc = jj;
