@@ -12,7 +12,7 @@ const LINUXHOST = 1
 
 const NUMSCALERS = 2
 
-const TIR_ADDR = 0xed0
+const TIR_ADDR = 0xad0
 extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
@@ -49,7 +49,6 @@ begin prestart
 
   log inform "Setting up Scalers "
 
-#  scalIntDisableAdr(0xface1000);
   runStartClrSIS();
   rocActivate = 0;
 
@@ -63,7 +62,6 @@ begin end
   log inform "User End Executed"
 #  s3300SetRunFlag(0);
   rocActivate = 0;
-#  scalIntEnable();
 
 end end
 
