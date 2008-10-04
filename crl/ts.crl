@@ -23,6 +23,7 @@ const MASK_01 = hex 0000ffff
 const MASK_02 = hex 000003ff
 
 include "usrstrutils.c"
+include "VME_source_local.h"
 
 static int debug = 1;   /* to debug(1) or not(0) */
 
@@ -41,8 +42,10 @@ bigendian_out = 0;
   init_strings();
 
   tsmem = (long *)MEM_ADDR;
-  ts = (struct vme_ts *)TS_ADDR;
-  ts->csr = 0x8000;     /* reset Trigger Supervisor*/
+/* Note, vme_ts1 is defined in VME_source_local.h, necessary for
+   version 1 of Trig. Super. */
+  ts1 = (struct vme_ts1* )TS_ADDR;
+  ts1->csr = 0x8000;     /* reset Trigger Supervisor*/
 
 %% 
   log inform " User Download Executed"
@@ -71,9 +74,9 @@ begin prestart
 
 %%
 
-  ts->csr = 0x8000;  /* reset */
-  ts->csr = 0x0200;  /* ROC Lock mode on all BRANCHES*/
-  ts->trig = 0x1FFF;  /* Enable ALL triggers. */
+  ts1->csr = 0x8000;  /* reset */
+  ts1->csr = 0x0200;  /* ROC Lock mode on all BRANCHES*/
+  ts1->trig = 0x1FFF;  /* Enable ALL triggers. */
 
 /* Get usrstring to determine TS Setup */
 inj=0; righthrs=0; lefthrs=0; pvdisleft=0; pvdisright=0;
@@ -114,21 +117,21 @@ if(inj) {
 printf("-> TS Crate configuration : 0x%x\n",jj);
 
 
-  ts->roc = jj;
+  ts1->roc = jj;
 
-  ts->timer[1] = 0x05;   /* Level 2 Timer */
-  ts->timer[2] = 0x05;   /* Level 3 Timer */
+  ts1->timer[1] = 0x05;   /* Level 2 Timer */
+  ts1->timer[2] = 0x05;   /* Level 3 Timer */
 
 /* Set all prescale factors = 1  for HAPPEX */
 
   for (jj = 0;  jj < 8; jj++) {
-      ts->prescale[jj] = 0;
+      ts1->prescale[jj] = 0;
   }
 
 /* Front End Busy timer 40ns/count */
-  ts->timer[3] = 10;     
+  ts1->timer[3] = 10;     
 
-  ts->csr = 0x0080;      /* Enable Timer */
+  ts1->csr = 0x0080;      /* Enable Timer */
 
 /*  construct memory data  ---  in the following model, all trigger patterns 
     that form the memory address are assigned to trigger class 1.  For those 
@@ -155,7 +158,10 @@ printf("-> TS Crate configuration : 0x%x\n",jj);
      }
 
 /* Enable level 1 hardware */
-    ts->csr = 0x20;
+
+    printf("Enabling level 1 hardware \n");
+
+    ts1->csr = 0x20;
 
 %%
 
@@ -168,7 +174,7 @@ begin end
 
 
 # Go turned off  
-  ts->csr = 0x10000;   
+  ts1->csr = 0x10000;   
   VMEflag = 0;
 
 
@@ -178,7 +184,7 @@ end end
 
 begin pause
 
-  ts->csr = 0x10000;
+  ts1->csr = 0x10000;
   VMEflag = 0;
 
   log inform "User Pause Executed"
@@ -190,7 +196,10 @@ begin go
 %%
   VMEflag = 0;  /* don't enable dummy triggers */
   taskDelay(60*3); 
-  ts->csr = 0x21;
+
+  printf("Enabling TS \n");
+  
+  ts1->csr = 0x21;
 %%
 
 end go
