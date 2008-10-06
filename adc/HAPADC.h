@@ -19,7 +19,7 @@
 #define NADC 8    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  INJECTOR
-#define NADC 3    // must be <10, or requires changes to static arrays.
+#define NADC 1    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  LEFTSPECT
 #define NADC 0    // must be <10, or requires changes to static arrays.
@@ -88,9 +88,9 @@
 #endif
 
 #ifdef   INJECTOR
-#define  ADC0 0x4e0000
-#define  ADC1 0x980000
-#define  ADC2 0x4d0000
+#define  ADC0 0x4d0000
+#define  ADC1 0x4e0000
+#define  ADC2 0x980000
 #define  ADC3 0x400000
 #define  ADC4 0x4d0000
 #define  ADC5 0x480000
@@ -98,9 +98,9 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 8
-#define  ADCLAB1 6
-#define  ADCLAB2 16
+#define  ADCLAB0 16
+#define  ADCLAB1 8
+#define  ADCLAB2 6
 #define  ADCLAB3 23
 #define  ADCLAB4 24
 #define  ADCLAB5 25
