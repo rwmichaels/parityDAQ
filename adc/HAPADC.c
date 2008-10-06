@@ -255,6 +255,7 @@ unsigned long* readoutHAPADC(unsigned long* dabufp, int ibrd)
   for (j = 0; j < 6; j++) *dabufp++ = -1;
   return dabufp;
 }
+
 ////////////////////////////////////////////////////////
 // 
 //  get the present dac value 
@@ -265,6 +266,19 @@ int getDACHAPADC(int ibrd) {
   return dacvalue[ibrd];
 } 
 
+////////////////////////////////////////////////////////
+// 
+//  get the present adc data, using the "logical" 
+//  remapping of channels mentioned in readoutHAPADC
+//
+////////////////////////////////////////////////////////
+long getOneADC16(int ibrd, int ichan) {
+  int remap[4];
+  if (ibrd < 0 || ibrd >= NADC) return 0;
+  if (ichan < 0 || ichan > 3) return 0;
+  remap[0] = 0;  remap[1]=2;  remap[2]=1;  remap[3]=3;
+  return (adcbrds[ibrd]->adcchan[remap[ichan]]+0x8000) & 0xffff;
+}
 
 ////////////////////////////////////////////////////////
 // 
