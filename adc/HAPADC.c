@@ -255,6 +255,15 @@ unsigned long* readoutHAPADC(unsigned long* dabufp, int ibrd)
   for (j = 0; j < 6; j++) *dabufp++ = -1;
   return dabufp;
 }
+////////////////////////////////////////////////////////
+// 
+//  get the present dac value 
+//
+////////////////////////////////////////////////////////
+int getDACHAPADC(int ibrd) {
+  if (ibrd < 0 || ibrd >= NADC) return 0;
+  return dacvalue[ibrd];
+} 
 
 
 ////////////////////////////////////////////////////////
