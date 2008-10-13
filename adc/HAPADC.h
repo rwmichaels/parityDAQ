@@ -135,8 +135,8 @@
 
 #ifdef   RIGHTSPECT
 #define  ADC0 0x4C0000
-#define  ADC1 0x840000
-#define  ADC2 0x8F0000
+#define  ADC1 0x8F0000
+#define  ADC2 0x840000
 #define  ADC3 0x4E0000
 #define  ADC4 0x4B0700
 #define  ADC5 0x480000
@@ -145,8 +145,8 @@
 #define  ADC8 0x510000
 #define  ADC9 0x490000
 #define  ADCLAB0 13
-#define  ADCLAB1 29
-#define  ADCLAB2 17
+#define  ADCLAB1 17
+#define  ADCLAB2 29
 #define  ADCLAB3 8
 #define  ADCLAB4 64
 #define  ADCLAB5 65
