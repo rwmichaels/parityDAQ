@@ -12,12 +12,29 @@ const LINUXHOST = 1
 
 const NUMSCALERS = 2
 
+# To use CAEN 767 or not
+const use767=1
+const TDC_ID1 = 0
+const V767_NMOD = 1
+# V767_ADR1 is the HW address for the leftmost v767 in the crate
+const V767_ADR1 = 0x8000000
+# V767_OFF is the increment for each subsequent v767 (ie. next module would be 0x180000)
+const V767_OFF = 0x0800000
+# trigger window settings (in nanosecs)
+const V767_TW_OFF = 5000
+const V767_TW_WID = 1000
+const MAX_WORDS = 1024
+const MAX_TIME = 1000
+
 const TIR_ADDR = 0xad0
+extern int vxTicks;   /* vxWorks time ticks */
 extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
 
 begin download
+
+  variable ii
 
 # Sending data to Little-Endian EB
 %%  
@@ -28,11 +45,31 @@ begin download
 
   tirInit(TIR_ADDR);
 
-%%
-
 /* initialize scaler(s) */
   initSIS();
   initISR_SIS();
+
+  if(use767>0) {
+    v767Init(V767_ADR1,V767_OFF,V767_NMOD,0);
+
+    for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
+       /* select stop trigger matching, substraction of trigger time, */
+        /* all channels on, autoload on, and save configuration */
+
+       v767Reset(0);
+       taskDelay(2*60);
+  
+       v767SetAcqMode(ii,0);
+       v767SetEdgeDetectionMode(ii,0);  /* 0=time off leading edge */
+       v767TriggerConfig(ii,V767_TW_WID,-V767_TW_OFF,0);
+       v767Status(ii,0,0); 
+       v767TriggerConfig(ii,0,0,0); /* Print current trigger config */
+     }
+  }
+
+%%
+
+
   
   log inform "User Download Executed"
 
@@ -40,12 +77,21 @@ end download
     
 begin prestart
 
-  variable id
+  variable id, i
+
   log inform "Entering User Prestart"
 
   init trig source VME
   link async trig source VME 1 to partrig and partrig_done
   event type 1 then read VME 1
+
+%%
+  if (use767>0) {
+    for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
+      v767Clear(i);
+    }
+  }
+%%
 
   log inform "Setting up Scalers "
 
@@ -75,7 +121,23 @@ end pause
 
 begin go
   
+  variable i,itimeout,MAXT
   log inform "Entering User Go"
+
+%%
+  if (use767>0) {
+    MAXT=50000;
+    for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
+      itimeout=0;
+      while(v767Dready(i)) {
+         v767Clear(i);
+         if(itimeout++ >= MAXT) break;
+      }
+      if(itimeout >= MAXT) printf("v767 crl ERROR: Cannot clear V767\n");
+    }
+  }
+%%
+
   CDOENABLE(VME,1,0);
 
   rocActivate = 1;
@@ -86,13 +148,22 @@ end go
 begin trigger partrig
  
   variable iscal,ihel,ichan
+  variable event_ty, event_no, nDataWords, time1
+  variable itimeout, ii, j
+
+  int clear_tdc,status2,chip_err[4];
+  unsigned long tdcdata[MAX_WORDS];
 
   volatile unsigned short tir_dat;
-  static int icnt=0;
+  static int event_cnt=0;
 
   tir[1]->tir_oport=0x7;
 
   SISInterrupt(0); 
+  event_ty = EVTYPE;
+  event_no = *rol->nevents;
+  event_cnt++;
+  time1 = vxTicks;
 
   rol->dabufp = (long *)0;
   open event type EVTYPE of BT_UI4
@@ -105,6 +176,9 @@ begin trigger partrig
 /* When standalone, get data from tir_dat; when TS-mode use tir_iport */
   tir_dat = tir[1]->tir_dat; 
   *rol->dabufp++ = (tir_dat & 0xfff);
+  *rol->dabufp++ = event_ty;
+  *rol->dabufp++ = event_no;
+  *rol->dabufp++ = event_cnt;
 
 /* Readout the 3801 Scalers  */ 
  
@@ -119,6 +193,35 @@ begin trigger partrig
     }
 
   }
+
+  if(use767>0) {
+      for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
+        *(rol->dabufp)++ = 0xfbdc0000+ii;   /* Header for TDC */
+        clear_tdc=0;
+        status2=v767Status2(ii);
+
+        nDataWords = 0;
+        itimeout=0;
+        while(v767Dready(ii) != 1) if (itimeout++ > MAX_TIME) break;
+        if (itimeout < MAX_TIME) {
+          nDataWords = v767ReadEvent(ii,tdcdata,MAX_WORDS);
+        }
+        if(nDataWords <= 0) *(rol->dabufp)++ = 0xfbdcbadd;
+        *(rol->dabufp)++ = nDataWords;   /* Header for TDC */
+        for (j = 0; j<nDataWords; j++) *(rol->dabufp)++ = tdcdata[j];
+     }
+  }
+
+
+  if (use767>0) {
+      for(ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
+        itimeout=0;
+        while (v767Dready(ii)) {
+          v767Clear(ii); 
+          if(itimeout++ > MAX_TIME) break;
+        }
+      }
+   }
 
   tir[1]->tir_oport=0x0; 
 
