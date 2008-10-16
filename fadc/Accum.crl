@@ -39,7 +39,6 @@ variable res
 unsigned long laddr;
 unsigned short temp;
 
-
 # If the ROC is sending data to Little-Endian EB
 # e.g. a x86 Linux CPU then bigendian_out = 0.
 # Unless the ROC is also running on a Little-Endian
@@ -56,10 +55,13 @@ unsigned short temp;
   initHAPTB(); 
   setTimeHAPTB(200,12000);
  
-
-### I am not sure if this goes here, let's give it a try.   
-#   *rol->dabufp++ = getRampDelayHAPTB();
-#   *rol->dabufp++ = getIntTimeHAPTB();
+  sis3320SetupMode(ADC_ID,1);
+  sis3320StopDelay(0,0);
+  sis3320SetGain(0,-1,1);
+  sis3320SetDac(0,45000);
+  
+ sis3320SetThresh(0, 0, 3703, 3700);	
+ sis3320SetN5N6(0, 0, 10, 100, 12, 112);
 
 %%
  if (usescaler) {
@@ -78,7 +80,6 @@ unsigned short temp;
  }
 %%
 
-
   log inform "User Download Executed"
 
 end download
@@ -92,9 +93,6 @@ begin prestart
   init trig source VME
   link async trig source VME 1 to usrtrig and usrtrig_done
   event type 1 then read VME 1
-
-  sis3320SetupMode(ADC_ID,2);
-
 
   log inform "User Prestart Executed"
 
@@ -121,19 +119,11 @@ end pause
 
 
 begin go
-
+  
   unsigned short temp;
-  
+
   log inform "Entering User Go"
-  sis3320Start(ADC_ID);
-  sis3320StartSampling(ADC_ID);
-  sis3320StopDelay(0,400);
-  sis3320SetGain(0,-1,1);
-  sis3320SetDac(0,45000);
-  
-  sis3320SetThresh(0, 0, 3706, 3704);
-  sis3320SetN5N6(0, 0, 10, 100, 10, 100);
-  
+
 %%
   if (usescaler) {
      if (scaen560[0] != 0) {  /* clear scaler */
@@ -144,7 +134,8 @@ begin go
   }
 %%
 
-
+  sis3320Start(ADC_ID);
+  
  CDOENABLE(VME,1,0);
 
 end go
@@ -153,53 +144,11 @@ begin trigger usrtrig
 
  variable stat, csr, jj
  volatile unsigned short tir_dat;
-
-
-rol->dabufp = (long *) 0;
+ rol->dabufp = (long *) 0;
 
     open event type EVTYPE of BT_BANK 
 
 #### 1st Sub-Bank 
-   open bank FADC_SAMPLES of BT_UI4
-%%
-
- int nwrds=0;
- int i;
- int index;
- int buf_pointer;
- int read_pointer;
-//logMsg("dabufp= 0x%x\n",rol->dabufp);
-
- /* Check if an Event is available */
- stat = sis3320Finished(ADC_ID);
- if(stat>0) {
-    *rol->dabufp++=ADC_CH;
-    *rol->dabufp++=0x000010002;   //Trigger Mode 2,  Sampling Data Version 1
-                              //Version 1, one sample per word with
-                              //first sample being earliest sample in buffer
-    read_pointer=sis3320GetBufLength(ADC_ID); 
-    *rol->dabufp++=read_pointer;  //not too important, but keep it anyway
-//if wrapping, read_pointer should start with register value 
-//if not wrapping, read_pointer should start at zero
-//    read_pointer=0;             //not in wrap mode.  Start at beginning of buffer
-    *rol->dabufp++=512;          //#words read from fadc
-    for (i=0;i<512;i++){
-	index=read_pointer/2;
-	*rol->dabufp++=sis3320GetData(ADC_ID,ADC_CH,index,read_pointer%2);
-	read_pointer++;
-	if(read_pointer>=512) read_pointer=0;
-    }
- } 
-
-else {
-
-   *rol->dabufp++ = 0xda0000da;
-   logMsg("ERROR: FADC Samples not ready  sis3320Status = 0x%x\n",stat,0,0,0,0,0);
- }
- 
-%%
-
-close bank
 
 
 #### 2nd Sub-Bank 
@@ -227,7 +176,7 @@ close bank
 else {
 
    *rol->dabufp++ = 0xda0000da;
-   logMsg("ERROR: FADC accumulators not ready Status = 0x%x\n",stat,0,0,0,0,0);
+   logMsg("ERROR: NO data in ADC  Actual Event Count = 0x%x\n",stat,0,0,0,0,0);
  }
  %%
 
@@ -252,18 +201,20 @@ close bank
       for (jj = 0; jj<16; jj++) *rol->dabufp++ = scaen560[0]->CntR[jj];
    }
 
+
 %%
 
 close bank
 ## closing of the event which includes the sub-banks. 
 
-close event 
+ close event 
+
 
 end trigger
 
 begin done usrtrig
-sis3320Start(ADC_ID);
-sis3320StartSampling(ADC_ID);
+ sis3320Start(ADC_ID);
+
 
 end done
 

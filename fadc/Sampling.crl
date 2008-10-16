@@ -6,7 +6,8 @@
 
 readout list VME1
 
-maximum 9216,500
+#maximum 9216,5000
+maximum 600000,100
 vme readout
 #ts control
 
@@ -14,16 +15,24 @@ const TIR_ADDR = 0x0ed0
 const ADC_ID = 0
 const ADC_CH = 0
 
+const usescaler=1
+const SCALER_ADDR = 0xceb500
+
+const MAX_SAMPLE_LENGTH = 512
+const MAX_BUF_LENGTH = 5000
+
 ### add sub-bank structures here if I need. 
  
  const TIMING = 0x0210
  const FADC_ACCUM = 0x0211
  const FADC_SAMPLES = 0x0212
 
+
 ## const HTB3 = 0x0210
 
 #include "HAPTB_util.h"
- 
+include "scaler1.h"
+
 unsigned long laddr;
 extern int bigendian_out;
 
@@ -32,8 +41,7 @@ extern int bigendian_out;
 begin download
 
 variable res
-
-
+unsigned short temp;
 
 # If the ROC is sending data to Little-Endian EB
 # e.g. a x86 Linux CPU then bigendian_out = 0.
@@ -49,14 +57,30 @@ variable res
 ### need to see which one comes first... 
 
   initHAPTB(); 
-  setTimeHAPTB(200,12000);
+  setTimeHAPTB(300,12000);
  
-
-
 
 ### I am not sure if this goes here, let's give it a try.   
 #   *rol->dabufp++ = getRampDelayHAPTB();
 #   *rol->dabufp++ = getIntTimeHAPTB();
+
+%%
+ if (usescaler) {
+   res = sysBusToLocalAdrs(0x39, SCALER_ADDR, &laddr);
+   if (res != 0) {
+      printf("ERROR: cannot address scaler at 0x%x \n",SCALER_ADDR);
+      scaen560[0] = 0;
+   } else {
+      scaen560[0] = (struct caen_v560_scaler *)laddr;
+   }
+   if (scaen560[0] != 0) {  /* clear scaler */
+        printf("Clearing scalers in download \n ");
+        scaen560[0]->ClrR=0;
+        temp = scaen560[0]->clrVETOR;
+   }
+ }
+%%
+
 
   log inform "User Download Executed"
 
@@ -74,11 +98,9 @@ begin prestart
 
   sis3320SetupMode(ADC_ID,1);
 
-
   log inform "User Prestart Executed"
 
 end prestart
-
 
 
 begin end
@@ -100,16 +122,28 @@ end pause
 
 
 begin go
+
+  unsigned short temp;
   
   log inform "Entering User Go"
   sis3320Start(ADC_ID);
   sis3320StopDelay(0,0);
 /*(0,-1,1) for FADC 0 all channels set CML bit on */
-  sis3320SetGain(0,-1,0); 
+  sis3320SetGain(0,-1,1); 
   sis3320SetDac(0,45001);
   
  sis3320SetThresh(0, 0, 3703, 3700);	
  sis3320SetN5N6(0, 0, 10, 100, 12, 112);
+
+%%
+  if (usescaler) {
+     if (scaen560[0] != 0) {  /* clear scaler */
+        printf("Clearing scalers in go \n");
+         scaen560[0]->ClrR=0;
+         temp = scaen560[0]->clrVETOR;
+     }
+  }
+%%
   
  CDOENABLE(VME,1,0);
 
@@ -117,7 +151,9 @@ end go
 
 begin trigger usrtrig
 
- variable stat, csr
+ variable stat, csr, jj
+ volatile unsigned short tir_dat;
+
 rol->dabufp = (long *) 0;
 
     open event type EVTYPE of BT_BANK 
@@ -131,26 +167,39 @@ rol->dabufp = (long *) 0;
  int index;
  int buf_pointer;
  int read_pointer;
+
+
+ int buf_len;	
+ int sub_page;
+ int sub_index;
+ int sub_length;
+ int* mem_loc;
+ sis3320Disable(0);
+
+
+
 //logMsg("dabufp= 0x%x\n",rol->dabufp);
 
  /* Check if an Event is available */
  stat = sis3320Finished(ADC_ID);
  if(stat>0) {
     *rol->dabufp++=ADC_CH;
-    *rol->dabufp++=0x000010001;   //Trigger Mode 1,  Sampling Data Version 1
+    *rol->dabufp++=0x000020001;   //Trigger Mode 1,  Sampling Data Version 1
                               //Version 1, one sample per word with
                               //first sample being earliest sample in buffer
-    read_pointer=sis3320GetBufLength(ADC_ID); 
-    *rol->dabufp++=read_pointer;  //not too important, but keep it anyway
-    read_pointer=0;             //not in wrap mode.  Start at beginning of buffer
-    *rol->dabufp++=512;          //#words read from fadc
-    for (i=0;i<512;i++){
-	index=read_pointer/2;
-	*rol->dabufp++=sis3320GetData(ADC_ID,ADC_CH,index,read_pointer%2);
-	read_pointer++;
-	if(read_pointer>=512) read_pointer=0;
+
+    buf_len=sis3320GetBufLength(ADC_ID); 
+    if(buf_len>MAX_BUF_LENGTH) buf_len=MAX_BUF_LENGTH;
+    *rol->dabufp++=buf_len; //#samples read from fadc
+    *rol->dabufp++=MAX_BUF_LENGTH;
+    *rol->dabufp++=sis3320GetActualNumEvents(ADC_ID);
+    sis3320SetupMapping(ADC_ID,ADC_CH,0,buf_len,
+	&sub_page, &sub_index, &sub_length, &mem_loc);
+     for (i=0;i<sub_length/2;i++){
+	*rol->dabufp++=mem_loc[i+sub_index];
     }
  } 
+
 
 else {
 
@@ -205,6 +254,13 @@ close bank
 
    *rol->dabufp++ = getRampDelayHAPTB();
    *rol->dabufp++ = getIntTimeHAPTB();
+/* When standalone, get data from tir_dat; when TS-mode use tir_iport */
+   tir_dat = tir[1]->tir_dat; 
+   *rol->dabufp++ = (tir_dat & 0xfff);
+   if (usescaler && scaen560[0] != 0) {
+      *rol->dabufp++ = 0xcae56000;  /* header for scaler */
+      for (jj = 0; jj<16; jj++) *rol->dabufp++ = scaen560[0]->CntR[jj];
+   }
 
 %%
 
