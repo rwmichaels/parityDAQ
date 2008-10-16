@@ -36,7 +36,7 @@
  *                           (also added adcSPI register to structure of
  *                                 adcGroup_struct in header file
  * May 2008 G. Franlin     reorganized
- *                         see protypes for documentation
+ *                         see protypes ofr documentation
  */
 
 #include "vxWorks.h"
@@ -56,7 +56,7 @@
 
 /* Include DMA Library definitions */
 #include "universeDma.h"
-
+#
 /* Define external Functions */
 IMPORT  STATUS sysBusToLocalAdrs (int, char *, char **);
 IMPORT  STATUS intDisconnect (int);
@@ -118,17 +118,20 @@ long sis3320GetAccum_V1(int id, int adcgr, int adc, int which);  /*for old 3320 
 /* get number of samples summed into accumulator which_ccum */
 long sis3320GetNumAcc(int id, int adcgr, int adc, int which_accum);
 int sis3320GetBufLength(int id);
+int sis3320GetActualNumEvents(int id);
 
 
-/* Get Status and Setup Parameters */
+/* Get Status */
 int sis3320IsSampling(int id);
 int sis3320IsRunning();
 int sis3320SetRunFlag(int arg);
 int sis3320Finished(int id);
 int sis3320Busy(int id);
 int sis3320DacCsrBusy(int id);   /*used for setting DAC */
+/* Get Setup parameters */
 int sis3320GetDac(int id, int chan);   /* get DAC setting */
 int sis3320GetThresh(int id, int chan, int which_thresh); /* which_thresh= 1 or 2 */
+int sis3320GetMaxSampleLength(int id);
 unsigned int sis3320GetN5N6(int id, int chan);  /*Accum 5 and 6 before pre- count*/
 /*                       and post-count settings (packed in 4 bytes word*/         
 
@@ -145,12 +148,19 @@ int sis3320Init (UINT32 addr, UINT32 addr_inc, int nadc) ;
 int sis3320DefaultSetup(int id);
 int sis3320SetupMode(int id, int Mode);  /* Sets standard trigger modes*/
 int sis3320SetGain(int id, int adc, int data);/*    accumulator setup */
-int sis3320SetDac(int id, int data);
-int sis3320SetDacChan(int id, int chan, int data);
+int sis3320SetDac(int id, int data);        /* for compatabiilty with old code */
+int sis3320SetDacChan(int id, int chan, int data);  
 int sis3320SetThresh_V1(int id, int adc, int lohi, int data);
 int sis3320SetThresh(
 int id, int adc, int thresh1, int thresh2);
 int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after);
+int sis3320SetEventMode(int id, int Flag);/*Flag=0 single event,=1 multiple events*/
+int sis3320SetStartMode(int id, int Flag);/*Flag=0disable autostart,=1 enable*/
+int sis3320SetStopMode(int id, int Flag);
+int sis3320EnableUserBit(int id,int Flag);/*Flag=0 disable user bit, =1 enable*/
+int sis3320SetSampleStartAddress(int id, int StartAddress);
+int sis3320SetMaxSampleLength(int id, int SampleLength);
+int sis3320SetMaxNumEvents(int id, int MaxNumberOfEvents);
 int sis3320StopDelay (int id, unsigned long delay); /* step # samples after stop signal */
 int sis3320StartDelay (int id, unsigned long delay); 
 void sis3320Reset (int id); 
@@ -178,13 +188,14 @@ unsigned int sis3320AcqConfig (int id, unsigned long val);
 /* internal  routines */
 int sis3320WriteAdcSPI(int id, int adc, unsigned int spi_address, unsigned int data);
 int sis3320ReadAdcSPI(int id, int adc, unsigned int* spi_address);
-int sis3320GetMapping(unsigned int id,
+int sis3320SetupMapping(unsigned int id,
 		      unsigned int adc,
 		      unsigned int index,
 		      unsigned int length,
 		      unsigned int* sub_page,    /* return memory subpage*/
 		      unsigned int* sub_index,  /* return index of first data word*/
-		      unsigned int* sub_length); /* return # of words this subpage*/
+		      unsigned int* sub_length,  /* return # of words this subpage*/
+		      unsigned int** mem_loc);   /*starting VME memory location
 
 /* Misc unknown */
  void sis3320Run (int id, int rflag, int whichadc); 		      
@@ -1053,30 +1064,31 @@ sis3320GrpDisplay (int id, int grp)
 	      grp);
       return;
     }
-
-  adcg = &(sis3320p[id]->adcG[grp-1]);
+  /* changed from adcG[grp-1] to adcG[grp] for consistency 7/29/08 gbf */
+  adcg = &(sis3320p[id]->adcG[grp]);
   printf ("ADC group %d =====\n", grp);
-  printf ("eventConfig          0x%x\n", adcg->eventConfig);
-  printf ("sampLength           0x%x\n", adcg->sampLength);
-  printf ("sampStart            0x%x\n", adcg->sampStart);
-  printf ("adcInputMode         0x%x\n", adcg->adcInputMode);
-  printf ("nextSampAdr[%d]       0x%x\n", (grp<<1)-1, adcg->nextSampAdr[0]);
-  printf ("nextSampAdr[%d]       0x%x\n", grp<<1, adcg->nextSampAdr[1]);
-  printf ("actSampVal           0x%x\n", adcg->actSampVal);
-  printf ("testReg              0x%x\n", adcg->testReg);
-  printf ("ddr2MemLogVerify     0x%x\n", adcg->ddr2MemLogVerify);
-  printf ("trigFlagClearCtr     0x%x\n", adcg->trigFlagClearCtr);
-  printf ("trigReg (setup)[%d]   0x%x\n", (grp<<1)-1, adcg->trigReg[0][0]);
-  printf ("trigReg (thresh)[%d]  0x%x\n", (grp<<1)-1, adcg->trigReg[0][1]);
-  printf ("trigReg (setup)[%d]   0x%x\n", grp<<1, adcg->trigReg[1][0]);
-  printf ("trigReg (thresh)[%d]  0x%x\n", grp<<1, adcg->trigReg[1][1]);
+  printf ("eventConfig          0x%8x\n", adcg->eventConfig);
+  printf ("sampLength           0x%8x  %d\n",
+	  adcg->sampLength,adcg->sampLength);
+  printf ("sampStart            0x%8x\n", adcg->sampStart);
+  printf ("adcInputMode         0x%8x\n", adcg->adcInputMode);
+  printf ("nextSampAdr[%d]       0x%8x\n", (grp<<1)-1, adcg->nextSampAdr[0]);
+  printf ("nextSampAdr[%d]       0x%8x\n", grp<<1, adcg->nextSampAdr[1]);
+  printf ("actSampVal           0x%8x\n", adcg->actSampVal);
+  printf ("testReg              0x%8x\n", adcg->testReg);
+  printf ("ddr2MemLogVerify     0x%8x\n", adcg->ddr2MemLogVerify);
+  printf ("trigFlagClearCtr     0x%8x\n", adcg->trigFlagClearCtr);
+  printf ("trigReg (setup)[%d]   0x%8x\n", (grp<<1)-1, adcg->trigReg[0][0]);
+  printf ("trigReg (thresh)[%d]  0x%8x\n", (grp<<1)-1, adcg->trigReg[0][1]);
+  printf ("trigReg (setup)[%d]   0x%8x\n", grp<<1, adcg->trigReg[1][0]);
+  printf ("trigReg (thresh)[%d]  0x%8x\n", grp<<1, adcg->trigReg[1][1]);
   printf ("actEvtCounter  = (dec) %d ", sis3320p[id]->actEvtCounter);
-  for (i = 0; i < sis3320p[id]->actEvtCounter; ++i)
-    {
-      printf("\n i = %d \n",i);
-      printf ("eventDir[%d]    (dec) %d =  0x%x\n", (grp<<1)-1, adcg->eventDir[0][i],adcg->eventDir[0][i]);
-      printf ("eventDir[%d]    (dec) %d =  0x%x\n", grp<<1, adcg->eventDir[1][i],adcg->eventDir[1][i]);
-    }
+/*   for (i = 0; i < sis3320p[id]->actEvtCounter; ++i) */
+/*     { */
+/*       printf("\n i = %d \n",i); */
+/*       printf ("eventDir[%d]    (dec) %d =  0x%x\n", (grp<<1)-1, adcg->eventDir[0][i],adcg->eventDir[0][i]); */
+/*       printf ("eventDir[%d]    (dec) %d =  0x%x\n", grp<<1, adcg->eventDir[1][i],adcg->eventDir[1][i]); */
+/*     } */
 }
 
 void
@@ -1116,15 +1128,17 @@ sis3320PrintChannelSettings(int id, int chan){
 }
 /* *********************************** */
 int
-sis3320GetMapping(unsigned int id,
+sis3320SetupMapping(unsigned int id,
 		  unsigned int adc_channel,
 		  unsigned int sample_index,
 		  unsigned int sample_length,
 		  unsigned int* sub_page_rtn,    /* rtn memory subpage*/
        	          unsigned int* sub_index_rtn,  /*rtn  address of first data word*/
-		  unsigned int* sub_length_rtn) /* rtn # of samples this subpage*/
+		  unsigned int* sub_length_rtn, /* rtn # of samples this subpage*/
+		  unsigned int** mem_loc_rtn)   /* rtn VME starting memory location*/
 {
   /* returns info need to read out set of data words from FADC 
+  * and sets ADC Memory Page register
    * inputs:
    * id  FADC module number
    * adc_channel  adc channel (0 - 7)
@@ -1134,8 +1148,12 @@ sis3320GetMapping(unsigned int id,
    * sub_page_rtn  use "sis3320p[id]->adcMemPageReg=sub_page" to set to correct page
    * sub_index_rtn  index of first WORD corresponding to data sample "index"
    * sub_length_rtn  Number of data WORDS (two data samples per word)
+   * mem_loc_rtn    Starting VME address of data
    *
-   * NOTE: reading out "sub_words" number of data words will either correspond
+   * NOTE 1:  ADC Memory page is set for the correct 4M Samples.  This routine
+   *  must be called more than once if there are more than 4M samples to be readdddd
+   *
+   * NOTE 2: reading out "sub_words" number of data words will either correspond
    * to readding out "length" number of samples OR it will bring us to the end
    * of the address page.  In the latter case, this routine will have to be
    * called again to get mapping for the next set of data.
@@ -1174,9 +1192,13 @@ sis3320GetMapping(unsigned int id,
   } else {
     rtn=1;                    /*flag for more data after this page*/
   }
+/* set page mapping and determine actual starting address*/
+  sis3320p[id]->adcMemPageReg=sub_page;
+
   *sub_page_rtn=sub_page;
   *sub_index_rtn=sub_index;
   *sub_length_rtn=sub_length;
+  *mem_loc_rtn = &(sis3320p[id]->adcData[ adc_channel*ADC_2MB+sub_index]);
   return rtn;
 }
 
@@ -1185,12 +1207,15 @@ void
 testmap(int index, int length){
   unsigned int id, adc_channel;
   unsigned int sub_page, sub_index,sub_length;
+  unsigned int* mem_loc;
   int rtn;
-  rtn=sis3320GetMapping(0,0,index,length,&sub_page,&sub_index,&sub_length);
-  printf(" index %d length %d gives sub_page %d sub_index %d sub_length %d ",
+  rtn=sis3320SetupMapping(0,0,index,length,&sub_page,&sub_index,&sub_length,&mem_loc);
+  printf(" index %d length %d gives:\n", index,length);
+  printf("    sub_page %d  sub_index %d  sub_length %d\n",
 	 sub_page,sub_index,sub_length);
-  printf(" return %d ", rtn);
-return;
+  printf("    VME memory location %p\n",mem_loc);
+  printf(" return %d \n", rtn);
+  return;
 }
 /* *********************************** */
 int 
@@ -2128,7 +2153,7 @@ int sis3320SetupMode(int id,int Mode) {
   /* gbf feb 29, 2008 */
   /* based on DefaultSetup, but allows multiple predefined modes of running*/
   /* Mode 1 for long buffers, lemo start and stop */
-  /* Mode 2 for short wrapped buffers, autostart */
+  /* Mode 2 for short wrapped buffers, autostart, lemo stop */
  
   unsigned int registerbits;
   unsigned int data;
@@ -2162,13 +2187,6 @@ int sis3320SetupMode(int id,int Mode) {
     printf("Sample length = %d = 0x%x \n",data,data);
     sis3320p[id]->sampLength = data;
     sis3320p[id]->sampStart = 0; /* sample start Address  */
-/*     data = 0;  /\* 0 for full gain, 1 for half *\/ */
-/*     sis3320p[id]->adcGainReg = data; */
-/*     sis3320SetThresh(0,0,-1,0);   /\* clear thresholds *\/ */
-/*     /\* Give an offset to the signals *\/ */
-/*     data =50000; */
-/*     sis3320SetDac(0, data);   /\* Note, 50000 gives pedestal ~3600 *\/ */
-/*                               /\* 40600 is approximately the midpoint*\/ */
   }else if (Mode==2){
     /* small memory wrap mode with autostart */
     /* Data type 2 */
@@ -2194,16 +2212,167 @@ int sis3320SetupMode(int id,int Mode) {
     printf("Sample length = %d = 0x%x \n",data,data);
     sis3320p[id]->sampLength = data;
     sis3320p[id]->sampStart = 0; /* sample start Address*/
-/*     data = 0;  /\* 0 for full gain, 1 for half *\/ */
-/*     sis3320p[id]->adcGainReg = data; */
-/*     sis3320SetThresh(0,0,-1,0);   /\* clear thresholds *\/ */
-/*     /\* Give an offset to the signals *\/ */
-/*     data =50000; */
-/*     sis3320SetDac(0, data);   /\* Note, 50000 gives pedestal ~3600 *\/ */
-/*                               /\* 40600 is approximately the midpoint*\/ */
+  } else if(Mode==3) {
+    /* Multievent mode */
+    registerbits= SIS3320_ACQ_ENABLE_LEMO_START_STOP |
+      SIS3320_ACQ_DISABLE_INTERNAL_TRIGGER |
+		         SIS3320_ACQ_DISABLE_AUTOSTART |
+		         SIS3320_ACQ_ENABLE_MULTIEVENT |
+		         SIS3320_ACQ_SET_CLOCK_TO_250MHZ;   
+    printf("Arg for Acq Config = 0x%x \n", registerbits);
+    sis3320AcqConfig (id, registerbits);
+
+ /*    registerbits=SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE | */
+/*       SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR | */
+/*       SIS3320_EVENT_CONF_PAGE_SIZE_16M_WRAP; */
+    registerbits=
+      SIS3320_EVENT_CONF_ENABLE_ACCUMULATOR |
+      SIS3320_EVENT_CONF_PAGE_SIZE_16M_WRAP;
+    printf("page size = 0x%x\n",SIS3320_EVENT_CONF_ENABLE_WRAP_PAGE_MODE);
+    printf("Arg for Event Config = 0x%x\n",registerbits);
+    sis3320EventConfig (id,  registerbits) ;
+
+    sis3320p[id]->maxNofEvReg = 1; /* Default event maximum */
+    //   event_sample_length = SIS3320_16M;      /*default max sample length*/
+    event_sample_length = 800;
+    data = (event_sample_length & 0xfffffffc) - 4;
+    printf("Sample length = %d = 0x%x \n",data,data);
+    sis3320p[id]->sampLength = data;
+    sis3320p[id]->sampStart = 0; /* sample start Address  */
   }
+  return 0;
 }
 
+/* *********************************** */
+int sis3320SetEventMode(int id, int Flag) {
+  /* Flag=0 for single event mode
+     =1 for multi event mode */
+  if(Flag==0){
+    sis3320AcqConfig(id, SIS3320_DISABLE_MULTIEVENT);
+  } else if (Flag==1) {
+    sis3320AcqConfig(id, SIS3320_ENABLE_MULTIEVENT);
+  }
+  return 0;
+}
+int sis3320StartMode(int id, int Flag){
+  /* Flag=0 for disable autostart 
+     = 1 for enable autostart */
+  if(Flag==0){
+    sis3320AcqConfig(id, SIS3320_DISABLE_AUTOSTART);
+  } else if (Flag==1) {
+    sis3320AcqConfig(id, SIS3320_ENABLE_AUTOSTART);
+  }
+  return 0;
+}
+int sis3320SetSampleStartAddress(int id, int StartAddress){
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  sis3320p[id]->sampStart=StartAddress;
+}
+int sis3320SetStopMode(int id,int Flag){
+  /* Flag=0 for disable Sample Length stop*/
+  /* Flag=1 to enable Sample Length stop*/
+  int tmp;
+  volatile struct adcGroup_struct* adcg;
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  adcg = &(sis3320p[id]->adcG[0]);
+  tmp=adcg->eventConfig;
+  if(Flag==0){
+    sis3320p[id]->eventConfig = (tmp & 0xffdf);     /* clear stop bit*/
+  } else {
+    sis3320p[id]->eventConfig = (tmp | 0x20);     /* set stop bit*/
+  }
+  return 0;
+}
+int sis3320EnableUserBit(int id,int Flag){
+  /* Flag=0 for disable user input bit*/
+  /* Flag=1 to enable input user bit*/
+  int tmp;
+  volatile struct adcGroup_struct* adcg;
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  adcg = &(sis3320p[id]->adcG[0]);
+  tmp=adcg->eventConfig;
+  if(Flag==0){
+    sis3320p[id]->eventConfig = (tmp & 0xefff);     /* clear bit 12*/
+  } else {
+    sis3320p[id]->eventConfig = (tmp | 0x1000);     /* set bit 12*/
+  }
+  return 0;
+}
+
+int sis3320SetWrapPageSize(int id, int WrapSizeCode){
+  /* WrapSizeCode=0  to 11 */
+  /* 0  16M Samples
+   * 1   4M
+   * 2   1M
+   * 3 256k
+   * 4  64k
+   * 5  16k
+   * 6  4k
+   * 7  1k
+   * 8  512
+   * 9  256
+   *10  128
+   *11  64
+   */
+  int tmp;
+   volatile struct adcGroup_struct* adcg;
+   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  /* you can write to all 4 groups at once, but only read from 1 */
+  adcg = &(sis3320p[id]->adcG[0]);  /*get current settings for group 0*/
+  tmp=adcg->eventConfig;   /* get current settings*/
+  tmp= tmp&0xfffffff0;
+  tmp= tmp |( WrapSizeCode &0xf);   /* new lowest 4 bits are wrap size code*/
+  sis3320p[id]->eventConfig = tmp;
+  return 0;
+}
+
+int sis3320SetMaxSampleLength(int id, int SampleLength){
+  /* sets sample length. 
+     used if "enable Max Sample Count stop" is enabled */
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  sis3320p[id]->sampLength=((SampleLength-4)&0xfffffc);
+  return 0;
+}
+int sis3320GetMaxSampleLength(int id){
+  /* gets sample length. 
+     used if "enable Max Sample Count stop" is enabled */
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  return (sis3320p[id]->sampLength)+4;
+}
+int sis3320SetMaxNumEvents(int id,int MaxNumberOfEvents){
+  /* set the maximum number of events for multiple event mode */
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    {
+      printf ("sis3320GetAccum_V1: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  sis3320p[id]->maxNofEvReg=MaxNumberOfEvents;
+  return 0;
+}
 
 
 /* *********************************** */
@@ -2481,37 +2650,6 @@ int sis3320SetThresh_V1(int id, int adc, int lohi, int data) {
 
 }
 
-
-/* *********************************** */
-/* int sis3320SetN5N6(int id, int adc, int n5_before, int n5_after, int n6_before, int n6_after) { */
-/*   /\* Does this for all channels */
-/*   /\* Set the N5_before, N5_after, N6_before, N6_after variables for */
-/*      accumulators 5 and 6 *\/ */
-/*   int grp; */
-
-/*   if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL))  */
-/*     {  */
-/*       printf("sis3320SetN5N6: ERROR : ADC id %d not initialized \n", id); */
-/*       return 0; */
-/*     } */
-/*   grp = adc >> 1; */
-/*   if (n5_before == -1 ) {  */
-/*     printf("Clearing N5, N6 variables \n"); */
-/*     sis3320p[id]->adcG[grp].n5n6befaft1 = 0; */
-/*     sis3320p[id]->adcG[grp].n5n6befaft2 = 0; */
-/*     return 0; */
-/*   } */
-
-/*   sis3320p[id]->adcG[grp].n5n6befaft1 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff); */
-/*   sis3320p[id]->adcG[grp].n5n6befaft2 = ((n5_before & 0xff)<<24) + ((n5_after & 0xff)<<16) + ((n6_before & 0xff) << 8) + (n6_after & 0xff); */
-
-/*   printf("N5, N6 before/after registers = 0x%x  and 0x%x \n", */
-/* 	 sis3320p[id]->adcG[grp].n5n6befaft1, */
-/* 	 sis3320p[id]->adcG[grp].n5n6befaft2); */
-
-/*   return 1; */
-
-/* } */
 /* *********************************** */
 int sis3320SetN5N6(int id, int chan, int n5_before, int n5_after, int n6_before, int n6_after) {
   /* Set the N5_before, N5_after, N6_before, N6_after variables for
@@ -2699,3 +2837,12 @@ int sis3320WriteAdcSPI(int id, int adc, unsigned int spi_addr, unsigned int data
 
   return 0;
 }
+int sis3320GetActualNumEvents(int id){
+  if ((id < 0) || (id >= SIS3320_MAX_BOARDS) || (sis3320p[id] == NULL)) 
+    { 
+      printf("sis3320SetThresh: ERROR : ADC id %d not initialized \n", id);
+      return 0;
+    }
+  return sis3320p[id]->actEvtCounter;
+}
+
