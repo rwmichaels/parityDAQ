@@ -21,10 +21,10 @@ const V767_ADR1 = 0x8000000
 # V767_OFF is the increment for each subsequent v767 (ie. next module would be 0x180000)
 const V767_OFF = 0x0800000
 # trigger window settings (in nanosecs)
-const V767_TW_OFF = 5000
-const V767_TW_WID = 1000
-const MAX_WORDS = 1024
-const MAX_TIME = 1000
+const V767_TW_OFF = 1000
+const V767_TW_WID = 5000
+const MAX_WORDS = 100
+const MAX_TIME = 200000
 
 const TIR_ADDR = 0xad0
 extern int vxTicks;   /* vxWorks time ticks */
@@ -49,22 +49,22 @@ begin download
   initSIS();
   initISR_SIS();
 
+
+
   if(use767>0) {
-    v767Init(V767_ADR1,V767_OFF,V767_NMOD,0);
 
     for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
-       /* select stop trigger matching, substraction of trigger time, */
-        /* all channels on, autoload on, and save configuration */
-
-       v767Reset(0);
-       taskDelay(2*60);
   
-       v767SetAcqMode(ii,0);
-       v767SetEdgeDetectionMode(ii,0);  /* 0=time off leading edge */
-       v767TriggerConfig(ii,V767_TW_WID,-V767_TW_OFF,0);
+       v767Init(V767_ADR1,V767_OFF,V767_NMOD,0);
+       v767Reset(ii);
+       taskDelay(2*60);// 2 sec waiting
+
+/* The 2nd & 3rd arg must be V767_TW_OFF and WID, and must be hard-coded here */
+       v767TriggerConfig(ii,5000,-1000,0); 
        v767Status(ii,0,0); 
+
        v767TriggerConfig(ii,0,0,0); /* Print current trigger config */
-     }
+    }
   }
 
 %%
@@ -87,9 +87,7 @@ begin prestart
 
 %%
   if (use767>0) {
-    for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
-      v767Clear(i);
-    }
+     while(v767Dready(0)) v767Clear(0);
   }
 %%
 
@@ -188,7 +186,7 @@ begin trigger partrig
 
     for (ihel=0; ihel<2; ihel++) {
       for (ichan = 0; ichan<32; ichan++) {
-        *rol->dabufp++ = Read3801(0,ihel,ichan);
+        *rol->dabufp++ = Read3801(iscal,ihel,ichan);
       }
     }
 
@@ -203,6 +201,7 @@ begin trigger partrig
         nDataWords = 0;
         itimeout=0;
         while(v767Dready(ii) != 1) if (itimeout++ > MAX_TIME) break;
+        for (j = 0; j<MAX_WORDS; j++) tdcdata[j]=0;
         if (itimeout < MAX_TIME) {
           nDataWords = v767ReadEvent(ii,tdcdata,MAX_WORDS);
         }
