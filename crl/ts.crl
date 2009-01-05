@@ -7,6 +7,8 @@
 #  This TS cannot be run as a ROC.  
 #
 #  Modifications
+#
+#  Jan 5, 2009    RWM    Add PVDIS crate(s)
 
 
 readout list TSL
@@ -92,7 +94,9 @@ inj = getflag(INJ);
    ROC2 branch 4  -  RHRS crate
    ROC0 branch 2  -  Injector crate
    ROC1 branch 3  -  Test crate
-   (add PVDIS later ...)
+   ROC3 branch 4  -  PVDIS crate on R-HRS
+   unassigned     -  PVDIS crate on L-HRS
+
 */
 
   jj = 0;
@@ -107,6 +111,11 @@ if(righthrs) {
 if(lefthrs) {
   jj |= 0x2000000;  /* enable ROC1 on branch 4 */
   printf("Add Left HRS crate \n");
+}
+
+if(pvdisright) {
+  jj |= 0x8000000;  /* enable ROC3 on branch 4 */
+  printf("Add Right HRS crate \n");
 }
 
 if(inj) {
