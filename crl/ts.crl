@@ -115,7 +115,7 @@ if(lefthrs) {
 
 if(pvdisright) {
   jj |= 0x8000000;  /* enable ROC3 on branch 4 */
-  printf("Add Right HRS crate \n");
+  printf("Add PVDIS crate on R-HRS \n");
 }
 
 if(inj) {
