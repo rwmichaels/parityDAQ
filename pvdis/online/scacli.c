@@ -65,12 +65,14 @@ main (int argc, char *argv[])
        FILE *ringout;
        int   sFd;                            /*  socket file descriptor */
        int i,k,n,ilen,numchan;
+       int iread, num_read;
+       int getring = 0;
        long stat;
        int   mlen;                           /*  msg length  */
        int isca,sca,shead,nRead,nRead1;
        static int clearall=0;           /* flag to clear scalers (danger!) */
        int checkend;
-       static int getring=0;
+       static int showrate=0;
        static int lprint=1;
        static int fprint=0;
        struct request myRequest;             /*  request to send to server */
@@ -80,6 +82,7 @@ main (int argc, char *argv[])
        char  replyBuf[REPLY_MSG_SIZE];
        static char  defMsg[] = "Bob wants some data";
        static int debug=0;
+       int sleeptime;  
        int bytesread;
        int dainsert;
        int nskip,nchan,ntot;
@@ -90,6 +93,8 @@ main (int argc, char *argv[])
            long header[4];
            long bobbuf[32*MAXSCALER];  /* should assume STR7200 (32 chan) */
 	 } buf;
+       long scalerd1[32*MAXSCALER],scalerd2[32*MAXSCALER];
+       float srate[32*MAXSCALER];
 
 #include "scaler1.h"
 #include "scaler2.h"
@@ -99,7 +104,8 @@ main (int argc, char *argv[])
     dainsert=0;
     clearall=0;
     checkend=0;
-    getring=0;
+    num_read=1;
+    sleeptime=10; /* default sleep time = 10 */
 
     while (--argc > 0) {
         ++argv;
@@ -113,9 +119,9 @@ main (int argc, char *argv[])
    	   case 'e':                  /* check for end-run (for last_scaler)*/
               checkend=1;
               break;
-/* Getting the ring buffer is dangerous, see top of code */
-   	   case 'r':                  /* get the ring buffer */
-              getring=1;
+   	   case 'r':                  /* show the rates */
+  	      num_read=2;
+              showrate=1;
               break;
            case 'x':                  /* Hexidecimal printout */
               lprint=2;
@@ -137,12 +143,13 @@ main (int argc, char *argv[])
            default:
               printf("ERROR: Illegal option %c \n\n",cb);
 usage:
-              printf("USAGE: scread [-c -e -d -x -h -i ");
+              printf("USAGE: scread [-c -r -e -d -x -h -i ");
 #ifdef print_to_file
 	      printf("-p ");
 #endif
 	      printf("]\n");
               printf("-c is to clear scalers (if I let you)\n");
+              printf("-r is to show the rates (Hz)\n");
               printf("During experiment, the server probably be set up to\n");
               printf("disallow scread to clear -> instead by CODA RunStart\n");
               printf("-e is to check for end of run flag\n");
@@ -198,6 +205,8 @@ usage:
            myRequest.message[k] = defMsg[k];
        }
 
+
+       for (iread=0; iread<num_read; iread++) {
 
 /* create socket */
 
@@ -288,13 +297,24 @@ usage:
 
 /* byte swapping */
        for (k=0 ; k < 16*MAXBLOCKS; k++) bobreply.ibuf[k] = ntohl(bobreply.ibuf[k]);
+
+       for (k=0; k<16*MAXBLOCKS; k++) {
+          if (iread==0) {
+             scalerd1[k] = bobreply.ibuf[k];
+          } else {
+             scalerd2[k] = bobreply.ibuf[k];
+          }
+       }
+
+
+
 #ifdef TEST_RING
        for (k=0 ; k < NUM_IN_RING*MAXRING; k++) 
            bobreply.ring[k] = ntohl(bobreply.ring[k]);
 #endif
 
        if(lprint==1) {
-         printf ("\n\n\n  ========    Scalers   ===============\n\n");
+         printf ("\n\n\n  ========    Scalers  ===============\n\n");
          sca=0;
          for (k=0; k<NUMBLOCKS; k++) {
             sca=2*k;
@@ -308,10 +328,10 @@ usage:
                 bobreply.ibuf[(sca+i)*8+5],
                 bobreply.ibuf[(sca+i)*8+6],
                 bobreply.ibuf[(sca+i)*8+7]);
-	      }
+	    }
 	  }
        }
-
+       
       if(lprint==2) {
          k=0;
          for (isca=0; isca<NUMSCALER; isca++) {
@@ -343,6 +363,18 @@ usage:
 	    }
          }
        }
+
+       if (showrate) {
+         if (iread==0) {
+            printf("Sleeping for %d sec \n",sleeptime);
+            sleep(sleeptime);
+	 } else {
+	   printf("\n\n ================ Rates (Hz) ===================\n");
+	 }
+       }
+         
+
+       } /* loop over num reads (if >0) */
 
 #ifdef TEST_RING
        if (getring) {
@@ -431,4 +463,36 @@ Skip_fprint:
 
       }
       close (sFd);
-}
+
+      if (showrate) {
+
+#ifdef THING1
+	printf("showing rate  \n");
+ 
+        for (i=0; i<16; i++) {
+          printf("d1: %d :  %d %d %d %d %d %d %d %d \n",i*8,
+	    scalerd1[i*8+0],scalerd1[i*8+1],scalerd1[i*8+2],scalerd1[i*8+3],
+            scalerd1[i*8+4],scalerd1[i*8+5],scalerd1[i*8+6],scalerd1[i*8+7]
+		 );
+	}
+        for (i=0; i<16; i++) {
+          printf("d2: %d :  %d %d %d %d %d %d %d %d \n",i*8,
+	    scalerd2[i*8+0],scalerd2[i*8+1],scalerd2[i*8+2],scalerd2[i*8+3],
+            scalerd2[i*8+4],scalerd2[i*8+5],scalerd2[i*8+6],scalerd2[i*8+7]
+	  );
+	}
+#endif
+        for (i=0; i<128; i++) {
+          srate[i]=(scalerd2[i]-scalerd1[i])/sleeptime;
+	}
+        for (i=0; i<16; i++) {
+          printf("%d:  %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f \n",i*8+1,
+		 srate[i*8+0],srate[i*8+1],srate[i*8+2],srate[i*8+3],
+		 srate[i*8+4],srate[i*8+5],srate[i*8+6],srate[i*8+7]
+	  );
+	}
+ 
+      }
+      
+
+  }
