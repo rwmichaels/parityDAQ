@@ -7,14 +7,16 @@
 #    Bob Michaels 
 
 readout list VME1
-maximum 1024,1000
+maximum 2048,512
 vme readout
-# ts control
+ts control
 
 /* All the memory maps of VME modules are defined in module_map.h  */
 include "../module_map.h"
 /* User strings to control some readout */
 include "usrstrutils.c"
+/* Definition of SISbuffer */
+include "../pvdis/SIS3801/SIS.h"
 
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
@@ -43,6 +45,9 @@ extern int vxTicks;   /* vxWorks time ticks */
 extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
+
+extern struct SISbuffer SIS1minus;   /* actually NOT sorted by helicity */
+extern struct SISbuffer SIS2minus;   /* actually NOT sorted by helicity */
 
 # 3801 scaler
 volatile struct fifo_scaler *pscaler[NUMSCALERS];
@@ -260,6 +265,17 @@ begin trigger partrig
     for (j = 0; j < 32; j++) {
       *rol->dabufp++ = sdata[iscal*32+j];
     }
+
+// Write data into shared memory so the server can see it.
+    if (iscal==0) {
+       for (j = 0; j<32; j++) SIS1minus.data[j] += sdata[iscal*32+j];
+    }
+    if (iscal==1) {
+       for (j = 0; j<32; j++) SIS2minus.data[j] += sdata[iscal*32+j];
+    }  
+// There is no SIS3 yet.  Also we want to get rid of "minus" because
+// there is no sorting by helicity online.
+
 
   }
 
