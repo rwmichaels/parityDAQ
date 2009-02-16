@@ -1,0 +1,328 @@
+# 
+#  This readout is for scalers in PVDIS crate.
+#  Version, Feb, 2009
+#  For running with HAPPEX DAQ with FIFO scalers
+#  'ts control' if running from TS (trig. super.)
+#
+#    Bob Michaels 
+
+readout list VME1
+maximum 1024,1000
+vme readout
+# ts control
+
+/* All the memory maps of VME modules are defined in module_map.h  */
+include "../module_map.h"
+/* User strings to control some readout */
+include "usrstrutils.c"
+
+# if LINUXHOST=1(0) host is linux(not)
+const LINUXHOST = 1
+
+const NUMSCALERS = 2
+const SCALER_BASE = 0xce1000
+const FIFO_EMPTY = hex 100
+const DATA_MASK = 0xffffff
+
+# To use CAEN 767 or nots
+const use767=1
+const TDC_ID1 = 0
+const V767_NMOD = 1
+# V767_ADR1 is the HW address for the leftmost v767 in the crate
+const V767_ADR1 = 0x8000000
+# V767_OFF is the increment for each subsequent v767 (ie. next module would be 0x180000)
+const V767_OFF = 0x0800000
+# trigger window settings (in nanosecs)
+const V767_TW_OFF = 1000
+const V767_TW_WID = 5000
+const MAX_WORDS = 100
+const MAX_TIME = 200000
+
+const TIR_ADDR = 0xad0
+extern int vxTicks;   /* vxWorks time ticks */
+extern int bigendian_out;
+extern int rocActivate;
+extern int scaRunReady;
+
+# 3801 scaler
+volatile struct fifo_scaler *pscaler[NUMSCALERS];
+
+static unsigned long sdata[NUMSCALERS*32];
+
+begin download
+
+  variable ii, j, res, scaddr
+  unsigned long laddr;
+  int tmode, mode;
+
+# Sending data to Little-Endian EB
+
+%%  
+  if (LINUXHOST) {
+      printf("Assuming EB is on a Little-Endian cpu\n");      
+      bigendian_out = 0;
+  }
+
+  tirInit(TIR_ADDR);
+
+  for (ii = 0; ii < NUMSCALERS; ii++) {
+
+    scaddr = SCALER_BASE + ii*(0x1000);
+
+    res = sysBusToLocalAdrs(0x39,scaddr,&laddr);
+    if (res != 0) {
+      printf("Error in sysBusToLocalAdrs res=%d \n",res);
+      printf("ERROR:  SCALER POINTER NOT INITIALIZED");
+    } else {
+      printf("SIS3801 Scaler address = 0x%x\n",laddr);
+      pscaler[ii] = (struct fifo_scaler *)laddr;
+      printf("pscaler = 0x%x \n",pscaler[ii]);
+    }
+  
+    pscaler[ii]->reset=1;
+    pscaler[ii]->csr=0xff00fc00;
+    pscaler[ii]->clear=1;
+    pscaler[ii]->enable=1;
+    mode = 2;
+    tmode = mode << 2;
+    pscaler[ii]->csr=0x00000C00;  /* clear Mode bits to Mode 0*/
+    pscaler[ii]->csr=tmode;       /* set new Mode */
+    pscaler[ii]->csr=0x10000;     /* Enable External Next Clock */
+    pscaler[ii]->csr=0x40000;     /* Enable External Disable */
+
+    /* initialize memory */
+    for (j = 0; j < 32; j++) sdata[ii*32+j] = (0x100*(ii+1))+j;
+
+   }
+
+
+  if(use767>0) {
+
+    for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
+  
+       v767Init(V767_ADR1,V767_OFF,V767_NMOD,0);
+       v767Reset(ii);
+       taskDelay(2*60);// 2 sec waiting
+
+/* The 2nd & 3rd arg must be V767_TW_OFF and WID, and must be hard-coded here */
+       v767TriggerConfig(ii,5000,-1000,0); 
+       v767Status(ii,0,0); 
+
+       v767TriggerConfig(ii,0,0,0); /* Print current trigger config */
+    }
+  }
+
+%%
+
+
+  
+  log inform "User Download Executed"
+
+end download
+    
+begin prestart
+
+  variable id, i
+
+  log inform "Entering User Prestart"
+
+  init trig source VME
+  link async trig source VME 1 to partrig and partrig_done
+  event type 1 then read VME 1
+
+%%
+  if (use767>0) {
+     while(v767Dready(0)) v767Clear(0);
+  }
+%%
+
+  log inform "Setting up Scalers "
+
+  runStartClrSIS();
+  rocActivate = 0;
+
+  log inform "User Prestart Executed"
+
+end prestart
+
+begin end
+
+  CDODISABLE(VME,1,0);
+  log inform "User End Executed"
+#  s3300SetRunFlag(0);
+  rocActivate = 0;
+
+end end
+
+begin pause
+
+  CDODISABLE(VME,1,0);
+  log inform "User Pause Executed"
+  rocActivate = 0;
+
+end pause
+
+begin go
+  
+  variable i,itimeout,MAXT
+  log inform "Entering User Go"
+
+%%
+  if (use767>0) {
+    MAXT=50000;
+    for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
+      itimeout=0;
+      while(v767Dready(i)) {
+         v767Clear(i);
+         if(itimeout++ >= MAXT) break;
+      }
+      if(itimeout >= MAXT) printf("v767 crl ERROR: Cannot clear V767\n");
+    }
+  }
+
+  for (i=0; i<NUMSCALERS; i++) {
+    pscaler[i]->csr = 0x1000000; /* disable LNE */
+    pscaler[i]->clear = 1;
+    pscaler[i]->next = 1;       /* flush FIFO */
+    pscaler[i]->csr = 0x10000;  /* enable LNE */
+  }
+
+%%
+
+  CDOENABLE(VME,1,0);
+
+  rocActivate = 1;
+  scaRunReady = 1;
+
+end go
+
+begin trigger partrig
+ 
+  variable iscal,ihel,ichan,not_empty,bitinfo
+  variable event_ty, event_no, nDataWords, time1
+  variable itimeout, ii, j
+
+  int clear_tdc,status2,errstat,chip_err[4];
+  unsigned long tdcdata[MAX_WORDS];
+
+  volatile unsigned short tir_dat;
+  static int event_cnt=0;
+
+  tir[1]->tir_oport=0x7;
+
+  event_ty = EVTYPE;
+  event_no = *rol->nevents;
+  event_cnt++;
+  time1 = vxTicks;
+
+  rol->dabufp = (long *)0;
+  open event type EVTYPE of BT_UI4
+
+# Readout of the TIR board
+
+%%
+
+  *rol->dabufp++ = 0xfb0b4444;   
+/* When standalone, get data from tir_dat; when TS-mode use tir_iport */
+  tir_dat = tir[1]->tir_dat; 
+  *rol->dabufp++ = (tir_dat & 0xfff);
+  *rol->dabufp++ = event_ty;
+  *rol->dabufp++ = event_no;
+  *rol->dabufp++ = event_cnt;
+
+/* Readout the 3801 Scalers  */ 
+ 
+  for (iscal = 0; iscal < NUMSCALERS; iscal++) {
+
+    errstat = 0;
+    itimeout = 0;
+    not_empty = 0;
+
+    bitinfo = pscaler[iscal];
+    if ((pscaler[iscal]->csr&FIFO_EMPTY) != FIFO_EMPTY) not_empty = 1;
+
+    while ( (pscaler[iscal]->csr&FIFO_EMPTY) != FIFO_EMPTY && itimeout++ < 10) {
+      for (j = 0; j < 32; j++) {
+	sdata[iscal*32+j] = ((int)pscaler[iscal]->fifo[0])&DATA_MASK;  
+      }
+    }
+    if (itimeout > 1) {  /* was more than 1 event */
+      errstat = 1;
+      pscaler[iscal]->clear = 1;
+    }
+
+/* header */
+    *rol->dabufp++ = 0xff380100 + (errstat<<4) + iscal;
+    *rol->dabufp++ = itimeout;
+    *rol->dabufp++ = bitinfo;
+    *rol->dabufp++ = not_empty;
+
+    for (j = 0; j < 32; j++) {
+      *rol->dabufp++ = sdata[iscal*32+j];
+    }
+
+  }
+
+
+  if(use767>0) {
+      for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
+        *(rol->dabufp)++ = 0xfbdc0000+ii;   /* Header for TDC */
+        clear_tdc=0;
+        status2=v767Status2(ii);
+
+        nDataWords = 0;
+        itimeout=0;
+        while(v767Dready(ii) != 1) if (itimeout++ > MAX_TIME) break;
+        for (j = 0; j<MAX_WORDS; j++) tdcdata[j]=0;
+        if (itimeout < MAX_TIME) {
+          nDataWords = v767ReadEvent(ii,tdcdata,MAX_WORDS);
+        }
+        if(nDataWords <= 0) *(rol->dabufp)++ = 0xfbdcbadd;
+        *(rol->dabufp)++ = nDataWords;   /* Header for TDC */
+        for (j = 0; j<nDataWords; j++) *(rol->dabufp)++ = tdcdata[j];
+     }
+  }
+
+
+  if (use767>0) {
+      for(ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
+        itimeout=0;
+        while (v767Dready(ii)) {
+          v767Clear(ii); 
+          if(itimeout++ > MAX_TIME) break;
+        }
+      }
+   }
+
+  tir[1]->tir_oport=0x0; 
+
+%%
+
+  close event
+
+
+end trigger
+
+begin done partrig
+
+end done
+
+begin done
+
+# Acknowledge tir register
+   CDOACK(VME,1,0);
+
+
+end done
+
+begin status
+
+end status
+
+
+
+
+
+
+
+
