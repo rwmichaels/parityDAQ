@@ -46,8 +46,8 @@ extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
 
-extern struct SISbuffer SIS1minus;   /* actually NOT sorted by helicity */
-extern struct SISbuffer SIS2minus;   /* actually NOT sorted by helicity */
+extern struct SISbuffer SIS[0];  
+extern struct SISbuffer SIS[1];  
 
 # 3801 scaler
 volatile struct fifo_scaler *pscaler[NUMSCALERS];
@@ -96,7 +96,7 @@ begin download
     pscaler[ii]->csr=0x40000;     /* Enable External Disable */
 
     /* initialize memory */
-    for (j = 0; j < 32; j++) sdata[ii*32+j] = (0x100*(ii+1))+j;
+    for (j = 0; j < 32; j++) sdata[ii*32+j] = 0;
 
    }
 
@@ -239,6 +239,8 @@ begin trigger partrig
  
   for (iscal = 0; iscal < NUMSCALERS; iscal++) {
 
+    for (j = 0; j < 32; j++) sdata[iscal*32+j] = 0;  // zero it
+
     errstat = 0;
     itimeout = 0;
     not_empty = 0;
@@ -268,10 +270,10 @@ begin trigger partrig
 
 // Write data into shared memory so the server can see it.
     if (iscal==0) {
-       for (j = 0; j<32; j++) SIS1minus.data[j] += sdata[iscal*32+j];
+       for (j = 0; j<32; j++) SIS[0].data[j] = sdata[iscal*32+j];
     }
     if (iscal==1) {
-       for (j = 0; j<32; j++) SIS2minus.data[j] += sdata[iscal*32+j];
+       for (j = 0; j<32; j++) SIS[1].data[j] = sdata[iscal*32+j];
     }  
 // There is no SIS3 yet.  Also we want to get rid of "minus" because
 // there is no sorting by helicity online.
