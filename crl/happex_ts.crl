@@ -323,11 +323,12 @@ log inform "Entering User Prestart"
 
   CODA_RUN_IN_PROGRESS = 0;
  
-/* If no Green Monster Timing Board should get set here
-   setTimeHAPTB(800,1250);
-   setOverSampleHAPTB(4);
-   printf("Setting Oversampleing");
-*******************************************************/
+/* If no Green Monster Timing Board should get set here */
+   setTimeHAPTB(20, 13200);
+   setOverSampleHAPTB(0);
+   printf("Setting Oversampling");
+   dumpRegHAPTB();
+/*******************************************************/
 
 /* Fill Random Integer Array 
    Do this during prestart, so that each run has a different ranny array*/
