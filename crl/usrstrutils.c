@@ -34,6 +34,7 @@
 #define RIGHTHRS "righthrs"
 #define PVDISLEFT "pvdisleft"
 #define PVDISRIGHT "pvdisright"
+#define NOCNTHOUSE "nocnthouse"
 #define INJ "inj"
 #define EVTYPEFIX "evtypefix"
 #define NOSCALER "noscaler"

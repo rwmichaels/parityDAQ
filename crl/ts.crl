@@ -30,6 +30,7 @@ include "VME_source_local.h"
 static int debug = 1;   /* to debug(1) or not(0) */
 
 static int inj, righthrs, lefthrs, pvdisleft, pvdisright;
+static int nocnthouse=0;
 
 extern int bigendian_out; 
 
@@ -86,6 +87,7 @@ righthrs = getflag(RIGHTHRS);
 lefthrs  = getflag(LEFTHRS);
 pvdisleft  = getflag(PVDISLEFT);
 pvdisright = getflag(PVDISRIGHT);
+nocnthouse = getflag(NOCNTHOUSE);
 inj = getflag(INJ);
 
 /* Here's a key:
@@ -100,8 +102,10 @@ inj = getflag(INJ);
 */
 
   jj = 0;
-/* Always include the Counting House DAQ */
-  jj |= 0x01;   /* enable ROC0 on branch 1 */
+/* The Counting House DAQ */
+ if (!nocnthouse) {
+   jj |= 0x01;   /* enable ROC0 on branch 1 */
+ }
 
 if(righthrs) {
   jj |= 0x4000000;  /* enable ROC2 on branch 4 */
