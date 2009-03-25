@@ -7,7 +7,7 @@
 #    Bob Michaels 
 
 readout list VME1
-maximum 2048,512
+maximum 50000,128
 vme readout
 ts control
 
@@ -21,13 +21,18 @@ include "../pvdis/SIS3801/SIS.h"
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
 
-const NUMSCALERS = 2
+const NUM_3801_SCALERS = 3
 const SCALER_BASE = 0xce1000
 const FIFO_EMPTY = hex 100
 const DATA_MASK = 0xffffff
 
+# To use SIS3820 scaler or not
+const use3820=1
+const MAX_3820_WORDS=100000
+
+
 # To use CAEN 767 or nots
-const use767=1
+const use767=0
 const TDC_ID1 = 0
 const V767_NMOD = 1
 # V767_ADR1 is the HW address for the leftmost v767 in the crate
@@ -46,13 +51,13 @@ extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
 
-extern struct SISbuffer SIS[0];  
-extern struct SISbuffer SIS[1];  
+# extern struct SISbuffer SIS[0];  
+# extern struct SISbuffer SIS[1];  
 
 # 3801 scaler
-volatile struct fifo_scaler *pscaler[NUMSCALERS];
+volatile struct fifo_scaler *pscaler[NUM_3801_SCALERS];
 
-static unsigned long sdata[NUMSCALERS*32];
+static unsigned long sdata[NUM_3801_SCALERS*32];
 
 begin download
 
@@ -70,7 +75,7 @@ begin download
 
   tirInit(TIR_ADDR);
 
-  for (ii = 0; ii < NUMSCALERS; ii++) {
+  for (ii = 0; ii < NUM_3801_SCALERS; ii++) {
 
     scaddr = SCALER_BASE + ii*(0x1000);
 
@@ -100,6 +105,7 @@ begin download
 
    }
 
+  if(use3820) SIS3820_Init(0);
 
   if(use767>0) {
 
@@ -157,6 +163,8 @@ begin end
 #  s3300SetRunFlag(0);
   rocActivate = 0;
 
+  if (use3820) SIS3820_Disable(0);
+
 end end
 
 begin pause
@@ -170,6 +178,8 @@ end pause
 begin go
   
   variable i,itimeout,MAXT
+  variable ii,nDataWords
+
   log inform "Entering User Go"
 
 %%
@@ -185,12 +195,21 @@ begin go
     }
   }
 
-  for (i=0; i<NUMSCALERS; i++) {
+  for (i=0; i<NUM_3801_SCALERS; i++) {
     pscaler[i]->csr = 0x1000000; /* disable LNE */
     pscaler[i]->clear = 1;
     pscaler[i]->next = 1;       /* flush FIFO */
     pscaler[i]->csr = 0x10000;  /* enable LNE */
   }
+
+  if (use3820) {
+    SIS3820_Enable(0);
+    nDataWords = SIS3820_Ndata(0);
+    for (ii = 0; ii<nDataWords; ii++) {
+       SIS3820_GetFIFO(0); /* flush FIFO first time */
+    }
+  }
+
 
 %%
 
@@ -237,7 +256,7 @@ begin trigger partrig
 
 /* Readout the 3801 Scalers  */ 
  
-  for (iscal = 0; iscal < NUMSCALERS; iscal++) {
+  for (iscal = 0; iscal < NUM_3801_SCALERS; iscal++) {
 
     for (j = 0; j < 32; j++) sdata[iscal*32+j] = 0;  // zero it
 
@@ -260,24 +279,49 @@ begin trigger partrig
 
 /* header */
     *rol->dabufp++ = 0xff380100 + (errstat<<4) + iscal;
-    *rol->dabufp++ = itimeout;
-    *rol->dabufp++ = bitinfo;
-    *rol->dabufp++ = not_empty;
+ //   *rol->dabufp++ = itimeout;
+ //   *rol->dabufp++ = bitinfo;
+  //  *rol->dabufp++ = not_empty;
 
     for (j = 0; j < 32; j++) {
       *rol->dabufp++ = sdata[iscal*32+j];
     }
 
 // Write data into shared memory so the server can see it.
+/*  try later ...
     if (iscal==0) {
        for (j = 0; j<32; j++) SIS[0].data[j] = sdata[iscal*32+j];
     }
     if (iscal==1) {
        for (j = 0; j<32; j++) SIS[1].data[j] = sdata[iscal*32+j];
     }  
+*/
 // There is no SIS3 yet.  Also we want to get rid of "minus" because
 // there is no sorting by helicity online.
 
+
+  }
+
+  if (use3820) {
+
+     errstat = 0;
+     nDataWords = SIS3820_Ndata(0);
+
+     if (nDataWords != 32 ) {  /* If free running LNE, it might happen 1st event */
+       errstat=1;
+       if (nDataWords > MAX_3820_WORDS) {
+         errstat=2;
+         nDataWords = MAX_3820_WORDS;
+       } 
+     }
+/* Header */
+     *rol->dabufp++ = 0xff38200 + (errstat<<4);
+     *rol->dabufp++ = nDataWords;
+
+/* Data (hopefully 32 words) */
+     for (ii = 0; ii<nDataWords; ii++) {
+        *rol->dabufp++ = SIS3820_GetFIFO(0);
+     }
 
   }
 
