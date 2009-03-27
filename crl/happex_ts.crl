@@ -54,7 +54,7 @@ const TIME18 = INTERNAL
 int oport_state;   /* output port state (global variable) */
 
 static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
-static int adc18bit, numadc18, adc16bit, mtread;
+static int adc18bit, numadc18, adc16bit, mtread, rampdac12;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -108,7 +108,7 @@ begin download
 init_strings();
 
 noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0,flexio2=0;
-adc18bit=0;adc16bit=0;mtread=0;
+adc18bit=0;adc16bit=0;mtread=0;rampdac12=0; 
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 scaler2   = getflag(SCALER2);    /* Use 2 scalers for this crate */
 bmwscan   = getflag(BMWSCAN);    /* Readout Beam Modulation and Scan Words */
@@ -119,6 +119,7 @@ flexio2   = getflag(FLEXIO2);    /* Readout Flexible I/O Module */
 adc18bit  = getflag(ADC18BIT);   /* 18-bit ADC tests  */
 adc16bit  = getflag(ADC16BIT);   /* 16-bit ADC exists(1) or not(0)   */
 mtread    = getflag(MTREAD);     /* Empty readout ?  (1).  For tests */
+rampdac12 = getflag(RAMPDAC12);  /* To ramp the 12-bit DAC */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
@@ -216,7 +217,9 @@ if(flexio2 == 1) {
   }
 
 /* Timing Board configuration */
-// all timing configuration should be done in separate routines, to avoid ambiguity
+/* Normally, all timing configuration should be done in separate routines, to
+avoid ambiguity, but at the moment (3/09) the Green Monster isn't working */
+
   setDACHAPTB(1,DEF_DAC12);
   setDACHAPTB(2,DEF_DAC16);
   dumpRegHAPTB();
@@ -324,10 +327,12 @@ log inform "Entering User Prestart"
   CODA_RUN_IN_PROGRESS = 0;
  
 /* If no Green Monster Timing Board should get set here */
+
    setTimeHAPTB(20, 13200);
    setOverSampleHAPTB(0);
    printf("Setting Oversampling");
    dumpRegHAPTB();
+
 /*******************************************************/
 
 /* Fill Random Integer Array 
@@ -516,6 +521,8 @@ for (iadc = 0; iadc<numadc18; iadc++) {
 /* Enable LNE Flag */
    oport_state |= OPORT_LNE;
    tir[1]->tir_oport=oport_state;
+
+  if (rampdac12) setDACHAPTB(1,0);
 
   CDOENABLE(VME,1,0);
   CODA_RUN_IN_PROGRESS = 1;
@@ -848,27 +855,36 @@ if (adc16bit) {
 //      }    
 //  setDACHAPTB(2,dac16val);
 
-/* For the synch monitor.  Use dac12 */
-/* Note that dac12 will saturate the v2f at high voltage 
-   so, set the max around 3650.*/
 /* Increment dac16 by 5 each window */
 if(getOverSampleCurrentHAPTB()==0) {
   dac16val = dac16val + 5; 
 } 
-dac12val = 1602+rand()%2048;
-setDACHAPTB(1,dac12val);
-getDACHAPTB(1);
-setDACHAPTB(1,dac12val);
-getDACHAPTB(1);
+
+/* For the synch monitor.  Use dac12. */
+/* Note that dac12 will saturate the v2f at high voltage 
+   so, set the max around 3650.*/
+
+  if ( rampdac12 ) {   /* ramp function */ 
+
+    dac12val += 10;  
+    if (dac12val >= maxdac12) dac12val = 0;
+
+  } else {             /* random */
+ 
+     dac12val = 1602+rand()%2048;
+
+  }
+
+  setDACHAPTB(1,dac12val);
+  getDACHAPTB(1);
+  setDACHAPTB(1,dac12val);
+  getDACHAPTB(1);
+
 /* if (dac16val >= maxdac16) dac16val = 32767; */
 /* setDACHAPTB(2,dac16val); */
 /* getDACHAPTB(2); */
 /* setDACHAPTB(2,dac16val); */
 /* getDACHAPTB(2); */
-
-
-
-
 
 
 /* Disable BUSY Flag */
