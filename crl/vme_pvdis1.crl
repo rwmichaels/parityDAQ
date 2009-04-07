@@ -1,19 +1,39 @@
 # 
 #  This readout is for scalers in PVDIS crate.
-#  Version, Sept 26, 2008
+#  Version, Apr, 2009
+#  This is like vme_pvdis_hapdaq.crl except without
+#  "ts control" and other diffs:
+#   -  use767 may be diff (1 or 0)
+#   -  may add FADC 
 #
 #    Bob Michaels 
 
 readout list VME1
-maximum 1024,1000
+maximum 50000,128
 vme readout
+
+/* All the memory maps of VME modules are defined in module_map.h  */
+include "../module_map.h"
+/* User strings to control some readout */
+include "usrstrutils.c"
+/* Definition of SISbuffer */
+include "../pvdis/SIS3801/SIS.h"
+
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
 
-const NUMSCALERS = 2
+const NUM_3801_SCALERS = 3
+const SCALER_BASE = 0xce1000
+const FIFO_EMPTY = hex 100
+const DATA_MASK = 0xffffff
 
-# To use CAEN 767 or not
-const use767=1
+# To use SIS3820 scaler or not
+const use3820=1
+const MAX_3820_WORDS=100000
+
+
+# To use CAEN 767 or nots
+const use767=0
 const TDC_ID1 = 0
 const V767_NMOD = 1
 # V767_ADR1 is the HW address for the leftmost v767 in the crate
@@ -32,11 +52,22 @@ extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
 
+# extern struct SISbuffer SIS[0];  
+# extern struct SISbuffer SIS[1];  
+
+# 3801 scaler
+volatile struct fifo_scaler *pscaler[NUM_3801_SCALERS];
+
+static unsigned long sdata[NUM_3801_SCALERS*32];
+
 begin download
 
-  variable ii
+  variable ii, j, res, scaddr
+  unsigned long laddr;
+  int tmode, mode;
 
 # Sending data to Little-Endian EB
+
 %%  
   if (LINUXHOST) {
       printf("Assuming EB is on a Little-Endian cpu\n");      
@@ -45,11 +76,37 @@ begin download
 
   tirInit(TIR_ADDR);
 
-/* initialize scaler(s) */
-  initSIS();
-  initISR_SIS();
+  for (ii = 0; ii < NUM_3801_SCALERS; ii++) {
 
+    scaddr = SCALER_BASE + ii*(0x1000);
 
+    res = sysBusToLocalAdrs(0x39,scaddr,&laddr);
+    if (res != 0) {
+      printf("Error in sysBusToLocalAdrs res=%d \n",res);
+      printf("ERROR:  SCALER POINTER NOT INITIALIZED");
+    } else {
+      printf("SIS3801 Scaler address = 0x%x\n",laddr);
+      pscaler[ii] = (struct fifo_scaler *)laddr;
+      printf("pscaler = 0x%x \n",pscaler[ii]);
+    }
+  
+    pscaler[ii]->reset=1;
+    pscaler[ii]->csr=0xff00fc00;
+    pscaler[ii]->clear=1;
+    pscaler[ii]->enable=1;
+    mode = 2;
+    tmode = mode << 2;
+    pscaler[ii]->csr=0x00000C00;  /* clear Mode bits to Mode 0*/
+    pscaler[ii]->csr=tmode;       /* set new Mode */
+    pscaler[ii]->csr=0x10000;     /* Enable External Next Clock */
+    pscaler[ii]->csr=0x40000;     /* Enable External Disable */
+
+    /* initialize memory */
+    for (j = 0; j < 32; j++) sdata[ii*32+j] = 0;
+
+   }
+
+  if(use3820) SIS3820_Init(0);
 
   if(use767>0) {
 
@@ -107,6 +164,8 @@ begin end
 #  s3300SetRunFlag(0);
   rocActivate = 0;
 
+  if (use3820) SIS3820_Disable(0);
+
 end end
 
 begin pause
@@ -120,6 +179,8 @@ end pause
 begin go
   
   variable i,itimeout,MAXT
+  variable ii,nDataWords
+
   log inform "Entering User Go"
 
 %%
@@ -134,6 +195,23 @@ begin go
       if(itimeout >= MAXT) printf("v767 crl ERROR: Cannot clear V767\n");
     }
   }
+
+  for (i=0; i<NUM_3801_SCALERS; i++) {
+    pscaler[i]->csr = 0x1000000; /* disable LNE */
+    pscaler[i]->clear = 1;
+    pscaler[i]->next = 1;       /* flush FIFO */
+    pscaler[i]->csr = 0x10000;  /* enable LNE */
+  }
+
+  if (use3820) {
+    SIS3820_Enable(0);
+    nDataWords = SIS3820_Ndata(0);
+    for (ii = 0; ii<nDataWords; ii++) {
+       SIS3820_GetFIFO(0); /* flush FIFO first time */
+    }
+  }
+
+
 %%
 
   CDOENABLE(VME,1,0);
@@ -145,11 +223,11 @@ end go
 
 begin trigger partrig
  
-  variable iscal,ihel,ichan
+  variable iscal,ihel,ichan,not_empty,bitinfo
   variable event_ty, event_no, nDataWords, time1
   variable itimeout, ii, j
 
-  int clear_tdc,status2,chip_err[4];
+  int clear_tdc,status2,errstat,chip_err[4];
   unsigned long tdcdata[MAX_WORDS];
 
   volatile unsigned short tir_dat;
@@ -157,7 +235,6 @@ begin trigger partrig
 
   tir[1]->tir_oport=0x7;
 
-  SISInterrupt(0); 
   event_ty = EVTYPE;
   event_no = *rol->nevents;
   event_cnt++;
@@ -172,25 +249,86 @@ begin trigger partrig
 
   *rol->dabufp++ = 0xfb0b4444;   
 /* When standalone, get data from tir_dat; when TS-mode use tir_iport */
-  tir_dat = tir[1]->tir_dat; 
+/*  tir_dat = tir[1]->tir_dat;  */
+  tir_dat = tir[1]->tir_iport;
   *rol->dabufp++ = (tir_dat & 0xfff);
+
   *rol->dabufp++ = event_ty;
   *rol->dabufp++ = event_no;
   *rol->dabufp++ = event_cnt;
 
 /* Readout the 3801 Scalers  */ 
  
-  for (iscal = 0; iscal < NUMSCALERS; iscal++) {
+  for (iscal = 0; iscal < NUM_3801_SCALERS; iscal++) {
 
-  *rol->dabufp++ = 0xff380100 + iscal;
+    for (j = 0; j < 32; j++) sdata[iscal*32+j] = 0;  // zero it
 
-    for (ihel=0; ihel<2; ihel++) {
-      for (ichan = 0; ichan<32; ichan++) {
-        *rol->dabufp++ = Read3801(iscal,ihel,ichan);
+    errstat = 0;
+    itimeout = 0;
+    not_empty = 0;
+
+    bitinfo = pscaler[iscal];
+    if ((pscaler[iscal]->csr&FIFO_EMPTY) != FIFO_EMPTY) not_empty = 1;
+
+    while ( (pscaler[iscal]->csr&FIFO_EMPTY) != FIFO_EMPTY && itimeout++ < 10) {
+      for (j = 0; j < 32; j++) {
+	sdata[iscal*32+j] = ((int)pscaler[iscal]->fifo[0])&DATA_MASK; 
+          
       }
     }
+    if (itimeout > 1) {  /* was more than 1 event */
+      errstat = 1;
+      pscaler[iscal]->clear = 1;
+    }
+
+/* header */
+    *rol->dabufp++ = 0xff380100 + (errstat<<4) + iscal;
+ //   *rol->dabufp++ = itimeout;
+ //   *rol->dabufp++ = bitinfo;
+  //  *rol->dabufp++ = not_empty;
+
+    for (j = 0; j < 32; j++) {
+      *rol->dabufp++ = sdata[iscal*32+j];
+    }
+
+// Write data into shared memory so the server can see it.
+/*  try later ...
+    if (iscal==0) {
+       for (j = 0; j<32; j++) SIS[0].data[j] = sdata[iscal*32+j];
+    }
+    if (iscal==1) {
+       for (j = 0; j<32; j++) SIS[1].data[j] = sdata[iscal*32+j];
+    }  
+*/
+// There is no SIS3 yet.  Also we want to get rid of "minus" because
+// there is no sorting by helicity online.
+
 
   }
+
+  if (use3820) {
+
+     errstat = 0;
+     nDataWords = SIS3820_Ndata(0);
+
+     if (nDataWords != 32 ) {  /* If free running LNE, it might happen 1st event */
+       errstat=1;
+       if (nDataWords > MAX_3820_WORDS) {
+         errstat=2;
+         nDataWords = MAX_3820_WORDS;
+       } 
+     }
+/* Header */
+     *rol->dabufp++ = 0x0f38200 + (errstat<<4);
+     *rol->dabufp++ = nDataWords;
+
+/* Data (hopefully 32 words) */
+     for (ii = 0; ii<nDataWords; ii++) {
+        *rol->dabufp++ = SIS3820_GetFIFO(0)&DATA_MASK;
+     }
+
+  }
+
 
   if(use767>0) {
       for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
@@ -227,6 +365,7 @@ begin trigger partrig
 %%
 
   close event
+
 
 end trigger
 
