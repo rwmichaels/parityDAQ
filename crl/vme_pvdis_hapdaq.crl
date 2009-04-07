@@ -248,8 +248,10 @@ begin trigger partrig
 
   *rol->dabufp++ = 0xfb0b4444;   
 /* When standalone, get data from tir_dat; when TS-mode use tir_iport */
-  tir_dat = tir[1]->tir_dat; 
+/*  tir_dat = tir[1]->tir_dat;  */
+  tir_dat = tir[1]->tir_iport;
   *rol->dabufp++ = (tir_dat & 0xfff);
+
   *rol->dabufp++ = event_ty;
   *rol->dabufp++ = event_no;
   *rol->dabufp++ = event_cnt;
@@ -269,7 +271,8 @@ begin trigger partrig
 
     while ( (pscaler[iscal]->csr&FIFO_EMPTY) != FIFO_EMPTY && itimeout++ < 10) {
       for (j = 0; j < 32; j++) {
-	sdata[iscal*32+j] = ((int)pscaler[iscal]->fifo[0])&DATA_MASK;  
+	sdata[iscal*32+j] = ((int)pscaler[iscal]->fifo[0])&DATA_MASK; 
+          
       }
     }
     if (itimeout > 1) {  /* was more than 1 event */
@@ -315,12 +318,12 @@ begin trigger partrig
        } 
      }
 /* Header */
-     *rol->dabufp++ = 0xff38200 + (errstat<<4);
+     *rol->dabufp++ = 0x0f38200 + (errstat<<4);
      *rol->dabufp++ = nDataWords;
 
 /* Data (hopefully 32 words) */
      for (ii = 0; ii<nDataWords; ii++) {
-        *rol->dabufp++ = SIS3820_GetFIFO(0);
+        *rol->dabufp++ = SIS3820_GetFIFO(0)&DATA_MASK;
      }
 
   }
