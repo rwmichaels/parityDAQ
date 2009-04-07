@@ -46,6 +46,7 @@
 #define ADC18BIT "adc18bit"
 #define ADC16BIT "adc16bit"
 #define MTREAD "mtread"  /* empty readout (for test) */
+#define RAMPDAC12 "rampdac12"
 #define FLAG_FILE "ffile"
 #define COMMENT_CHAR ';'
 
