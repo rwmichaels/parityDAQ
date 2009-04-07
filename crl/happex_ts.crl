@@ -18,6 +18,7 @@ include "usrstrutils.c"
 # default timing board DAC values
 const  DEF_DAC12   =    0       /* output voltage = 0 */
 const  DEF_DAC16   =    32767   /* output voltage = 0 */
+const  MAX_DAC12   =    4095    /* max DAC12 */ 
 # all other timing parameters are set in separate utilities
 
 # Number of random array elements
@@ -51,7 +52,7 @@ const EXTERNAL=1
 const TIME18 = INTERNAL
 
 
-int oport_state;   /* output port state (global variable) */
+int oport_state=0;   /* output port state (global variable) */
 
 static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
 static int adc18bit, numadc18, adc16bit, mtread, rampdac12;
@@ -161,6 +162,7 @@ if(flexio2==1) {
 } else {
   printf("Will NOT readout Flexible IO Module2: %d\n",flexio2);
 }
+if (rampdac12) printf("Will ramp the 12-bit DAC from %d to %d \n",DEF_DAC12,MAX_DAC12);
 
 
 /* Setup Device Pointers */
@@ -302,6 +304,12 @@ srand(9421);       /* seed random num generator */
 
 /* Clear TIR */
 tir[1]->tir_csr = 0x80;
+%%
+
+  init trig source VME
+
+%%
+oport_state = 0;  /* start at zero */
 /* inhibit bit */
 oport_state |= OPORT_INB;   
 tir[1]->tir_oport=oport_state;
@@ -316,16 +324,19 @@ begin prestart
 
 log inform "Entering User Prestart"
 
+  link async trig source VME 1 to partrig and partrig_done
+  event type 1 then read VME 1
+
 %%
   int j;
   unsigned short tmp_rand;
-  int iadc;
+  int iadc, ped_test;
   int bad_randmake=0;
   extern void srand();
   extern int rand();
 
   CODA_RUN_IN_PROGRESS = 0;
- 
+
 /* If no Green Monster Timing Board should get set here */
 
    setTimeHAPTB(20, 13200);
@@ -333,6 +344,7 @@ log inform "Entering User Prestart"
    printf("Setting Oversampling");
    dumpRegHAPTB();
 
+   
 /*******************************************************/
 
 /* Fill Random Integer Array 
@@ -362,16 +374,11 @@ if (adc16bit) {
     fclose(badfile);
   }
 }
-%%
 
-  init trig source VME
-  link async trig source VME 1 to partrig and partrig_done
-  event type 1 then read VME 1
-
-%%
-
-  /* dont know why I need this (int iadc) a 2nd time */
-  int iadc, ped_test;
+  oport_state = 0;  /* start at zero */
+/* inhibit bit */
+  oport_state |= OPORT_INB;   
+  tir[1]->tir_oport=oport_state;
 
   if(tbreadout==1) {
     /* Send timing board information to ~apar/db/timebrd/timebrd.cfg */
@@ -508,24 +515,16 @@ for (iadc = 0; iadc<numadc18; iadc++) {
   adc18_flush(iadc);
 }
 
-/* remove the inhibit */
-%%  
-/* We dont actually use this anymore.. */
-/* But just in case... just comment out the taskDelay. */
-   log inform "wait... will remove inhibit"
-   //   taskDelay(600);
-   log inform "about to remove inhibit"
-   oport_state = oport_state & 0xfd; 
-   tir[1]->tir_oport=oport_state;
-
 /* Enable LNE Flag */
    oport_state |= OPORT_LNE;
    tir[1]->tir_oport=oport_state;
 
-  if (rampdac12) setDACHAPTB(1,0);
+  if (rampdac12) setDACHAPTB(1,DEF_DAC12);
 
   CDOENABLE(VME,1,0);
   CODA_RUN_IN_PROGRESS = 1;
+
+%%
 
 end go
 
@@ -564,8 +563,9 @@ static int setdac18_local = 0;
 
 int* intpointer;
 
-/* Enable BUSY Flag */
+/* Enable BUSY Flag, remove inhibit */
 oport_state |= OPORT_BUSY;
+oport_state = oport_state & 0xfd; 
 tir[1]->tir_oport=oport_state;
 
 %%
@@ -867,7 +867,7 @@ if(getOverSampleCurrentHAPTB()==0) {
   if ( rampdac12 ) {   /* ramp function */ 
 
     dac12val += 10;  
-    if (dac12val >= maxdac12) dac12val = 0;
+    if (dac12val >= MAX_DAC12) dac12val = 0;
 
   } else {             /* random */
  
