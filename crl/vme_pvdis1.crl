@@ -4,7 +4,7 @@
 #  This is like vme_pvdis_hapdaq.crl except without
 #  "ts control" and other diffs:
 #   -  use767 may be diff (1 or 0)
-#   -  may add FADC 
+#   -  use3300 to add FADC
 #
 #    Bob Michaels 
 
@@ -31,9 +31,12 @@ const DATA_MASK = 0xffffff
 const use3820=1
 const MAX_3820_WORDS=100000
 
+# To use SIS3300 FADC or not
+const use3300=1
+
 
 # To use CAEN 767 or nots
-const use767=0
+const use767=1
 const TDC_ID1 = 0
 const V767_NMOD = 1
 # V767_ADR1 is the HW address for the leftmost v767 in the crate
@@ -62,7 +65,7 @@ static unsigned long sdata[NUM_3801_SCALERS*32];
 
 begin download
 
-  variable ii, j, res, scaddr
+  variable ii, j, res, scaddr, id
   unsigned long laddr;
   int tmode, mode;
 
@@ -75,6 +78,10 @@ begin download
   }
 
   tirInit(TIR_ADDR);
+
+  if (use3300) {
+    s3300Init(0x0d000000,0x0,1);
+  }
 
   for (ii = 0; ii < NUM_3801_SCALERS; ii++) {
 
@@ -108,7 +115,24 @@ begin download
 
   if(use3820) SIS3820_Init(0);
 
+  if (use3300) {
+    printf("Setting up SIS3300 board\n");
+
+   id = 0;   /* start with this one (0) */
+   s3300Reset(id);            /* Reset */
+   s3300AcqConfig(id,0x1c0);  /* Program for Single Event, External Stop, 100 MHz */
+
+   s3300EventConfig(id,0xf);  /* Program for Wrap mode, 128 Sample pagesize */
+  /* Add the averaging over 128  samples */
+  /* s3300EventConfig(id,0x7000f)*/ /* ...and Wrap mode, 128 Sample pagesize */
+
+  /* Program Stop Delay for 110 clocks -> 1100nsec  */
+   s3300StopDelay(id,110);    
+ }
+
   if(use767>0) {
+
+    printf("Initializing CAEN 767 TDCs.  Num modules = %d\n",V767_NMOD);
 
     for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
   
@@ -161,7 +185,7 @@ begin end
 
   CDODISABLE(VME,1,0);
   log inform "User End Executed"
-#  s3300SetRunFlag(0);
+  if (use3300) s3300SetRunFlag(0);
   rocActivate = 0;
 
   if (use3820) SIS3820_Disable(0);
@@ -173,6 +197,7 @@ begin pause
   CDODISABLE(VME,1,0);
   log inform "User Pause Executed"
   rocActivate = 0;
+  if (use3300) s3300SetRunFlag(0);
 
 end pause
 
@@ -184,6 +209,8 @@ begin go
   log inform "Entering User Go"
 
 %%
+  if (use3300) s3300SetRunFlag(1);
+
   if (use767>0) {
     MAXT=50000;
     for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
@@ -226,6 +253,7 @@ begin trigger partrig
   variable iscal,ihel,ichan,not_empty,bitinfo
   variable event_ty, event_no, nDataWords, time1
   variable itimeout, ii, j
+  variable id,adc,ieoflag,ibuf,nwords,icntf
 
   int clear_tdc,status2,errstat,chip_err[4];
   unsigned long tdcdata[MAX_WORDS];
@@ -359,6 +387,42 @@ begin trigger partrig
         }
       }
    }
+
+
+   if (use3300) {
+
+/* Read out 1 board of FADC 3300 */
+     id = 0;  /* this board */
+  
+    s3300Enable(id,0);       /* Enable Bank 0 */
+    s3300Start(id);          /* Start Sampling */
+
+    icntf = 0;
+
+    while (S3300IsSampling(id,0)) {
+        if (icntf++ > 500) break;
+    }
+
+    nwords = 128;
+
+    *rol->dabufp++ = 0xfadc3300;
+    *rol->dabufp++ = icntf; 
+
+    if(s3300IsRunning() == 0 || icntf > 50000 ) {
+       *rol->dabufp++ = 0xfad33bad; 
+       nwords = 0;
+    } else {
+
+
+/*  readout only 1 adc channel for now ... */
+
+      adc = 0;
+      ieoflag=0;
+      for (ibuf = 0; ibuf < nwords; ibuf++) {  
+        *rol->dabufp++ = s3300GetData(id, adc, 0, 0, ibuf, ieoflag); 
+      }
+    }
+  }
 
   tir[1]->tir_oport=0x0; 
 
