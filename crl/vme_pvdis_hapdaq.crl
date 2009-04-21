@@ -7,7 +7,7 @@
 #    Bob Michaels 
 
 readout list VME1
-maximum 50000,128
+maximum 2000,512
 vme readout
 ts control
 
@@ -28,10 +28,13 @@ const DATA_MASK = 0xffffff
 
 # To use SIS3820 scaler or not
 const use3820=1
-const MAX_3820_WORDS=100000
+const MAX_3820_WORDS=10000
+const MAX_3820_DOUT=100
 
+# To use flexio or not
+const useflexio=1
 
-# To use CAEN 767 or nots
+# To use CAEN 767 or not
 const use767=0
 const TDC_ID1 = 0
 const V767_NMOD = 1
@@ -46,16 +49,22 @@ const MAX_WORDS = 100
 const MAX_TIME = 200000
 
 const TIR_ADDR = 0xad0
+const FLEXIO_ADDR = hex 0ed0
+
 extern int vxTicks;   /* vxWorks time ticks */
 extern int bigendian_out;
 extern int rocActivate;
 extern int scaRunReady;
 
-# extern struct SISbuffer SIS[0];  
-# extern struct SISbuffer SIS[1];  
+#extern struct SISbuffer SIS[0];  
+#extern struct SISbuffer SIS[1]; 
+#extern struct SISbuffer SIS[2];  
 
 # 3801 scaler
 volatile struct fifo_scaler *pscaler[NUM_3801_SCALERS];
+
+# Flexio
+volatile struct vme_flex_io *flex_io;
 
 static unsigned long sdata[NUM_3801_SCALERS*32];
 
@@ -106,6 +115,20 @@ begin download
    }
 
   if(use3820) SIS3820_Init(0);
+
+  if(useflexio == 1) {
+    /* FlexIO Pointer */
+    res = sysBusToLocalAdrs(0x29,FLEXIO_ADDR,&laddr);
+    if (res != 0) {
+      printf("Error in sysBusToLocalAdrs res=%d \n",res);
+      printf("ERROR:  FlexIO POINTER NOT INITIALIZED");
+    } else {
+      printf("FlexIO address = 0x%x\n",laddr);
+      flex_io = (struct vme_flex_io *)laddr;
+    }
+    flex_io->csr1 = 0x8000; /* Reset Module */
+    flex_io->csr1 = 0x3;    /* Enable External Strobe and Latch Mode */
+  }
 
   if(use767>0) {
 
@@ -210,6 +233,11 @@ begin go
     }
   }
 
+  if(useflexio == 1) {
+    flex_io->csr1 = 0x100;  /* Re-Activate Strobe */
+    flex_io->csr1 = 0x03;   /* Re-Activate Strobe */
+  }
+
 
 %%
 
@@ -222,12 +250,13 @@ end go
 
 begin trigger partrig
  
-  variable iscal,ihel,ichan,not_empty,bitinfo
+  variable iscal,ihel,ichan,not_empty,bitinfo,rdata
   variable event_ty, event_no, nDataWords, time1
   variable itimeout, ii, j
 
   int clear_tdc,status2,errstat,chip_err[4];
   unsigned long tdcdata[MAX_WORDS];
+  unsigned short stmp;
 
   volatile unsigned short tir_dat;
   static int event_cnt=0;
@@ -247,10 +276,22 @@ begin trigger partrig
 %%
 
   *rol->dabufp++ = 0xfb0b4444;   
+
 /* When standalone, get data from tir_dat; when TS-mode use tir_iport */
 /*  tir_dat = tir[1]->tir_dat;  */
   tir_dat = tir[1]->tir_iport;
+
+/* Header for TIR and FLEXIO  */
+
+  *rol->dabufp++ = 0xffdaf000;    
   *rol->dabufp++ = (tir_dat & 0xfff);
+
+  if(useflexio==1) {
+     *rol->dabufp++ = flex_io->data1;
+     flex_io->csr1 = 0x100;
+     flex_io->csr1 = 0x03;
+     stmp = flex_io->csr1;
+  }
 
   *rol->dabufp++ = event_ty;
   *rol->dabufp++ = event_no;
@@ -291,17 +332,16 @@ begin trigger partrig
     }
 
 // Write data into shared memory so the server can see it.
-/*  try later ...
-    if (iscal==0) {
+/*    if (iscal==0) {
        for (j = 0; j<32; j++) SIS[0].data[j] = sdata[iscal*32+j];
     }
     if (iscal==1) {
        for (j = 0; j<32; j++) SIS[1].data[j] = sdata[iscal*32+j];
     }  
+    if (iscal==2) {
+       for (j = 0; j<32; j++) SIS[2].data[j] = sdata[iscal*32+j];
+    } 
 */
-// There is no SIS3 yet.  Also we want to get rid of "minus" because
-// there is no sorting by helicity online.
-
 
   }
 
@@ -323,7 +363,8 @@ begin trigger partrig
 
 /* Data (hopefully 32 words) */
      for (ii = 0; ii<nDataWords; ii++) {
-        *rol->dabufp++ = SIS3820_GetFIFO(0)&DATA_MASK;
+        rdata = SIS3820_GetFIFO(0)&DATA_MASK;
+        if (ii < MAX_3820_DOUT) *rol->dabufp++ = rdata;
      }
 
   }
