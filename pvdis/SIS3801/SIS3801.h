@@ -13,16 +13,22 @@
 
 
 /* Number of scalers SIS3801 */
-#define NUMSCALERS 2
+#define NUMSCALERS 3
+
+/* Total number of scalers including others */
+#define TOTSCALERS 4
 
 /* Addresses on the scalers are adjusted with the thumbwheel switch.
    E.g. abc4 or ce6 are thumbwheel switch settings */
  
 long SISRELADDR[NUMSCALERS]={  /* Addresses relative to A24 VME  */
-  0xce1000, 0xce2000 };
+  0xce1000, 0xce2000, 0xce3000 };
 
 long SISVMEADDR[NUMSCALERS]={   /* Absolute addresses, assigned by sysBusToLocalAdrs */
-  0, 0  };                      /* init to zero */
+  0, 0, 0  };                      /* init to zero */
+
+/* Repository of global data */
+long global_scaler_sum[32*TOTSCALERS];
 
 
 /* define control registers structure*/

@@ -42,6 +42,8 @@ extern short coda_end_run;
 *    27 Aug 08   Won't be any 3801 in Fall 08, so throw out
 *                references to runStartClrSIS and Read3801 
 *                (put back later !)
+*    21 Apr 09   Modified to use global scaler data
+*
 */
 
 
@@ -194,39 +196,9 @@ FOREVER
 
     if((clientRequest.clearflag==1)&&(never_clear==0)) {
 
-       if(debug) printf("\n Clearing scalers... \n");
-
-         clr3800flg = 0;
-         clr3801flg = 0;
-
-         for (isca=0;isca<NUMSCALER; isca++) {
-            if(scalertype[isca]==1151) {
-               slecroy1151[isca]->reset = 0;
-  	     }
-            if(scalertype[isca]==7200) { 
-               sstr7200[isca]->clrR = 0;
-               sstr7200[isca]->gEnCntR = 0;
-  	     }
-            if(scalertype[isca]==560) {
-               scaen560[isca]->ClrR = 0;
-               temp=scaen560[isca]->clrVETOR;
-            }
-            if(scalertype[isca]==3800) {
-              clr3800flg = 1;  /* there is at least one 3800 */
-	    }
-            if(scalertype[isca]==3801) {
-              clr3801flg = 1;  /* there is at least one 3801 */
-	    }
-            if(scalertype[isca]>=380101 && scalertype[isca]<=380104) {
-              clr3801flg = 1;  /* there is at least one 3801 */
-	    }
-	 }            
-
-#ifdef HAVE3800
-         if(clr3800flg==1) ClrSIS3800();
-#endif
-	 if(clr3801flg==1) runStartClrSIS(); 
-
+       if(debug) printf("\n Clearing global scaler arrays ... \n");
+       GlobalScalerClr();
+ 
 
       } else {    /* Read out scalers */
 
@@ -234,91 +206,14 @@ FOREVER
 
         for (isca=0; isca<NUMSCALER; isca++) {
 
-           if (debug) {
-              printf("read scaler %d \n",isca);
-              printf("scaler type %d \n",scalertype[isca]);
-              printf("the vme address %x \n",vmeoff[isca]);
-           }
-	   if (isca < MSG_SIZE) bobreply.message[isca]='0';
-            if(scalertype[isca]==1151) {
-               for (i=0;i<16;i++) {
-                 bobreply.ibuf[k++] = htonl(slecroy1151[isca]->scaler[i]);
-                 if(debug) printf("LeCroy 1151 sca[%d] = %x\n",
-                     k,slecroy1151[isca]->scaler[i]);
-               }                 
-	    }
-            if(scalertype[isca]==7200) { 
-  	       if (isca < MSG_SIZE) bobreply.message[isca]='1';
-               for (i=0;i<32;i++) {
-                 bobreply.ibuf[k++] = htonl(sstr7200[isca]->readCntR[i]);
-                 if(debug) printf("Struck 7200 sca[%d] = %x\n",
-                     k,sstr7200[isca]->readCntR[i]);
-               }                 
-	    }
-            if(scalertype[isca]==560) {
-               for (i=0;i<16;i++) {
-                 bobreply.ibuf[k++] = htonl(scaen560[isca]->CntR[i]);
-                 if(debug) printf("Caen V560 sca[%d] = %x\n",
-                     k,scaen560[isca]->CntR[i]);
-               }                 
-	    }
+   	     for (i=0;i<32;i++) {
+	       bobreply.ibuf[k++] = htonl(GlobalScalerData(isca, i));
+               if(debug) printf("Global scaler[%d]  chan[%d]  data = \n",
+				isca, i, GlobalScalerData(isca, i));
 
-            if(scalertype[isca]==380101||scalertype[isca]==380102||
-               scalertype[isca]==380103||scalertype[isca]==380104) {
-  	       if (isca < MSG_SIZE) bobreply.message[isca]='1';
-   	       for (i=0;i<32;i++) {
-		 if(scalertype[isca]==380101) {
-                     bobreply.ibuf[k++] = htonl(Read3801(0,0,i));
-                     if(debug) printf("+ Hel SIS 3801 sca[%d] = %x\n",
-				      i,Read3801(0,0,i));
-		 }
-                 if(scalertype[isca]==380102) {
-                     bobreply.ibuf[k++] = htonl(Read3801(0,1,i));
-                     if(debug) printf("- Hel SIS 3801 sca[%d] = %x\n",
-				      i,Read3801(0,1,i));
-		 } 
-                 if(scalertype[isca]==380103) {
-                     bobreply.ibuf[k++] = htonl(Read3801(1,0,i));
-                     if(debug) printf("2nd + Hel SIS 3801 sca[%d] = %x\n",
-				      i,Read3801(1,0,i));
-		 }
-                 if(scalertype[isca]==380104) {
-                     bobreply.ibuf[k++] = htonl(Read3801(1,1,i));
-                     if(debug) printf("2nd - Hel SIS 3801 sca[%d] = %x\n",
-				      i,Read3801(1,1,i));
-		 }
-	       }
-	    }
-
-#ifdef HAVE3800
-            if(scalertype[isca]==3800) {
-  	       if (isca < MSG_SIZE) bobreply.message[isca]='1';
-   	       for (i=0;i<32;i++) {
-                   bobreply.ibuf[k++] = htonl(Read3800(vmeoff[isca],i));
-                   if(debug) printf("SIS 3800 sca[%d] = %x\n",
-			 i,Read3800(vmeoff[isca],i));
-               }
-	    }
-#endif
+	     }
 	}
-#ifdef TEST_RING
-        if (clientRequest.getring == 1) {  /* Get ring buffer */
-          n = NumRing();
-          k = 1;
-          if (n > MAXRING-1) n = MAXRING-1;
-          bobreply.ring[0] = htonl(n);
-          for (i = 0; i < n; i++) {
-  	    for (j = 0; j < NUM_IN_RING; j++) {
-               idata = ReadRing(i,j);
-	       bobreply.ring[k++] = htonl( idata );
-               if (debug) printf("ReadRing(%d, %d) = %d\n",i,j,idata);
-	    }
-	  }
-          ResetRing(n);
-        }
-#endif
-      
-      }
+     }
 
       if (clientRequest.reply) {
           if (write (newFd, (char *) &bobreply, sizeof (bobreply)) == ERROR)

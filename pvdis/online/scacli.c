@@ -1,42 +1,10 @@
 /* Client code to read VME scalers */
 /* Server runs on the VME cpu */
 
-/* Modified March 2000 by D. Meekins */
-/* if print_to_file is true then the routine will compile and        */
-/* allow an additional option -p to print to a data file             */
-/* the data file will contain the raw triggers for types 1 through 5 */
-/* and the downstream BCMX3 signal                                   */
+/* Version for PVDIS.  Never looking back. 
 
-/* Mod, Aug 2002 R. Michaels
-   Option '-r' gets the ring buffer, for purpose of debugging
-   scaler readout in G0 mode.  Data goes to "ring.out".
-   This is dangerous because the server clears the ring buffer.  
-   Therefore it is not an advertised feature, but only for debugging 
-   But this option is also TURNED OFF when TEST_RING is undefined.
-   Reason: To be compatible with xscaler (SunOS) which unfortuantely
-   I cannot compile at the moment !
 */
 
-   
-
-#define print_to_file 1
-
-#ifdef print_to_file
-#define OUTPUT_FILE "/adaqfs/halla/a-onl/scaler/hadron/scaler_subset.dat"
-#define BCMX3 86
-#define T1 80
-#define T2 81
-#define T3 82
-#define T4 83
-#define T5 84
-#define TIME 87
-#endif
-
-#ifdef HPVERS
-#include "da.h"
-#include "obj.h"
-#include "rc.h"
-#endif
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include "time.h"
@@ -316,9 +284,10 @@ usage:
        if(lprint==1) {
          printf ("\n\n\n  ========    Scalers  ===============\n\n");
          sca=0;
-         for (k=0; k<NUMBLOCKS; k++) {
+         for (k=0; k<NUMBLOCKS; k++) {     //test
             sca=2*k;
-            for (i=0;i<2;i++) {
+
+                for (i=0;i<2;i++) {
                 printf ("%3d :  %8d %8d %8d %8d %8d %8d %8d %8d \n",
                 8*(sca+i)+1,bobreply.ibuf[(sca+i)*8],
                 bobreply.ibuf[(sca+i)*8+1],
@@ -328,7 +297,8 @@ usage:
                 bobreply.ibuf[(sca+i)*8+5],
                 bobreply.ibuf[(sca+i)*8+6],
                 bobreply.ibuf[(sca+i)*8+7]);
-	    }
+		} 
+          
 	  }
        }
        
