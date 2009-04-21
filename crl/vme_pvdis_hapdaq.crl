@@ -32,7 +32,11 @@ const MAX_3820_WORDS=10000
 const MAX_3820_DOUT=100
 
 # To use flexio or not
+# NOTE! #1 is on top, #2 is on bottom
+# need csr1 vs csr2 and data1 vs data2 !!
+
 const useflexio=1
+
 
 # To use CAEN 767 or not
 const use767=0
@@ -126,8 +130,8 @@ begin download
       printf("FlexIO address = 0x%x\n",laddr);
       flex_io = (struct vme_flex_io *)laddr;
     }
-    flex_io->csr1 = 0x8000; /* Reset Module */
-    flex_io->csr1 = 0x3;    /* Enable External Strobe and Latch Mode */
+    flex_io->csr2 = 0x8000; /* Reset Module */
+    flex_io->csr2 = 0x3;    /* Enable External Strobe and Latch Mode */
   }
 
   if(use767>0) {
@@ -234,8 +238,8 @@ begin go
   }
 
   if(useflexio == 1) {
-    flex_io->csr1 = 0x100;  /* Re-Activate Strobe */
-    flex_io->csr1 = 0x03;   /* Re-Activate Strobe */
+    flex_io->csr2 = 0x100;  /* Re-Activate Strobe */
+    flex_io->csr2 = 0x03;   /* Re-Activate Strobe */
   }
 
 
@@ -287,10 +291,10 @@ begin trigger partrig
   *rol->dabufp++ = (tir_dat & 0xfff);
 
   if(useflexio==1) {
-     *rol->dabufp++ = flex_io->data1;
-     flex_io->csr1 = 0x100;
-     flex_io->csr1 = 0x03;
-     stmp = flex_io->csr1;
+     *rol->dabufp++ = flex_io->data2;
+     flex_io->csr2 = 0x100;
+     flex_io->csr2 = 0x03;
+     stmp = flex_io->csr2;
   }
 
   *rol->dabufp++ = event_ty;
