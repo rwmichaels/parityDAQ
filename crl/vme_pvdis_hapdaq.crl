@@ -49,7 +49,7 @@ const MAX_WORDS = 100
 const MAX_TIME = 200000
 
 const TIR_ADDR = 0xad0
-const FLEXIO_ADDR = hex 0ed0
+const FLEXIO_ADDR = hex 0a40
 
 extern int vxTicks;   /* vxWorks time ticks */
 extern int bigendian_out;
