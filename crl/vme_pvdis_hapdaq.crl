@@ -37,6 +37,8 @@ const MAX_3820_DOUT=100
 
 const useflexio=1
 
+# To interact with external SIS3801 library (PVDIS version)
+const useSISLIB=1
 
 # To use CAEN 767 or not
 const use767=0
@@ -57,8 +59,8 @@ const FLEXIO_ADDR = hex 0a40
 
 extern int vxTicks;   /* vxWorks time ticks */
 extern int bigendian_out;
-extern int rocActivate;
-extern int scaRunReady;
+extern int end_run_flag;
+extern int coda_run_flag; 
 
 #extern struct SISbuffer SIS[0];  
 #extern struct SISbuffer SIS[1]; 
@@ -152,7 +154,7 @@ begin download
 
 %%
 
-
+  GlobalScalerClr();  /* for PVDIS scaler data in memory */
   
   log inform "User Download Executed"
 
@@ -174,10 +176,7 @@ begin prestart
   }
 %%
 
-  log inform "Setting up Scalers "
-
-  runStartClrSIS();
-  rocActivate = 0;
+  GlobalScalerClr();  /* for PVDIS scaler data in memory */
 
   log inform "User Prestart Executed"
 
@@ -188,7 +187,6 @@ begin end
   CDODISABLE(VME,1,0);
   log inform "User End Executed"
 #  s3300SetRunFlag(0);
-  rocActivate = 0;
 
   if (use3820) SIS3820_Disable(0);
 
@@ -198,7 +196,6 @@ begin pause
 
   CDODISABLE(VME,1,0);
   log inform "User Pause Executed"
-  rocActivate = 0;
 
 end pause
 
@@ -247,8 +244,6 @@ begin go
 
   CDOENABLE(VME,1,0);
 
-  rocActivate = 1;
-  scaRunReady = 1;
 
 end go
 
@@ -333,19 +328,11 @@ begin trigger partrig
 
     for (j = 0; j < 32; j++) {
       *rol->dabufp++ = sdata[iscal*32+j];
-    }
 
 // Write data into shared memory so the server can see it.
-/*    if (iscal==0) {
-       for (j = 0; j<32; j++) SIS[0].data[j] = sdata[iscal*32+j];
+      if (useSISLIB) GlobalScalerIncr(iscal, j, sdata[iscal*32+j]);
+
     }
-    if (iscal==1) {
-       for (j = 0; j<32; j++) SIS[1].data[j] = sdata[iscal*32+j];
-    }  
-    if (iscal==2) {
-       for (j = 0; j<32; j++) SIS[2].data[j] = sdata[iscal*32+j];
-    } 
-*/
 
   }
 
@@ -369,6 +356,9 @@ begin trigger partrig
      for (ii = 0; ii<nDataWords; ii++) {
         rdata = SIS3820_GetFIFO(0)&DATA_MASK;
         if (ii < MAX_3820_DOUT) *rol->dabufp++ = rdata;
+// Write data into shared memory -- this is 4th 'scaler' (index 3)
+        if (useSISLIB && ii < 32) GlobalScalerIncr(3, ii, rdata);
+
      }
 
   }
