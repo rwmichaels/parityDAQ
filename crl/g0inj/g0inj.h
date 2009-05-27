@@ -3,7 +3,7 @@
  *  pking, 2005oct11:  Corrected the path for the g0vme1.flags file.
  */
 
-#define INTERNAL_FLAGS "ffile=/home/gzero/qweak/coda25/crl/g0inj.flags,badc=0xC1,nadc=3,vqwkinternal=0"
+#define INTERNAL_FLAGS "ffile=/adaqfs/halla/apar/qweak/adc/g0inj.flags,badc=0xC1,nadc=3,vqwkinternal=0"
 
 #define NUM_ADCS "nadc"
 #define BASE_ADC "badc"
