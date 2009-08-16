@@ -16,10 +16,10 @@
 
 /* number of HAPPEX ADCs */
 #ifdef  COUNTINGHOUSE
-#define NADC 8    // must be <10, or requires changes to static arrays.
+#define NADC 5    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  INJECTOR
-#define NADC 1    // must be <10, or requires changes to static arrays.
+#define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  LEFTSPECT
 #define NADC 0    // must be <10, or requires changes to static arrays.
@@ -29,7 +29,7 @@
 #endif
 
 #ifdef TESTCRATE
-#define NADC 2  
+#define NADC 1  
 #endif
 
 #define MAXRETRY 20   // max number of attempts to write csr
@@ -40,7 +40,7 @@
 
 //   Relative Addresses of ADCs
 #ifdef   TESTCRATE
-#define  ADC0 0x820000
+#define  ADC0 0x440000
 #define  ADC1 0x430000   // Undefined.
 #define  ADC2 0xff0000
 #define  ADC3 0xff0000
@@ -51,7 +51,7 @@
 #define  ADC8 0xff0000
 #define  ADC9 0xff0000
 
-#define  ADCLAB0 7
+#define  ADCLAB0 20
 #define  ADCLAB1 0xf   // Undefined
 #define  ADCLAB2 0xf
 #define  ADCLAB3 0xf
@@ -65,26 +65,27 @@
 #endif
 
 #ifdef   COUNTINGHOUSE
-#define  ADC0 0x470000
-#define  ADC1 0x400000
-#define  ADC2 0x4d0000
-#define  ADC3 0x480000
-#define  ADC4 0x520000
-#define  ADC5 0x4b0000
-#define  ADC6 0x510000
-#define  ADC7 0x490000
-#define  ADC8 0x490000
-#define  ADC9 0x490000
-#define  ADCLAB0 2
-#define  ADCLAB1 23
-#define  ADCLAB2 22
-#define  ADCLAB3 15
-#define  ADCLAB4 11
-#define  ADCLAB5 7
-#define  ADCLAB6 12
-#define  ADCLAB7 14
-#define  ADCLAB8 14
-#define  ADCLAB9 14
+#define  ADC0 0x400000
+#define  ADC1 0x520000
+#define  ADC2 0x4b0000
+#define  ADC3 0x510000
+#define  ADC4 0x490000
+#define  ADC5 0x490000
+#define  ADC6 0x490000
+#define  ADC7 0x470000
+#define  ADC8 0x4d0000
+#define  ADC9 0x480000
+
+#define  ADCLAB0 23
+#define  ADCLAB1 11
+#define  ADCLAB2 7
+#define  ADCLAB3 12
+#define  ADCLAB4 14
+#define  ADCLAB5 14
+#define  ADCLAB6 14
+#define  ADCLAB7 2
+#define  ADCLAB8 22
+#define  ADCLAB9 15
 #endif
 
 #ifdef   INJECTOR
@@ -134,8 +135,8 @@
 #endif
 
 #ifdef   RIGHTSPECT
-#define  ADC0 0x4C0000
-#define  ADC1 0x8F0000
+#define  ADC0 0x8F0000
+#define  ADC1 0x4C0000
 #define  ADC2 0x840000
 #define  ADC3 0x4E0000
 #define  ADC4 0x4B0700
@@ -144,8 +145,8 @@
 #define  ADC7 0x4b0000
 #define  ADC8 0x510000
 #define  ADC9 0x490000
-#define  ADCLAB0 13
-#define  ADCLAB1 17
+#define  ADCLAB0 17
+#define  ADCLAB1 13
 #define  ADCLAB2 29
 #define  ADCLAB3 8
 #define  ADCLAB4 64
@@ -162,6 +163,17 @@
 #define ADC0_DEF_GAINBIT LO_GAIN
 #define ADC1_DEF_GAINBIT LO_GAIN
 #define ADC2_DEF_GAINBIT LO_GAIN
+#define ADC3_DEF_GAINBIT LO_GAIN
+#define ADC4_DEF_GAINBIT LO_GAIN
+#define ADC5_DEF_GAINBIT LO_GAIN
+#define ADC6_DEF_GAINBIT LO_GAIN
+#define ADC7_DEF_GAINBIT LO_GAIN
+#define ADC8_DEF_GAINBIT LO_GAIN
+#define ADC9_DEF_GAINBIT LO_GAIN
+#elif defined(RIGHTSPECT)
+#define ADC0_DEF_GAINBIT HI_GAIN
+#define ADC1_DEF_GAINBIT LO_GAIN
+#define ADC2_DEF_GAINBIT HI_GAIN
 #define ADC3_DEF_GAINBIT LO_GAIN
 #define ADC4_DEF_GAINBIT LO_GAIN
 #define ADC5_DEF_GAINBIT LO_GAIN
