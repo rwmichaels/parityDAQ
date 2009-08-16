@@ -7,7 +7,7 @@
 
 #include "HAPTB_cf_commands.h"
 
-void taskHAPTB_CF(long* command, long *par1, long *par2)
+void taskHAPTB_CF(long* command, long *par1, long *par2, long *par3)
 {
   int junk;
   switch (*command)
