@@ -31,9 +31,13 @@ int initHAPTB()
   printf("HAPPEX Timing Board address = 0x%x ",laddr);
   did_init_TB = 1;
   tboard = (struct vme_happex_tb *) laddr;
+  tboard->dac12   = TB_DEF_DAC12; 
+  tboard->dac16   = TB_DEF_DAC16;
   tboard->rampdelay = TB_DEF_RAMPDELAY;
   tboard->integtime = TB_DEF_INTEGTIME;
   tboard->osample_w = TB_DEF_OVERSAMPLE;
+  LAST_DAC12_TB    = TB_DEF_DAC12;
+  LAST_DAC16_TB    = TB_DEF_DAC16;
   LAST_OVERSAMPLE_TB = TB_DEF_OVERSAMPLE;
   printf("HAPPEX TIME BOARD at %x se     :\n",HAPTB_ADDR);
   printf("dac12:0x%x, dac16:0x%x\n",TB_DEF_DAC12,TB_DEF_DAC16);
