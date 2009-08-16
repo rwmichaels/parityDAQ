@@ -30,9 +30,12 @@
 */
 /* Define some common keywords as symbols, so we have just one place to
    change them*/
-#define GDH "gdh"
-#define HAPPEX2 "happex2"
-#define HIGHE "highE"
+#define LEFTHRS "lefthrs"
+#define RIGHTHRS "righthrs"
+#define PVDISLEFT "pvdisleft"
+#define PVDISRIGHT "pvdisright"
+#define NOCNTHOUSE "nocnthouse"
+#define QWKINJ "qwkinj"
 #define INJ "inj"
 #define EVTYPEFIX "evtypefix"
 #define NOSCALER "noscaler"
@@ -41,6 +44,11 @@
 #define TBREADOUT "tbreadout"
 #define FLEXIO "flexio"
 #define FLEXIO2 "flexio2"
+#define ADC18BIT "adc18bit"
+#define ADC16BIT "adc16bit"
+#define MTREAD "mtread"  /* empty readout (for test) */
+#define RAMPDAC12 "rampdac12"
+#define AUTOLED "autoled"
 #define FLAG_FILE "ffile"
 #define COMMENT_CHAR ';'
 
