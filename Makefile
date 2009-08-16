@@ -5,7 +5,7 @@ VERS=1.0
 # export PROFILE = 1
 
 # Use vxWorks 5.5 for 6100 boards, else use 5.4 until further notice
-# export USE55=1
+export USE55=1
 
 ROOTLIBS   = $(shell root-config --libs --new)
 ROOTGLIBS  = $(shell root-config --glibs --new)
@@ -50,7 +50,7 @@ ifdef PROFILE
 endif
 
 SRC = config/GreenMonster.C config/GreenMonsterDict.C config/GreenTB.C \
-      config/GreenADC.C 
+      config/GreenADC.C config/GreenADC18.C 
 
 HEAD = $(SRC:.C=.h) cfSock/GreenSock.h config/GMSock.h
 DEPS = $(SRC:.C=.d)
@@ -63,7 +63,7 @@ SHLIB =
 # Of course, "ADC" means the 16-bit ADC (while ADC18 is obvious)
 # I might change this later to ADC16, etc.
 ADC = adc/HAPADC_ch.o adc/HAPADC_inj.o adc/HAPADC_lspec.o \
-	adc/HAPADC_rspec.o adc/HAPADC_config.o
+	adc/HAPADC_rspec.o  adc/HAPADC_test.o  adc/HAPADC_config.o
 ADC18 = adc18/hapAdc18Test.o adc18/hapAdc18Count.o \
 	adc18/hapAdc18Left.o adc18/hapAdc18Right.o \
 	adc18/hapAdc18Inj.o 
@@ -73,8 +73,9 @@ AUXTB = auxtimebrd/AUXTB_util.o
 SOCK =  cfSock/cfSockSer.o cfSock/cfSockCli.o
 SCAN = scan/SCAN_util.o scan/SCAN_config.o
 CAFFB = caFFB/caFFB.o
-AUTO = auto/auto.o auto/auto_filter.o
-FLEXIO = flexio/flexio_lib.o
+AUTO = auto/auto_rhwp.o auto/auto_filter.o auto/auto_led.o
+#FLEXIO = flexio/flexio_lib_ch.o flexio/flexio_lib_rspec.o
+FLEXIO = flexio/flexioLib.o
 #CAFFB = 
 
 adc: $(ADC)
@@ -116,8 +117,9 @@ clean:
 	rm -f auxtimebrd/core auxtimebrd/*.o auxtimebrd/*.d
 	rm -f scan/core scan/*.o scan/*.d
 	rm -f caFFB/core caFFB/*.o caFFB/*.d
-	rm -f flexio/flexio_lib.o
-	rm -r auto/auto.o auto/auto_filter.o
+#	rm -f flexio/flexio_lib_ch.o flexio/flexio_lib_rspec.o
+	rm -f flexio/flexioLib.o
+	rm -r auto/auto_rhwp.o auto/auto_filter.o auto/auto_led.o
 
 realclean:  clean
 	rm -f *.d
@@ -126,7 +128,6 @@ realclean:  clean
 config/config: config/config.o $(OBJS) $(SRC) $(HEAD)
 	rm -f $@
 	$(CXX) $(CXXFLAGS) -o $@ config/config.o $(OBJS) $(ALL_LIBS) 
-
 
 adc/HAPADC_ch.o : adc/HAPADC.c adc/HAPADC.h
 	rm -f $@
@@ -144,13 +145,13 @@ adc/HAPADC_rspec.o : adc/HAPADC.c adc/HAPADC.h
 	rm -f $@
 	ccppc -o $@ $(CCVXFLAGS) -DRIGHTSPECT adc/HAPADC.c
 
+adc/HAPADC_test.o: adc/HAPADC.c adc/HAPADC.h
+	rm -f $@
+	ccppc -o $@ $(CCVXFLAGS) -DTESTCRATE adc/HAPADC.c
+
 adc/HAPADC_config.o : adc/HAPADC_config.c adc/HAPADC_cf_commands.h
 	rm -f $@
 	ccppc -o $@ $(CCVXFLAGS) adc/HAPADC_config.c
-
-adc18/hapAdc18Lib.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
-	rm -f $@
-	ccppc -o $@ $(CCVXFLAGS) -DTESTCRATE adc18/hapAdc18Lib.c
 
 adc18/hapAdc18Test.o: adc18/hapAdc18Lib.c adc18/hapAdc18Lib.h
 	rm -f $@
@@ -180,9 +181,17 @@ bmw/bmw_config.o : bmw/bmw_config.c bmw/bmw_config.h bmw/bmw_cf_commands.h
 	rm -f $@
 	ccppc -o $@ -c $(CCVXFLAGS) bmw/bmw_config.c
  
-flexio/flexio_lib.o : flexio/flexio_lib.c
+flexio/flexioLib.o : flexio/flexioLib.c flexio/flexioLib.h
 	rm -f $@
-	ccppc -c $@ -c $(CCVXFLAGS) flexio/flexio_lib.c
+	ccppc -o $@ $(CCVXFLAGS) flexio/flexioLib.c
+
+# flexio/flexio_lib_ch.o : flexio/flexio_lib.c flexio/flexio.h
+# 	rm -f $@
+# 	ccppc -o $@ $(CCVXFLAGS) -DCOUNTINGHOUSE flexio/flexio_lib.c
+
+# flexio/flexio_lib_rspec.o : flexio/flexio_lib.c flexio/flexio.h
+# 	rm -f $@
+# 	ccppc -o $@ -c $(CCVXFLAGS) -DRIGHTSPECT flexio/flexio_lib.c
 
 cfSock/cfSockCli.o : cfSock/cfSockCli.c cfSock/cfSock.h cfSock/cfSock_types.h
 	rm -f $@
@@ -217,9 +226,13 @@ auxtimebrd/AUXTB_util.o: auxtimebrd/AUXTB_util.c auxtimebrd/AUXTB.h
 	cd auxtimebrd; rm -f $@; \
 	ccppc  -c $(CCVXFLAGS) AUXTB_util.c
 
-auto/auto.o: auto/auto.c
+auto/auto_rhwp.o: auto/auto_rhwp.c
 	cd auto; rm -f $@; \
-	ccppc -c $(CCVXFLAGS) auto.c
+	ccppc -c $(CCVXFLAGS) auto_rhwp.c
+
+auto/auto_led.o: auto/auto_led.c auto/auto_led.h
+	cd auto; rm -f $@; \
+	ccppc -c $(CCVXFLAGS) auto_led.c
 
 auto/auto_filter.o: auto/auto_filter.c
 	cd auto; rm -f $@; \
