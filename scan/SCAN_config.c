@@ -7,7 +7,7 @@
 
 #include "SCAN_cf_commands.h"
 
-void taskSCAN_CF(long* command, long *par1, long *par2)
+void taskSCAN_CF(long* command, long *par1, long *par2, long *par3)
 {
   int junk;
   switch (*command)
