@@ -3,11 +3,9 @@
 
 ClassImp(GreenMonster)
 
-GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) : 
-  TGMainFrame(p, w, h), mainWidth(w), mainHeight(h)
+  GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) : 
+    TGMainFrame(p, w, h), mainWidth(w), mainHeight(h)
 {
-  //  grnback = gROOT->GetColor(31)->GetPixel();  // maybe try this if
-  // a modern version of root gets installed onto adaqcp
 
   gClient->GetColorByName("darkseagreen",grnback);
   ULong_t white;
@@ -16,22 +14,24 @@ GreenMonster::GreenMonster(const TGWindow *p, UInt_t w, UInt_t h) :
 
   this->SetBackgroundColor(grnback);
   fUseCrate[0]= kTRUE;
-  fCrateNames[0] = new TString("Counting House");
-  //  fCrateNames[0] = new TString("Laser Room");
+  fCrateNames[0] = new TString("CH");
   fCrateNumbers[0] = Crate_CountingHouse;
 
-  fUseCrate[1]= kTRUE;
-  fCrateNames[1] = new TString("Injector");
+  fUseCrate[1]= kFALSE;
+  fCrateNames[1] = new TString("Inj");
   fCrateNumbers[1] = Crate_Injector;
 
-  fUseCrate[2]= kFALSE;
-  fCrateNames[2] = new TString("Left Spect");
+  fUseCrate[2]= kTRUE;
+  fCrateNames[2] = new TString("LftSpec");
   fCrateNumbers[2] = Crate_LeftSpect;
 
   fUseCrate[3]= kTRUE;
-  fCrateNames[3] = new TString("Right Spect");
+  fCrateNames[3] = new TString("RtSpec");
   fCrateNumbers[3] = Crate_RightSpect;
 
+  fUseCrate[4]= kTRUE;
+  fCrateNames[4] = new TString("Test");
+  fCrateNumbers[4] = Crate_TestCrate;
 }
 
 GreenMonster::~GreenMonster() {
@@ -43,8 +43,10 @@ void GreenMonster::Init() {
 
 void GreenMonster::InitGui() {
 
-  Int_t killServerCommand[4] = {KILL_SERVER_1, KILL_SERVER_2, 
-				 KILL_SERVER_3, KILL_SERVER_4}; 
+  Int_t killServerCommand[MAXCRATES] = 
+    {KILL_SERVER_1, KILL_SERVER_2, 
+     KILL_SERVER_3, KILL_SERVER_4, 
+     KILL_SERVER_5}; 
 
 
   TGCompositeFrame *tf;
@@ -54,34 +56,32 @@ void GreenMonster::InitGui() {
   TGTab *fTab = new TGTab(this, 0, 0);
   fTab->SetBackgroundColor(grnback);
 
-  TGLayoutHints *framout = new TGLayoutHints(kLHintsTop | kLHintsExpandX | kLHintsExpandY, 5, 5, 5, 5);
+  TGLayoutHints *framout = new TGLayoutHints(kLHintsTop | kLHintsExpandX | 
+					     kLHintsExpandY, 5, 5, 5, 5);
 
-//    // place quit button on bottom of page
+
   tf  = new TGHorizontalFrame(this,mainWidth-10,mainHeight-10,kFixedWidth);
   tf->SetBackgroundColor(grnback);
-//   TGLayoutHints *fLbottom = new TGLayoutHints(
-// 	  kLHintsBottom | kLHintsRight | kLHintsExpandX, 2, 2, 4, 2);
-  TGLayoutHints *fLbottom = new TGLayoutHints(
-	  kLHintsBottom | kLHintsRight, 2, 2, 4, 2);
 
+  // place quit button on bottom of page
+  TGLayoutHints *fLbottom = new TGLayoutHints(kLHintsBottom | kLHintsRight, 
+					      2, 2, 4, 2);
+
+  // create quit button
   TGCompositeFrame* sizebtn = new TGCompositeFrame(tf,150,100,kFixedWidth);
   sizebtn->SetBackgroundColor(grnback);
   tf->AddFrame(sizebtn,fLbottom);
-  bt = new TGTextButton(sizebtn,"&QUIT",".q");
+  bt = new TGTextButton(sizebtn,"&QUIT",".qqqqqqqqq");
   bt->SetBackgroundColor(grnback);
-  //  bt->Resize(100,bt->GetDefaultHeight());
   sizebtn->AddFrame(bt,new TGLayoutHints(kLHintsBottom|kLHintsExpandX,5,10,4,2));
 
-  TGPictureButton* mike = new TGPictureButton(tf,
-					      gClient->GetPicture("gm.xpm"));
-  //  TGIcon *mike = new TGIcon(tf,gClient->GetPicture("config/gm.xpm"), 0,0);
+  TGPictureButton* mike = 
+    new TGPictureButton(tf,gClient->GetPicture("gm.xpm"));
   mike->SetBackgroundColor(grnback);
   mike->SetToolTipText("grrr...");
-  //  new TGToolTip(tf,mike,"grrr...",1000);
   tf->AddFrame(mike,new TGLayoutHints(kLHintsBottom|kLHintsLeft,5,10,4,2));
 
   bt->Resize(100,bt->GetDefaultHeight());
-  //  tf->Resize(tf->GetDefaultWidth(), mike->GetDefaultHeight());
 
   TGLayoutHints *fL_Bot_Right = new TGLayoutHints(kLHintsBottom | 
 						  kLHintsRight, 2, 2, 5, 1);
@@ -97,28 +97,56 @@ void GreenMonster::InitGui() {
   tf->SetLayoutManager(new TGMatrixLayout(tf, 2, 2, 10));
   tf->SetBackgroundColor(grnback);
 
-  TGCompositeFrame* tfnocrate;
-  TGCompositeFrame* tfnocrate2;
-  TGLayoutHints *addTBLayout = new TGLayoutHints(kLHintsTop | kLHintsExpandX | kLHintsExpandY, 5, 5, 5, 5);
-  for (Int_t i=0; i<4; i++) {
+
+  TGLayoutHints *addTBLayout = new TGLayoutHints(kLHintsTop | kLHintsExpandX | 
+						 kLHintsExpandY, 5, 5, 5, 5);
+
+  for (Int_t i=0; i<MAXCRATES; i++) {
     if (fUseCrate[i]) {
       fTimeBoard[i] = new GreenTB(fCrateNumbers[i],fCrateNames[i]->Data(),
-				 tf, 350, 200);
+				  tf, 350, 200);
       fTimeBoard[i]->Init(grnback);
       tf->AddFrame(fTimeBoard[i],addTBLayout);
-    } else {
-      tfnocrate = new TGCompositeFrame(tf,350,200,kFixedSize);
-      tfnocrate->SetBackgroundColor(grnback);
-      tf->AddFrame(tfnocrate,addTBLayout);
-      tfnocrate2 = new TGGroupFrame(tfnocrate,fCrateNames[i]->Data(),
-				   kHorizontalFrame | kFixedSize);
-      tfnocrate2->SetBackgroundColor(grnback);
-      tfnocrate->AddFrame(tfnocrate2,addTBLayout);
     }
   }  
-  //
-  //
 
+
+  //
+  // create next page, ADCs
+  //
+  char buff[15];
+  for (Int_t i=0; i<MAXCRATES; i++) {
+    if (fUseCrate[i]) {
+      sprintf(buff,"ADC16s, %s",fCrateNames[i]->Data());
+      tf = fTab->AddTab(buff);
+      tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
+      tabel->ChangeBackground(grnback);
+      tf->SetBackgroundColor(grnback);
+
+      fADC[i] = new GreenADC(fCrateNumbers[i],fCrateNames[i]->Data(),
+			     tf, 350, 200);
+      fADC[i]->Init(grnback);
+      tf->AddFrame(fADC[i],framout);
+    } 
+  }  
+
+  //
+  // create next page, ADCs
+  //
+  for (Int_t i=0; i<MAXCRATES; i++) {
+    if (fUseCrate[i]) {
+      sprintf(buff,"ADC18s, %s",fCrateNames[i]->Data());
+      tf = fTab->AddTab(buff);
+      tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
+      tabel->ChangeBackground(grnback);
+      tf->SetBackgroundColor(grnback);
+
+      fADC18[i] = new GreenADC18(fCrateNumbers[i],fCrateNames[i]->Data(),
+			     tf, 350, 200);
+      fADC18[i]->Init(grnback);
+      tf->AddFrame(fADC18[i],framout);
+    } 
+  }  
 
   //
   // create BMW page
@@ -137,30 +165,6 @@ void GreenMonster::InitGui() {
 
 
   //
-  // create third page, ADCs
-  //
-  char buff[15];
-  for (Int_t i=0; i<4; i++) {
-    if (fUseCrate[i]) {
-      //      sprintf(buff,"ADC, Crate %d",i);
-      sprintf(buff,"ADCs, %s",fCrateNames[i]->Data());
-      tf = fTab->AddTab(buff);
-      tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
-      tabel->ChangeBackground(grnback);
-      tf->SetBackgroundColor(grnback);
-      //  tf->SetLayoutManager(new TGMatrixLayout(tf, 2, 2, 10));
-      //      tf->SetLayoutManager(new TGVerticalLayout(tf));
-      fADC[i] = new GreenADC(fCrateNumbers[i],fCrateNames[i]->Data(),
-				 tf, 350, 200);
-      fADC[i]->Init(grnback);
-      tf->AddFrame(fADC[i],framout);
-    } 
-  }  
-  //
-  //
-
-
-  //
   // create server page
   //
   tf = fTab->AddTab("VXWorks Server");
@@ -168,34 +172,32 @@ void GreenMonster::InitGui() {
   tabel->ChangeBackground(grnback);
   tf->SetBackgroundColor(grnback);
   tf->SetLayoutManager(new TGHorizontalLayout(tf));
-  TGLayoutHints *noex = new TGLayoutHints(kLHintsCenterX | kLHintsCenterY, 5, 5, 5, 5);
+  TGLayoutHints *noex = new TGLayoutHints(kLHintsCenterX | 
+					  kLHintsCenterY, 5, 5, 5, 5);
   TGCompositeFrame *tcf4a = new TGCompositeFrame(tf, 300, 400, 
 						 kVerticalFrame|kFixedWidth);
   tcf4a->SetBackgroundColor(grnback);
-  //tcf4a->SetBackgroundColor(dgreen);
   tf->AddFrame(tcf4a,noex);
 
-//    // create SCAN page
-    tf = fTab->AddTab("ScanUtil");
-    fSCN_TABID = fTab->GetNumberOfTabs()-1;  // set tab index for later use
-    tabel = fTab->GetTabTab(fSCN_TABID);  // get tab index
-    tabel->ChangeBackground(grnback);
-    tf->SetBackgroundColor(grnback);
-    tf->SetLayoutManager(new TGHorizontalLayout(tf));
-    TGCompositeFrame *tcfSCN = new TGGroupFrame(tf, "SCAN UTILITY", 
-						kHorizontalFrame);
-    tcfSCN->SetBackgroundColor(grnback);
-    //    TGCompositeFrame *tcfSCN = new TGCompositeFrame(tf, 300, 300, kVerticalFrame);
-    //    tcfSCN->SetBackgroundColor(grnback);
-    tf->AddFrame(tcfSCN,framout);
+  // create SCAN page
+  tf = fTab->AddTab("ScanUtil");
+  fSCN_TABID = fTab->GetNumberOfTabs()-1;  // set tab index for later use
+  tabel = fTab->GetTabTab(fSCN_TABID);  // get tab index
+  tabel->ChangeBackground(grnback);
+  tf->SetBackgroundColor(grnback);
+  tf->SetLayoutManager(new TGHorizontalLayout(tf));
+  TGCompositeFrame *tcfSCN = new TGGroupFrame(tf, "SCAN UTILITY", 
+					      kHorizontalFrame);
+  tcfSCN->SetBackgroundColor(grnback);
+  tf->AddFrame(tcfSCN,framout);
 
-//----------------------------------------------------------------------
+  //----------------------------------------------------------------------
   // add buttons to SCN page
 
   tcfSCN->SetLayoutManager(new TGVerticalLayout(tcfSCN));
 
   TGCompositeFrame *tcfSCN1 = new TGGroupFrame(tcfSCN, "",
- 					      kVerticalFrame);
+					       kVerticalFrame);
   tcfSCN1->SetBackgroundColor(grnback);
   tcfSCN->AddFrame(tcfSCN1,framout);
 
@@ -243,12 +245,12 @@ void GreenMonster::InitGui() {
   sfrm1->Resize(sfrm1->GetDefaultSize());
 
   sfrm2->AddFrame(checkStatusBtSCN = 
-		     new TGTextButton(sfrm2,"Check Status",GM_SCN_CHECK));
+		  new TGTextButton(sfrm2,"Check Status",GM_SCN_CHECK));
   checkStatusBtSCN->Associate(this);
   checkStatusBtSCN->SetBackgroundColor(grnback);
 
   sfrm2->AddFrame(setValueBtSCN = 
-		     new TGTextButton(sfrm2,"Set Values",GM_SCN_SET));
+		  new TGTextButton(sfrm2,"Set Values",GM_SCN_SET));
   setValueBtSCN->Associate(this);
   setValueBtSCN->SetBackgroundColor(grnback);
 
@@ -259,23 +261,22 @@ void GreenMonster::InitGui() {
 
 
 
-//----------------------------------------------------------------------
+  //----------------------------------------------------------------------
   // add buttons to BMW page
   // tcfbmw has a matrix layout with 2 columns: put label and buttons
   // side by side...
 
   tcfbmw->SetLayoutManager(new TGVerticalLayout(tcfbmw));
 
-  TGCompositeFrame *tcfbmw1 = new TGGroupFrame(tcfbmw, "Beam Modulation Script", 
-					      kHorizontalFrame);
+  TGCompositeFrame *tcfbmw1 = 
+    new TGGroupFrame(tcfbmw, "Beam Modulation Script",kHorizontalFrame);
   tcfbmw1->SetBackgroundColor(grnback);
   tcfbmw->AddFrame(tcfbmw1,framout);
 
-  TGCompositeFrame *tcfbmw_t = new TGGroupFrame(tcfbmw, "Beam Modulation- TEST", 
-					      kVerticalFrame);
+  TGCompositeFrame *tcfbmw_t = 
+    new TGGroupFrame(tcfbmw, "Beam Modulation- TEST",kVerticalFrame);
   tcfbmw_t->SetBackgroundColor(grnback);
   tcfbmw->AddFrame(tcfbmw_t,framout);
-
 
 
   TGMatrixLayout *fMatLay = new TGMatrixLayout(tcfbmw1, 2, 3, 10, 10);
@@ -290,7 +291,7 @@ void GreenMonster::InitGui() {
   checkStatusBtBMW->SetBackgroundColor(grnback);
 
   tcfbmw1->AddFrame(statusLabelBMW = 
-		   new TGLabel(tcfbmw1,"Beam Modulation is OFF"));
+		    new TGLabel(tcfbmw1,"Beam Modulation is OFF"));
   statusLabelBMW->SetBackgroundColor(grnback);
   changeStatusBtBMW = new TGTextButton(tcfbmw1,"Start Beam Modulation",
   				       GM_BMW_CHANGE);
@@ -308,18 +309,18 @@ void GreenMonster::InitGui() {
   tmpfrmB->SetLayoutManager(new TGMatrixLayout(tmpfrmB, 1, 0, 10));
 
   tmpfrmB->AddFrame(enableTestBtBMW = 
-	       new TGTextButton(tmpfrmB,"Enable BMW Test",GM_BMW_TEST_ENABLE));
+		    new TGTextButton(tmpfrmB,"Enable BMW Test",GM_BMW_TEST_ENABLE));
   enableTestBtBMW->Associate(this);
   enableTestBtBMW->SetBackgroundColor(grnback);
   tmpfrmB->AddFrame(setKillBtBMW = 
-	       new TGTextButton(tmpfrmB,"Toggle Kill Switch",GM_BMW_SET_KILL));
+		    new TGTextButton(tmpfrmB,"Toggle Kill Switch",GM_BMW_SET_KILL));
   setKillBtBMW->Associate(this);
   setKillBtBMW->SetBackgroundColor(grnback);
 
-//    tmpfrmB->AddFrame(setValueBtBMW = 
-//  	       new TGTextButton(tmpfrmB,"Apply Value",GM_BMW_TEST_SET_VALUE));
-//    setValueBtBMW->Associate(this);
-//    setValueBtBMW->SetBackgroundColor(grnback);
+  //    tmpfrmB->AddFrame(setValueBtBMW = 
+  //  	       new TGTextButton(tmpfrmB,"Apply Value",GM_BMW_TEST_SET_VALUE));
+  //    setValueBtBMW->Associate(this);
+  //    setValueBtBMW->SetBackgroundColor(grnback);
 
   TGCompositeFrame *tmpfrm = new TGHorizontalFrame(tcfbmw_t,500,100);
   tmpfrm->SetLayoutManager(new TGMatrixLayout(tmpfrm, 0, 4));
@@ -360,11 +361,11 @@ void GreenMonster::InitGui() {
   BMWCheckStatus();
   BMWActiveProbe();
 
-//----------------------------------------------------------------------
+  //----------------------------------------------------------------------
   // add buttons to Control page
   fLayout = new TGLayoutHints(kLHintsCenterX | kLHintsCenterY | 
 			      kLHintsExpandX,2,2,5,5);
-  for (Int_t i = 0; i<4; i++) {
+  for (Int_t i = 0; i<MAXCRATES; i++) {
     if (fUseCrate[i]) {
       TString tmpstr = "Kill VXWorks Server, ";
       tmpstr += fCrateNames[i]->Data();
@@ -377,8 +378,8 @@ void GreenMonster::InitGui() {
     }
   } 
 
-//  //----------------------------------------------------------------------
-//  // Add top composite frame to the main frame (this)
+  //  //----------------------------------------------------------------------
+  //  // Add top composite frame to the main frame (this)
   AddFrame(fTab,new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,0,0,0,0));
   MapSubwindows();
   Layout();
@@ -392,154 +393,158 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 {
   int junk;
   // Process events generated by the buttons in the frame
-    switch (GET_MSG(msg)) {
-    case kC_COMMAND:
-      switch (GET_SUBMSG(msg)) {
-      case kCM_BUTTON:
-	switch (parm1) 
+  switch (GET_MSG(msg)) {
+  case kC_COMMAND:
+    switch (GET_SUBMSG(msg)) {
+    case kCM_BUTTON:
+      switch (parm1) 
+	{
+	case 1:
 	  {
-	  case 1:
-	    {
-	      int command = 10,par_1 =1,par_2 =2, command_type = 10;
-	      char *msgReq = "One";
-	      char *reply = "Y";
+	    int command = 10,par_1 =1,par_2 =2, par_3 =3, command_type = 10;
+	    char *msgReq = "One";
+	    char *reply = "Y";
 
-	      //junk = cfSockCommand(command,par_1,par_2,reply,msgReq);
-	      struct greenRequest gRequest;
-	      strcpy(gRequest.message,msgReq);
-	      gRequest.reply = reply;
-	      gRequest.command_type = command_type;
-	      gRequest.command = command;
-	      gRequest.par1 = par_1;
-	      gRequest.par2 = par_2;
-	      junk = GreenSockCommand(Crate_CountingHouse,&gRequest);
+	    //junk = cfSockCommand(command,par_1,par_2,reply,msgReq);
+	    struct greenRequest gRequest;
+	    strcpy(gRequest.message,msgReq);
+	    gRequest.reply = reply;
+	    gRequest.command_type = command_type;
+	    gRequest.command = command;
+	    gRequest.par1 = par_1;
+	    gRequest.par2 = par_2;
+	    gRequest.par3 = par_3;
+	    junk = GreenSockCommand(Crate_CountingHouse,&gRequest);
 
-	      printf ("cfSockCommand returned :  %d \n",junk);
-	      command_type = gRequest.command_type;
-	      command = gRequest.command;
-	      par_1 = gRequest.par1;
-	      par_2 = gRequest.par2;
-   	      if(*reply=='Y' || *reply=='y') {
-  		printf ("GM: MESSAGE FROM SERVER:\n%s\n", msgReq);
-  		printf("Server reply command: %d \n",command);
-  		printf("Server reply param_1: %d \n",par_1);
-  		printf("Server reply param_2: %d \n",par_2);
-  	      }
+	    printf ("cfSockCommand returned :  %d \n",junk);
+	    command_type = gRequest.command_type;
+	    command = gRequest.command;
+	    par_1 = gRequest.par1;
+	    par_2 = gRequest.par2;
+	    par_3 = gRequest.par3;
+	    if(*reply=='Y' || *reply=='y') {
+	      printf ("GM: MESSAGE FROM SERVER:\n%s\n", msgReq);
+	      printf("Server reply command: %d \n",command);
+	      printf("Server reply param_1: %d \n",par_1);
+	      printf("Server reply param_2: %d \n",par_2);
+	      printf("Server reply param_3: %d \n",par_3);
+	    }
 
-	    }
-	    break;
-	  case 2:
-	    {
-	      TExec *ex = new TExec("ex",".q");
-	      ex->Exec();
-	    }
-	    break;
-	  case KILL_SERVER_1:
-	  case KILL_SERVER_2:
-	  case KILL_SERVER_3:
-	  case KILL_SERVER_4:
-	    {
-	      int command = 10,par_1 =1,par_2 =2, command_type = 10;
-	      char *msgReq = "Q";
-	      char *reply = "N";
-	      junk = cfSockCommand(fCrateNumbers[parm1-KILL_SERVER_1],
-				   command_type,command,par_1,par_2,
-				   reply,msgReq);
-	      //	    printf ("cfSockCommand returned :  %d \n",junk);
-	      msgReq = "Q";
-	      reply = "N";
-	      junk = cfSockCommand(fCrateNumbers[parm1-KILL_SERVER_1],
-				   command_type,command,par_1,par_2,
-				   reply,msgReq);
-	      break;
-	    }
-	  case GM_BMW_CHANGE:
-	    {
-	      //	      printf("changing status of BMW \n");
-	      BMWChangeStatus();
-	      break;
-	    }
-	  case GM_BMW_CHECK:	
-	    {
-	      //	      printf("checking status of BMW \n");
-	      BMWCheckStatus();
-	      BMWActiveProbe();
-	      break;
-	    }
-	  case GM_BMW_SET_KILL:
-	    {
-	      BMWSetKill();
-	      break;
-	    }
-	  case GM_BMW_TEST_ENABLE:
-	    {
-	      BMWStartTest();
-	      break;
-	    }
-	  case GM_SCN_CHECK:	
-	    {
-	      //	      printf("checking status of SCN \n");
-	      SCNCheckStatus();
-	      SCNCheckValues();
-	      break;
-	    }
-	  case GM_SCN_SET:	
-	    {
-	      //	      printf("setting SCN values\n");
-	      SCNSetValues();
-	      SCNCheckStatus();
-	      break;
-	    }
-	  default:
-	    printf("text button id %ld pressed\n", parm1);
-	    printf("text button context %ld \n", parm2);
+	  }
+	  break;
+	case 2:
+	  {
+	    TExec *ex = new TExec("ex",".q");
+	    ex->Exec();
+	  }
+	  break;
+	case KILL_SERVER_1:
+	case KILL_SERVER_2:
+	case KILL_SERVER_3:
+	case KILL_SERVER_4:
+	case KILL_SERVER_5:
+	  {
+	    int command = 10,par_1 =1,par_2 =2, par_3 =3, command_type = 10;
+	    char *msgReq = "Q";
+	    char *reply = "N";
+	    junk = cfSockCommand(fCrateNumbers[parm1-KILL_SERVER_1],
+				 command_type,command,par_1,par_2,par_3,
+				 reply,msgReq);
+	    //	    printf ("cfSockCommand returned :  %d \n",junk);
+	    msgReq = "Q";
+	    reply = "N";
+	    junk = cfSockCommand(fCrateNumbers[parm1-KILL_SERVER_1],
+				 command_type,command,par_1,par_2,par_3,
+				 reply,msgReq);
 	    break;
 	  }
-	break;
-      case kCM_RADIOBUTTON: {
-	switch (parm1) 
+	case GM_BMW_CHANGE:
 	  {
-          case BMW_OBJRADIO1:
-	  case BMW_OBJRADIO2:
-          case BMW_OBJRADIO3:
-          case BMW_OBJRADIO4:
-	  case BMW_OBJRADIO5:
-	  case BMW_OBJRADIO6:
-	  case BMW_OBJRADIO7:
-	  case BMW_OBJRADIO8:
-	    {
-	      //	      cout << "radio button pushed " << parm1 << endl;
-	      BMWDoRadio(parm1);
-	      break;
-	    }
-	  case SCN_RADIO_CLN:
-	  case SCN_RADIO_NOT:
-	    {
-	      // cout << "SCN radio button pushed " << parm1 << endl;
-	      SCNDoRadio(parm1);
-	      break;
-	    }
-	  default:
-	    {
-	      cout << "unknown radio button pushed " << parm1 << endl;
-	    }
+	    //	      printf("changing status of BMW \n");
+	    BMWChangeStatus();
+	    break;
 	  }
-      }
-      case kCM_TAB: {
-	if (parm1==fBMW_TABID) {
-	  // check status of BMW every time the tab is chosen
-	  //	  printf("clicked bmw tab \n");
-	  BMWCheckStatus();
-	  BMWActiveProbe();	  
-	}	  
-	break;
-      }
-      default:
- 	break;
-      }
+	case GM_BMW_CHECK:	
+	  {
+	    //	      printf("checking status of BMW \n");
+	    BMWCheckStatus();
+	    BMWActiveProbe();
+	    break;
+	  }
+	case GM_BMW_SET_KILL:
+	  {
+	    BMWSetKill();
+	    break;
+	  }
+	case GM_BMW_TEST_ENABLE:
+	  {
+	    BMWStartTest();
+	    break;
+	  }
+	case GM_SCN_CHECK:	
+	  {
+	    //	      printf("checking status of SCN \n");
+	    SCNCheckStatus();
+	    SCNCheckValues();
+	    break;
+	  }
+	case GM_SCN_SET:	
+	  {
+	    //	      printf("setting SCN values\n");
+	    SCNSetValues();
+	    SCNCheckStatus();
+	    break;
+	  }
+	default:
+	  printf("text button id %ld pressed\n", parm1);
+	  printf("text button context %ld \n", parm2);
+	  break;
+	}
+      break;
+    case kCM_RADIOBUTTON: {
+      switch (parm1) 
+	{
+	case BMW_OBJRADIO1:
+	case BMW_OBJRADIO2:
+	case BMW_OBJRADIO3:
+	case BMW_OBJRADIO4:
+	case BMW_OBJRADIO5:
+	case BMW_OBJRADIO6:
+	case BMW_OBJRADIO7:
+	case BMW_OBJRADIO8:
+	  {
+	    //	      cout << "radio button pushed " << parm1 << endl;
+	    BMWDoRadio(parm1);
+	    break;
+	  }
+	case SCN_RADIO_CLN:
+	case SCN_RADIO_NOT:
+	  {
+	    // cout << "SCN radio button pushed " << parm1 << endl;
+	    SCNDoRadio(parm1);
+	    break;
+	  }
+	default:
+	  {
+	    cout << "unknown radio button pushed " << parm1 << endl;
+	  }
+	}
+    }
+    case kCM_TAB: {
+      if (parm1==fBMW_TABID) {
+	// check status of BMW every time the tab is chosen
+	//	  printf("clicked bmw tab \n");
+	BMWCheckStatus();
+	BMWActiveProbe();	  
+      }	  
+      break;
+    }
     default:
       break;
     }
+  default:
+    break;
+  }
   return kTRUE;
 }
 
@@ -553,7 +558,7 @@ void GreenMonster::BMWDoRadio(Int_t id) {
 
 void GreenMonster::BMWStartTest() {    
   struct greenRequest gRequest;
-  int command, command_type, par1, par2;
+  int command, command_type, par1, par2, par3;
   char *msgReq = "BMW Start Test";
   char *reply = "Y";
 
@@ -562,11 +567,12 @@ void GreenMonster::BMWStartTest() {
   command = BMW_TEST_START;      gRequest.command = command;
   par1 = 0;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     command = gRequest.command;
   } else {
-    printf("BMWStartTest::ERROR accessing socket!"); 
+    printf("BMWStartTest::ERROR accessing socket!\n"); 
     return;
   }
 
@@ -580,7 +586,7 @@ void GreenMonster::BMWTestStep() {
   Bool_t kill_switch;
 
   struct greenRequest gRequest;
-  int command, command_type, par1, par2;
+  int command, command_type, par1, par2, par3;
   char *msgReq = "BW Test Set Data";
   char *reply = "Y";
 
@@ -596,6 +602,7 @@ void GreenMonster::BMWTestStep() {
   command = BMW_TEST_SET_DATA;   gRequest.command = command;
   par1 = chosenObjBMW;           gRequest.par1 = par1;
   par2 = value;                  gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
@@ -609,31 +616,31 @@ void GreenMonster::BMWTestStep() {
       kill_switch = kFALSE;
     }
   } else {
-    printf("ERROR accessing socket!"); 
+    printf("ERROR accessing socket!\n"); 
     return;
   }
   
-//    //
-//    // check for kill switch,
-//    //
-//    command_type = COMMAND_BMW;    gRequest.command_type = command_type;
-//    command = BMW_GET_STATUS;      gRequest.command = command;
-//    par1 = 0;                      gRequest.par1 = par1;
-//    par2 = 0;                      gRequest.par2 = par2;
-//    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
-//    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
-//      command = gRequest.command;
-//      par1 = gRequest.par1;
-//      par2 = gRequest.par2;
-//      if (par2 != 0) {
-//        kill_switch = kTRUE;
-//      } else { 
-//        kill_switch = kFALSE;
-//      }
-//    } else {
-//      printf("ERROR accessing socket!"); 
-//      return;
-//    }
+  //    //
+  //    // check for kill switch,
+  //    //
+  //    command_type = COMMAND_BMW;    gRequest.command_type = command_type;
+  //    command = BMW_GET_STATUS;      gRequest.command = command;
+  //    par1 = 0;                      gRequest.par1 = par1;
+  //    par2 = 0;                      gRequest.par2 = par2;
+  //    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+  //    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+  //      command = gRequest.command;
+  //      par1 = gRequest.par1;
+  //      par2 = gRequest.par2;
+  //      if (par2 != 0) {
+  //        kill_switch = kTRUE;
+  //      } else { 
+  //        kill_switch = kFALSE;
+  //      }
+  //    } else {
+  //      printf("ERROR accessing socket!\n"); 
+  //      return;
+  //    }
 
   //
   //if none, set timer to self
@@ -651,7 +658,7 @@ void GreenMonster::BMWTestStep() {
 
 void GreenMonster::BMWChangeStatus() {
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "BMW Status Change";
   char *reply = "Y";
   // get bmw status
@@ -668,22 +675,23 @@ void GreenMonster::BMWChangeStatus() {
   printf("changing status of bmw client\n");
   par1 = 0;                     gRequest.par1 = par1;
   par2 = 0;                     gRequest.par2 = par2;
+  par3 = 0;                     gRequest.par3 = par3;
 
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     printf("bmw status change call is complete\n");
   } else {
-    printf("ERROR accessing socket!");
+    printf("ERROR accessing socket!\n");
     return;
   }
   // check bmw status
-    BMWCheckStatus();
+  BMWCheckStatus();
 }
 
 
 void GreenMonster::BMWSetKill() {
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "BMW status check";
   char *reply = "Y";
   Bool_t bmw_running,kill_switch;
@@ -694,6 +702,7 @@ void GreenMonster::BMWSetKill() {
   command = BMW_GET_STATUS;      gRequest.command = command;
   par1 = 0;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     command = gRequest.command;
@@ -710,9 +719,9 @@ void GreenMonster::BMWSetKill() {
       kill_switch = kFALSE;
     }
   } else {
-    printf("ERROR accessing socket!"); 
+    printf("ERROR accessing socket!\n"); 
     return;
- }
+  }
 
   if (!kill_switch) {
     command_type = COMMAND_BMW;   gRequest.command_type = command_type;
@@ -721,12 +730,13 @@ void GreenMonster::BMWSetKill() {
     printf("setting kill switch on bmw\n");
     par1 = 0;                     gRequest.par1 = par1;
     par2 = 0;                     gRequest.par2 = par2;
+    par3 = 0;                      gRequest.par3 = par3;
     
     strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
     if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
       printf("bmw kill switch call is complete\n");
     } else {
-      printf("ERROR accessing socket!");
+      printf("ERROR accessing socket!\n");
       return;
     }
   } else {
@@ -736,12 +746,13 @@ void GreenMonster::BMWSetKill() {
     printf("lifting kill switch on bmw\n");
     par1 = 0;                     gRequest.par1 = par1;
     par2 = 0;                     gRequest.par2 = par2;
+    par3 = 0;                      gRequest.par3 = par3;
     
     strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
     if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
       printf("bmw un-kill switch call is complete\n");
     } else {
-      printf("ERROR accessing socket!");
+      printf("ERROR accessing socket!\n");
       return;
     }
   }
@@ -752,7 +763,7 @@ void GreenMonster::BMWSetKill() {
 Bool_t GreenMonster::BMWCheckStatus() {
   // get bmw status
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "BMW status check";
   char *reply = "Y";
   Bool_t bmw_running,kill_switch;
@@ -762,6 +773,7 @@ Bool_t GreenMonster::BMWCheckStatus() {
   command = BMW_GET_STATUS;      gRequest.command = command;
   par1 = 0;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     command = gRequest.command;
@@ -778,7 +790,7 @@ Bool_t GreenMonster::BMWCheckStatus() {
       kill_switch = kFALSE;
     }
   } else {
-    printf("ERROR accessing socket!");
+    printf("ERROR accessing socket!\n");
     return kFALSE;
   }
 
@@ -813,14 +825,14 @@ void GreenMonster::BMWActiveProbe() {
   //    one must generate a dictionary using rootcint... 
   TTimer* ctimer = new TTimer(4000,kTRUE);
   TQObject::Connect(ctimer, "Timeout()", "GreenMonster", this, 
-	  "BMWDelayCheck");
+		    "BMWDelayCheck");
   ctimer->Start(1000, kTRUE);
 }
 
 void GreenMonster::BMWCheckActiveFlag() {
   // get bmw status
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "BMW status check";
   char *reply = "Y";
   Bool_t active=kFALSE;
@@ -830,6 +842,7 @@ void GreenMonster::BMWCheckActiveFlag() {
   command = BMW_CHECK_ALIVE;      gRequest.command = command;
   par1 = 0;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     par2 = gRequest.par2;
@@ -839,7 +852,7 @@ void GreenMonster::BMWCheckActiveFlag() {
       active = kFALSE;
     }
   } else {
-    printf("ERROR accessing socket!"); 
+    printf("ERROR accessing socket!\n"); 
   }
 
   if (active) {
@@ -862,7 +875,7 @@ void GreenMonster::SCNDoRadio(Int_t id) {
 	  SCNSetStatus(statusSCN);
 	} 
 	break;
-     }
+      }
     case SCN_RADIO_NOT:
       {
 	if (statusSCN!=SCN_INT_NOT) {
@@ -905,7 +918,7 @@ void GreenMonster::SCNUpdateStatus(Int_t id) {
 
 Bool_t GreenMonster::SCNCheckStatus() {
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "SCN status check";
   char *reply = "Y";
   Int_t iclean;
@@ -915,8 +928,10 @@ Bool_t GreenMonster::SCNCheckStatus() {
   command = SCAN_GET_STATUS;     gRequest.command = command;
   par1 = 0;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+  //  if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
@@ -926,7 +941,7 @@ Bool_t GreenMonster::SCNCheckStatus() {
       return kFALSE;
     }
   } else {
-    printf("ERROR accessing socket!");
+    printf("ERROR accessing socket!\n");
     return kFALSE;
   }
   
@@ -938,7 +953,7 @@ Bool_t GreenMonster::SCNCheckStatus() {
 
 void GreenMonster::SCNSetStatus(Int_t status) {
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "SCN Status Change";
   char *reply = "Y";
 
@@ -946,17 +961,19 @@ void GreenMonster::SCNSetStatus(Int_t status) {
   command = SCAN_SET_STATUS;    gRequest.command = command;
   par1 = status;                gRequest.par1 = par1;
   par2 = 0;                     gRequest.par2 = par2;
+  par3 = 0;                     gRequest.par3 = par3;
 
   cout << "Setting SCN status: " << par1 << endl;
-   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
-   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
-     printf("SCAN status change call is complete\n");
-   } else {
-     printf("ERROR accessing socket!");
-     return;
-   }
-   // check scan status
-   SCNCheckStatus();
+  strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
+    printf("SCAN status change call is complete\n");
+  } else {
+    printf("ERROR accessing socket!\n");
+    return;
+  }
+  // check scan status
+  SCNCheckStatus();
 }
 
 
@@ -979,7 +996,7 @@ void GreenMonster::SCNSetValues() {
 
 void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "Set SCN Data Value";
   char *reply = "Y";
   
@@ -992,14 +1009,16 @@ void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
   command = SCAN_SET_DATA;       gRequest.command = command;
   par1 = which;                  gRequest.par1 = par1;
   par2 = value;                  gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
   } else {
-    printf("ERROR accessing socket!"); 
+    printf("ERROR accessing socket!\n"); 
     return;
   }
   return;
@@ -1007,7 +1026,7 @@ void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
 
 void GreenMonster::SCNCheckValues() {
   struct greenRequest gRequest;
-  int command, par1, par2, command_type;
+  int command, par1, par2, par3, command_type;
   char *msgReq = "Check SCN Data Value";
   char *reply = "Y";
   char buff[10];
@@ -1018,15 +1037,17 @@ void GreenMonster::SCNCheckValues() {
   command = SCAN_GET_DATA;       gRequest.command = command;
   par1 = 1;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
     value = par2;
   } else {
-    printf("ERROR accessing socket!"); 
+    printf("ERROR accessing socket!\n"); 
     return;
   }
 
@@ -1043,15 +1064,17 @@ void GreenMonster::SCNCheckValues() {
   command = SCAN_GET_DATA;       gRequest.command = command;
   par1 = 2;                      gRequest.par1 = par1;
   par2 = 0;                      gRequest.par2 = par2;
+  par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
     value = par2;
   } else {
-    printf("ERROR accessing socket!"); 
+    printf("ERROR accessing socket!\n"); 
     return;
   }
 

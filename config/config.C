@@ -11,7 +11,7 @@ TROOT root("GUI", "GUI test environment", initfuncs);
 int main(int argc, char **argv)
 {
   TApplication theApp("App", &argc, argv);
-  GreenMonster configWin(gClient->GetRoot(), 765, 550);
+  GreenMonster configWin(gClient->GetRoot(), 800, 600);
   configWin.Init();
 
   theApp.Run();

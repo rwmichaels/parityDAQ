@@ -282,7 +282,7 @@ Bool_t GreenADC::getValADC(Int_t index) {
   int errFlag;
   struct greenRequest gRequest;
   int command, command_type;
-  long par1, par2;
+  long par1, par2, par3;
   char *msgReq = "ADC Get Data";
   char *reply = "Y";
   
@@ -290,6 +290,7 @@ Bool_t GreenADC::getValADC(Int_t index) {
   command = HAPADC_GET_CSR;        gRequest.command = command;
   par1 = index;                 gRequest.par1 = par1;
   par2 = 0;                         gRequest.par2 = par2;
+  par3 = 0;                        gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   errFlag = GreenSockCommand(crateNumber,&gRequest);
   
@@ -298,6 +299,7 @@ Bool_t GreenADC::getValADC(Int_t index) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
+    par3 = 0;                        gRequest.par3 = par3;
     //     cout << "Command: " << command << " par1: " 
     //          << par1 << " par2: " << par2 << endl;
     if (par2==-1) { 
@@ -331,7 +333,7 @@ Int_t GreenADC::getNumADC() {
   // get number of adcs listed in crate's utilities
    int errFlag;
    struct greenRequest gRequest;
-   int command, par1, par2, command_type;
+   int command, par1, par2, par3, command_type;
    char *msgReq = "ADC Get Number";
    char *reply = "Y";
   
@@ -339,6 +341,7 @@ Int_t GreenADC::getNumADC() {
    command = HAPADC_GET_NUMADC;      gRequest.command = command;
    par1 = 0;                         gRequest.par1 = par1;
    par2 = 0;                         gRequest.par2 = par2;
+   par3 = 0;                        gRequest.par3 = par3;
    strcpy(gRequest.message,msgReq);  gRequest.reply = reply;
    errFlag = GreenSockCommand(crateNumber,&gRequest);
 
@@ -358,7 +361,7 @@ Int_t GreenADC::getLabelADC(Int_t index) {
   // get integer label for ADC index, as listed in crate's utilities
    int errFlag;
    struct greenRequest gRequest;
-   int command, par1, par2, command_type;
+   int command, par1, par2, par3, command_type;
    char *msgReq = "ADC Get Label";
    char *reply = "Y";
   
@@ -366,6 +369,7 @@ Int_t GreenADC::getLabelADC(Int_t index) {
    command = HAPADC_GET_LABEL;       gRequest.command = command;
    par1 = index;                     gRequest.par1 = par1;
    par2 = 0;                         gRequest.par2 = par2;
+   par3 = 0;                        gRequest.par3 = par3;
    strcpy(gRequest.message,msgReq);  gRequest.reply = reply;
    errFlag = GreenSockCommand(crateNumber,&gRequest);
 
@@ -396,7 +400,7 @@ Int_t GreenADC::setValADC(Int_t index) {
 
   int errFlag;
   struct greenRequest gRequest;
-  int command, command_type, par1, par2;
+  int command, command_type, par1, par2, par3;
   char *msgReq = "ADC Set Data";
   char *reply = "Y";
   Int_t replyFlag = 0;
@@ -409,6 +413,7 @@ Int_t GreenADC::setValADC(Int_t index) {
   command = HAPADC_SET_CSR;         gRequest.command = command;
   par1 = index;                 gRequest.par1 = par1;
   par2 = value;                     gRequest.par2 = par2;
+  par3 = 0;                        gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   
   errFlag = GreenSockCommand(crateNumber,&gRequest);

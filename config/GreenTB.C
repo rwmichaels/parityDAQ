@@ -139,7 +139,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
    char buff[10];
    int errFlag;
    struct greenRequest gRequest;
-   int command, par1, par2, command_type;
+   int command, par1, par2, par3, command_type;
    char *msgReq = "TB Get Data";
    char *reply = "Y";
   
@@ -147,6 +147,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
    command = HAPTB_GET_DATA;        gRequest.command = command;
    par1 = HAPTB_RD;                 gRequest.par1 = par1;
    par2 = 0;                        gRequest.par2 = par2;
+   par3 = 0;                        gRequest.par3 = par3;
    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
    errFlag = GreenSockCommand(crateNumber,&gRequest);
   
@@ -166,6 +167,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
    command = HAPTB_GET_DATA;        gRequest.command = command;
    par1 = HAPTB_IT;                 gRequest.par1 = par1;
    par2 = 0;                        gRequest.par2 = par2;
+   par3 = 0;                        gRequest.par3 = par3;
    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
    errFlag = GreenSockCommand(crateNumber,&gRequest);
    if (errFlag == SOCK_OK) {
@@ -181,6 +183,7 @@ Bool_t GreenTB::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
    command = HAPTB_GET_DATA;        gRequest.command = command;
    par1 = HAPTB_OS;                 gRequest.par1 = par1;
    par2 = 0;                        gRequest.par2 = par2;
+   par3 = 0;                        gRequest.par3 = par3;
    strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
    errFlag = GreenSockCommand(crateNumber,&gRequest);
   
@@ -256,7 +259,7 @@ Int_t GreenTB::setParTB(const int parNum, const int value) {
   // Set value of parameter on TB
   int errFlag;
   struct greenRequest gRequest;
-  int command, command_type, par1, par2;
+  int command, command_type, par1, par2, par3;
   char *msgReq = "TB Set Data";
   char *reply = "Y";
   Int_t replyFlag = 0;
@@ -265,6 +268,7 @@ Int_t GreenTB::setParTB(const int parNum, const int value) {
   command = HAPTB_SET_DATA;        gRequest.command = command;
   par1 = parNum;                   gRequest.par1 = par1;
   par2 = value;                    gRequest.par2 = par2;
+  par3 = 0;                        gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   
   errFlag = GreenSockCommand(crateNumber,&gRequest);

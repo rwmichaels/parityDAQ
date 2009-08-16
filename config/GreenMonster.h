@@ -1,3 +1,4 @@
+#define MAXCRATES 5
 
 #include <iostream.h>
 
@@ -30,6 +31,7 @@
 
 #include "GreenTB.h"
 #include "GreenADC.h"
+#include "GreenADC18.h"
 #include "../cfSock/cfSock_types.h"
 #include "../bmw/bmw_cf_commands.h"
 #include "../scan/SCAN_cf_commands.h"
@@ -56,6 +58,7 @@
 #define KILL_SERVER_2 5002
 #define KILL_SERVER_3 5003
 #define KILL_SERVER_4 5004
+#define KILL_SERVER_5 5005
 
 
 #define GM_SCN_CHECK  6002
@@ -88,13 +91,14 @@ private:
   //  const static ULong_t grnback = 0x8fbc8f;  // darkseagreen
   ULong_t grnback;
 
-  Bool_t fUseCrate[4];
-  TString* fCrateNames[4];
-  Int_t fCrateNumbers[4];
+  Bool_t fUseCrate[MAXCRATES];
+  TString* fCrateNames[MAXCRATES];
+  Int_t fCrateNumbers[MAXCRATES];
 
-  GreenTB* fTimeBoard[4];
+  GreenTB* fTimeBoard[MAXCRATES];
 
-  GreenADC* fADC[4];
+  GreenADC* fADC[MAXCRATES];
+  GreenADC18* fADC18[MAXCRATES];
 
   // objects for bmw tabpage
   Int_t fBMW_TABID;
