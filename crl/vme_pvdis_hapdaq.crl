@@ -15,19 +15,17 @@ ts control
 include "../module_map.h"
 /* User strings to control some readout */
 include "usrstrutils.c"
-/* Definition of SISbuffer */
-include "../pvdis/SIS3801/SIS.h"
 
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
 
-const NUM_3801_SCALERS = 3
+const NUM_3801_SCALERS = 4
 const SCALER_BASE = 0xce1000
 const FIFO_EMPTY = hex 100
-const DATA_MASK = 0xffffff
+const DATA_MASK = 0xffffffff
 
 # To use SIS3820 scaler or not
-const use3820=1
+const use3820=0
 const MAX_3820_WORDS=10000
 const MAX_3820_DOUT=100
 
@@ -35,7 +33,7 @@ const MAX_3820_DOUT=100
 # NOTE! #1 is on top, #2 is on bottom
 # need csr1 vs csr2 and data1 vs data2 !!
 
-const useflexio=1
+const useflexio=0
 
 # To interact with external SIS3801 library (PVDIS version)
 const useSISLIB=1
@@ -62,9 +60,6 @@ extern int bigendian_out;
 extern int end_run_flag;
 extern int coda_run_flag; 
 
-#extern struct SISbuffer SIS[0];  
-#extern struct SISbuffer SIS[1]; 
-#extern struct SISbuffer SIS[2];  
 
 # 3801 scaler
 volatile struct fifo_scaler *pscaler[NUM_3801_SCALERS];
@@ -255,7 +250,8 @@ begin trigger partrig
 
   int clear_tdc,status2,errstat,chip_err[4];
   unsigned long tdcdata[MAX_WORDS];
-  unsigned short stmp;
+
+  unsigned short stmp;  
 
   volatile unsigned short tir_dat;
   static int event_cnt=0;
@@ -283,15 +279,15 @@ begin trigger partrig
 /* Header for TIR and FLEXIO  */
 
   *rol->dabufp++ = 0xffdaf000;    
-  *rol->dabufp++ = (tir_dat & 0xfff);
+  *rol->dabufp++ = (tir_dat & 0xfff);  
 
   if(useflexio==1) {
      *rol->dabufp++ = flex_io->data2;
-     flex_io->csr2 = 0x100;
-     flex_io->csr2 = 0x03;
-     stmp = flex_io->csr2;
+     flex_io->csr2 = 0x100;  
+     flex_io->csr2 = 0x03;   
+     stmp = flex_io->csr2;   
   }
-
+ 
   *rol->dabufp++ = event_ty;
   *rol->dabufp++ = event_no;
   *rol->dabufp++ = event_cnt;
@@ -327,7 +323,7 @@ begin trigger partrig
   //  *rol->dabufp++ = not_empty;
 
     for (j = 0; j < 32; j++) {
-      *rol->dabufp++ = sdata[iscal*32+j];
+     *rol->dabufp++ = sdata[iscal*32+j];
 
 // Write data into shared memory so the server can see it.
       if (useSISLIB) GlobalScalerIncr(iscal, j, sdata[iscal*32+j]);
