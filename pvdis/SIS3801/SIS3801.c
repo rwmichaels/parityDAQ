@@ -46,7 +46,7 @@ int GlobalScalerData(int isca, int ichan) {
 
   if (isca >= 0 && isca < TOTSCALERS && ichan >= 0 && ichan < 32) {
 
-     return global_scaler_sum[32*isca + ichan];;
+     return global_scaler_sum[32*isca + ichan];
 
   }
 
