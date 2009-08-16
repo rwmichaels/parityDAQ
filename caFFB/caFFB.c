@@ -86,7 +86,7 @@ double caget(int chAlias) {
       chDesc = "Hall-A IA Setpoint";
     }
 
-/*   printf("caget(): %s (%s)\n",chDesc,chName); */
+   printf("caget(): %s (%s)\n",chDesc,chName); 
 
   status = ca_task_initialize();
   MY_SEVCHK(status);
@@ -103,7 +103,7 @@ double caget(int chAlias) {
   status = ca_pend_io(0.0);
   MY_SEVCHK(status);
   
-/*   printf("caget(): Current Value = %f\n",val); */
+   printf("caget(): Current Value = %f\n",val); 
   return(val);
 
 }
