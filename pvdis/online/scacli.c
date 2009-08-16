@@ -268,9 +268,9 @@ usage:
 
        for (k=0; k<16*MAXBLOCKS; k++) {
           if (iread==0) {
-             scalerd1[k] = bobreply.ibuf[k];
+             scalerd1[k] = bobreply.ibuf[k]&0xffffff;
           } else {
-             scalerd2[k] = bobreply.ibuf[k];
+             scalerd2[k] = bobreply.ibuf[k]&0xffffff;
           }
        }
 
@@ -289,14 +289,14 @@ usage:
 
                 for (i=0;i<2;i++) {
                 printf ("%3d :  %8d %8d %8d %8d %8d %8d %8d %8d \n",
-                8*(sca+i)+1,bobreply.ibuf[(sca+i)*8],
-                bobreply.ibuf[(sca+i)*8+1],
-                bobreply.ibuf[(sca+i)*8+2], 
-                bobreply.ibuf[(sca+i)*8+3],
-                bobreply.ibuf[(sca+i)*8+4],
-                bobreply.ibuf[(sca+i)*8+5],
-                bobreply.ibuf[(sca+i)*8+6],
-                bobreply.ibuf[(sca+i)*8+7]);
+                8*(sca+i)+1,bobreply.ibuf[(sca+i)*8]&0xffffff,
+                bobreply.ibuf[(sca+i)*8+1]&0xffffff,
+                bobreply.ibuf[(sca+i)*8+2]&0xffffff, 
+                bobreply.ibuf[(sca+i)*8+3]&0xffffff,
+                bobreply.ibuf[(sca+i)*8+4]&0xffffff,
+                bobreply.ibuf[(sca+i)*8+5]&0xffffff,
+                bobreply.ibuf[(sca+i)*8+6]&0xffffff,
+                bobreply.ibuf[(sca+i)*8+7]&0xffffff);
 		} 
           
 	  }
