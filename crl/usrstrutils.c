@@ -35,6 +35,7 @@
 #define PVDISLEFT "pvdisleft"
 #define PVDISRIGHT "pvdisright"
 #define NOCNTHOUSE "nocnthouse"
+#define QWKINJ "qwkinj"
 #define INJ "inj"
 #define EVTYPEFIX "evtypefix"
 #define NOSCALER "noscaler"
@@ -47,6 +48,7 @@
 #define ADC16BIT "adc16bit"
 #define MTREAD "mtread"  /* empty readout (for test) */
 #define RAMPDAC12 "rampdac12"
+#define AUTOLED "autoled"
 #define FLAG_FILE "ffile"
 #define COMMENT_CHAR ';'
 
