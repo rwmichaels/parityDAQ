@@ -1,15 +1,13 @@
 # 
 #  This readout is for scalers in PVDIS crate.
-#  Version, Apr, 2009
-#  This is like vme_pvdis_hapdaq.crl except without
-#  "ts control" and other diffs:
-#   -  use767 may be diff (1 or 0)
-#   -  use3300 to add FADC
+#  Version, Feb, 2009
+#  For running with HAPPEX DAQ with FIFO scalers
+#  'ts control' if running from TS (trig. super.)
 #
 #    Bob Michaels 
 
 readout list VME1
-maximum 50000,128
+maximum 2000,512
 vme readout
 
 /* All the memory maps of VME modules are defined in module_map.h  */
@@ -22,21 +20,27 @@ include "../pvdis/SIS3801/SIS.h"
 # if LINUXHOST=1(0) host is linux(not)
 const LINUXHOST = 1
 
-const NUM_3801_SCALERS = 3
+const NUM_3801_SCALERS = 4
 const SCALER_BASE = 0xce1000
 const FIFO_EMPTY = hex 100
-const DATA_MASK = 0xffffff
+const DATA_MASK = 0xffffffff
 
 # To use SIS3820 scaler or not
-const use3820=1
-const MAX_3820_WORDS=100000
+const use3820=0
+const MAX_3820_WORDS=10000
+const MAX_3820_DOUT=100
 
-# To use SIS3300 FADC or not
-const use3300=1
+# To use flexio or not
+# NOTE! #1 is on top, #2 is on bottom
+# need csr1 vs csr2 and data1 vs data2 !!
 
+const useflexio=1
 
-# To use CAEN 767 or nots
-const use767=1
+# To interact with external SIS3801 library (PVDIS version)
+const useSISLIB=1
+
+# To use CAEN 767 or not
+const use767=0
 const TDC_ID1 = 0
 const V767_NMOD = 1
 # V767_ADR1 is the HW address for the leftmost v767 in the crate
@@ -50,22 +54,28 @@ const MAX_WORDS = 100
 const MAX_TIME = 200000
 
 const TIR_ADDR = 0xad0
+const FLEXIO_ADDR = hex 0a40
+
 extern int vxTicks;   /* vxWorks time ticks */
 extern int bigendian_out;
-extern int rocActivate;
-extern int scaRunReady;
+extern int end_run_flag;
+extern int coda_run_flag; 
 
-# extern struct SISbuffer SIS[0];  
-# extern struct SISbuffer SIS[1];  
+#extern struct SISbuffer SIS[0];  
+#extern struct SISbuffer SIS[1]; 
+#extern struct SISbuffer SIS[2];  
 
 # 3801 scaler
 volatile struct fifo_scaler *pscaler[NUM_3801_SCALERS];
+
+# Flexio
+volatile struct vme_flex_io *flex_io;
 
 static unsigned long sdata[NUM_3801_SCALERS*32];
 
 begin download
 
-  variable ii, j, res, scaddr, id
+  variable ii, j, res, scaddr
   unsigned long laddr;
   int tmode, mode;
 
@@ -78,10 +88,6 @@ begin download
   }
 
   tirInit(TIR_ADDR);
-
-  if (use3300) {
-    s3300Init(0x0d000000,0x0,1);
-  }
 
   for (ii = 0; ii < NUM_3801_SCALERS; ii++) {
 
@@ -115,24 +121,21 @@ begin download
 
   if(use3820) SIS3820_Init(0);
 
-  if (use3300) {
-    printf("Setting up SIS3300 board\n");
-
-   id = 0;   /* start with this one (0) */
-   s3300Reset(id);            /* Reset */
-   s3300AcqConfig(id,0x1c0);  /* Program for Single Event, External Stop, 100 MHz */
-
-   s3300EventConfig(id,0xf);  /* Program for Wrap mode, 128 Sample pagesize */
-  /* Add the averaging over 128  samples */
-  /* s3300EventConfig(id,0x7000f)*/ /* ...and Wrap mode, 128 Sample pagesize */
-
-  /* Program Stop Delay for 110 clocks -> 1100nsec  */
-   s3300StopDelay(id,110);    
- }
+  if(useflexio == 1) {
+    /* FlexIO Pointer */
+    res = sysBusToLocalAdrs(0x29,FLEXIO_ADDR,&laddr);
+    if (res != 0) {
+      printf("Error in sysBusToLocalAdrs res=%d \n",res);
+      printf("ERROR:  FlexIO POINTER NOT INITIALIZED");
+    } else {
+      printf("FlexIO address = 0x%x\n",laddr);
+      flex_io = (struct vme_flex_io *)laddr;
+    }
+    flex_io->csr2 = 0x8000; /* Reset Module */
+    flex_io->csr2 = 0x3;    /* Enable External Strobe and Latch Mode */
+  }
 
   if(use767>0) {
-
-    printf("Initializing CAEN 767 TDCs.  Num modules = %d\n",V767_NMOD);
 
     for (ii=TDC_ID1;ii<TDC_ID1+V767_NMOD;ii++) {
   
@@ -150,7 +153,7 @@ begin download
 
 %%
 
-
+  GlobalScalerClr();  /* for PVDIS scaler data in memory */
   
   log inform "User Download Executed"
 
@@ -172,10 +175,7 @@ begin prestart
   }
 %%
 
-  log inform "Setting up Scalers "
-
-  runStartClrSIS();
-  rocActivate = 0;
+  GlobalScalerClr();  /* for PVDIS scaler data in memory */
 
   log inform "User Prestart Executed"
 
@@ -185,8 +185,7 @@ begin end
 
   CDODISABLE(VME,1,0);
   log inform "User End Executed"
-  if (use3300) s3300SetRunFlag(0);
-  rocActivate = 0;
+#  s3300SetRunFlag(0);
 
   if (use3820) SIS3820_Disable(0);
 
@@ -196,8 +195,6 @@ begin pause
 
   CDODISABLE(VME,1,0);
   log inform "User Pause Executed"
-  rocActivate = 0;
-  if (use3300) s3300SetRunFlag(0);
 
 end pause
 
@@ -209,8 +206,6 @@ begin go
   log inform "Entering User Go"
 
 %%
-  if (use3300) s3300SetRunFlag(1);
-
   if (use767>0) {
     MAXT=50000;
     for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
@@ -238,25 +233,29 @@ begin go
     }
   }
 
+  if(useflexio == 1) {
+    flex_io->csr2 = 0x100;  /* Re-Activate Strobe */
+    flex_io->csr2 = 0x03;   /* Re-Activate Strobe */
+  }
+
 
 %%
 
   CDOENABLE(VME,1,0);
 
-  rocActivate = 1;
-  scaRunReady = 1;
 
 end go
 
 begin trigger partrig
  
-  variable iscal,ihel,ichan,not_empty,bitinfo
+  variable iscal,ihel,ichan,not_empty,bitinfo,rdata
   variable event_ty, event_no, nDataWords, time1
   variable itimeout, ii, j
-  variable id,adc,ieoflag,ibuf,nwords,icntf
 
   int clear_tdc,status2,errstat,chip_err[4];
   unsigned long tdcdata[MAX_WORDS];
+
+  unsigned short stmp;  
 
   volatile unsigned short tir_dat;
   static int event_cnt=0;
@@ -276,11 +275,23 @@ begin trigger partrig
 %%
 
   *rol->dabufp++ = 0xfb0b4444;   
-/* When standalone, get data from tir_dat; when TS-mode use tir_iport */
-/*  tir_dat = tir[1]->tir_dat;  */
-  tir_dat = tir[1]->tir_iport;
-  *rol->dabufp++ = (tir_dat & 0xfff);
 
+/* When standalone, get data from tir_dat; when TS-mode use tir_iport */
+  tir_dat = tir[1]->tir_dat;  
+/*  tir_dat = tir[1]->tir_iport; */
+
+/* Header for TIR and FLEXIO  */
+
+  *rol->dabufp++ = 0xffdaf000;    
+  *rol->dabufp++ = (tir_dat & 0xfff);  
+
+  if(useflexio==1) {
+     *rol->dabufp++ = flex_io->data2;
+     flex_io->csr2 = 0x100;  
+     flex_io->csr2 = 0x03;   
+     stmp = flex_io->csr2;   
+  }
+ 
   *rol->dabufp++ = event_ty;
   *rol->dabufp++ = event_no;
   *rol->dabufp++ = event_cnt;
@@ -317,20 +328,11 @@ begin trigger partrig
 
     for (j = 0; j < 32; j++) {
       *rol->dabufp++ = sdata[iscal*32+j];
-    }
 
 // Write data into shared memory so the server can see it.
-/*  try later ...
-    if (iscal==0) {
-       for (j = 0; j<32; j++) SIS[0].data[j] = sdata[iscal*32+j];
-    }
-    if (iscal==1) {
-       for (j = 0; j<32; j++) SIS[1].data[j] = sdata[iscal*32+j];
-    }  
-*/
-// There is no SIS3 yet.  Also we want to get rid of "minus" because
-// there is no sorting by helicity online.
+      if (useSISLIB) GlobalScalerIncr(iscal, j, sdata[iscal*32+j]);
 
+    }
 
   }
 
@@ -352,7 +354,11 @@ begin trigger partrig
 
 /* Data (hopefully 32 words) */
      for (ii = 0; ii<nDataWords; ii++) {
-        *rol->dabufp++ = SIS3820_GetFIFO(0)&DATA_MASK;
+        rdata = SIS3820_GetFIFO(0)&DATA_MASK;
+        if (ii < MAX_3820_DOUT) *rol->dabufp++ = rdata;
+// Write data into shared memory -- this is 4th 'scaler' (index 3)
+        if (useSISLIB && ii < 32) GlobalScalerIncr(3, ii, rdata);
+
      }
 
   }
@@ -387,42 +393,6 @@ begin trigger partrig
         }
       }
    }
-
-
-   if (use3300) {
-
-/* Read out 1 board of FADC 3300 */
-     id = 0;  /* this board */
-  
-    s3300Enable(id,0);       /* Enable Bank 0 */
-    s3300Start(id);          /* Start Sampling */
-
-    icntf = 0;
-
-    while (S3300IsSampling(id,0)) {
-        if (icntf++ > 500) break;
-    }
-
-    nwords = 128;
-
-    *rol->dabufp++ = 0xfadc3300;
-    *rol->dabufp++ = icntf; 
-
-    if(s3300IsRunning() == 0 || icntf > 50000 ) {
-       *rol->dabufp++ = 0xfad33bad; 
-       nwords = 0;
-    } else {
-
-
-/*  readout only 1 adc channel for now ... */
-
-      adc = 0;
-      ieoflag=0;
-      for (ibuf = 0; ibuf < nwords; ibuf++) {  
-        *rol->dabufp++ = s3300GetData(id, adc, 0, 0, ibuf, ieoflag); 
-      }
-    }
-  }
 
   tir[1]->tir_oport=0x0; 
 
