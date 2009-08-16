@@ -59,7 +59,7 @@ int oport_state=0;   /* output port state (global variable) */
 
 static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
 static int adc18bit, numadc18, adc16bit, mtread, rampdac12;
-static int autoled, righthrs;
+static int autoled, lefthrs, righthrs;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -127,6 +127,7 @@ adc16bit  = getflag(ADC16BIT);   /* 16-bit ADC exists(1) or not(0)   */
 mtread    = getflag(MTREAD);     /* Empty readout ?  (1).  For tests */
 rampdac12 = getflag(RAMPDAC12);  /* To ramp the 12-bit DAC */
 autoled   = getflag(AUTOLED);    /* for LED linearity tests in HRS crates */
+lefthrs   = getflag(LEFTHRS);    /*  just so you know you are on the left arm */
 righthrs  = getflag(RIGHTHRS);   /*  just so you know you are on the right arm */
 
 /* Printout User String Configuration */
@@ -928,6 +929,8 @@ tir[1]->tir_oport=oport_state;
 
 
 close event
+
+if (lefthrs) sysTempeVeatClear(0);  /* for the 6100 board on L-HRS */
 
 end trigger
 
