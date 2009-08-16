@@ -19,7 +19,7 @@ sp bmwClient
 #include <selectLib.h>
 #include <stdio.h>
 #include <netinet/tcp.h>
-#include "../caFFB/caFFB.h"
+//#include "../caFFB/caFFB.h"
 
 #include "bmw.h"
 #include "../module_map.h"
@@ -350,10 +350,10 @@ STATUS bmwClient_script ()
     //  pause Hall A FFB, and wait for period to assure pause
     //
     fprintf ( stderr, "bmwClient::: Here I Pause Hall A FFB\n");
-    caputFFB(0,1);  // pause Hall A FFB.
+    //    caputFFB(0,1);  // pause Hall A FFB.
 
     fprintf ( stderr, "bmwClient::: Here I Also Pause Compton Orbit Lock\n");
-    caputFFB(2,1);  // pause the Compton Orbit Lock.
+    //    caputFFB(2,1);  // pause the Compton Orbit Lock.
     
     //   (copied kludge to avoid server timeout.)
     for ( i = 0; i < bmw_FFBpause_wait && !bmw_die_die_die; ++i)  {
@@ -519,10 +519,10 @@ STATUS bmwClient_script ()
     // un-pause FFB, and wait for period to assure resumption
     // before releasing cycle notification
     fprintf ( stderr, "bmwClient::: Here I Release FFB\n");
-    caputFFB(0,0);  // restart FFB
+    //    caputFFB(0,0);  // restart FFB
 
     fprintf ( stderr, "bmwClient::: Here I Release Compton Orbit Lock\n");
-    caputFFB(2,0);  // restart Compton Lock
+    //    caputFFB(2,0);  // restart Compton Lock
     //   (copying kludge to avoid server timeout.
     for ( i = 0; i < bmw_FFBpause_wait && !bmw_die_die_die; ++i) {
       bmw_alive =1;
@@ -576,8 +576,8 @@ STATUS bmwClient_script ()
   // make sure that all FFB are unpaused and all notices cleared, in
   // case clear switch set during cycle:
 
-    caputFFB(0,0);  // make sure Hall A FFB isn't paused
-    caputFFB(2,0);  // make sure Compton Lock isn't paused
+  //    caputFFB(0,0);  // make sure Hall A FFB isn't paused
+  //    caputFFB(2,0);  // make sure Compton Lock isn't paused
   if (bmw_ending_object>6) {
     //NovTest    caputFFB(1,0);  // make sure Hall C FFB isn't paused
   }
@@ -1525,7 +1525,7 @@ STATUS setNotice(int flag, int val) {
     chan = 2;
   }
   fprintf(stdout,"  writing values: Chan: %d  Value:  %d \n ",chan,val);
-  FIO_WriteChan(chan,val);
+  //  FIO_WriteChan(chan,val);
 
 //   if (flag == 0) {
 //     if (val ==1) {
