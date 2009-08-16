@@ -20,7 +20,7 @@
 
 extern STATUS bmwClient();
 
-void task_BMW(long* command, long *par1, long *par2)
+void task_BMW(long* command, long *par1, long *par2, long *par3)
 {
   int junk;
   char                workName[16];  /* name of work task */
