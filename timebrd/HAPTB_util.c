@@ -31,13 +31,9 @@ int initHAPTB()
   printf("HAPPEX Timing Board address = 0x%x ",laddr);
   did_init_TB = 1;
   tboard = (struct vme_happex_tb *) laddr;
-  tboard->dac12   = TB_DEF_DAC12; 
-  tboard->dac16   = TB_DEF_DAC16;
   tboard->rampdelay = TB_DEF_RAMPDELAY;
   tboard->integtime = TB_DEF_INTEGTIME;
   tboard->osample_w = TB_DEF_OVERSAMPLE;
-  LAST_DAC12_TB    = TB_DEF_DAC12;
-  LAST_DAC16_TB    = TB_DEF_DAC16;
   LAST_OVERSAMPLE_TB = TB_DEF_OVERSAMPLE;
   printf("HAPPEX TIME BOARD at %x se     :\n",HAPTB_ADDR);
   printf("dac12:0x%x, dac16:0x%x\n",TB_DEF_DAC12,TB_DEF_DAC16);
@@ -118,6 +114,24 @@ int getDACHAPTB(int choice)
 }
  
 
+STATUS lockDACHAPTB() 
+{
+/*****************************************************
+ * Lock the DAC setpoints, to avoid unintentional settings
+ *****************************************************/
+  HAPTB_DAC_LOCK = 1;
+  return(OK);
+}
+
+STATUS unlockDACHAPTB() 
+{
+/*****************************************************
+ * Lock the DAC setpoints, to avoid unintentional settings
+ *****************************************************/
+  HAPTB_DAC_LOCK = 0;
+  return(OK);
+}
+
 /*****************************************************
  * Set the DACS, either 12-bit or 16-bit 
  *     arguments:  choice = 1,2 (which DAC)
@@ -128,6 +142,7 @@ int getDACHAPTB(int choice)
 int setDACHAPTB(int choice, int value)
 {
   if ( !did_init_TB ) return -1;
+  if (HAPTB_DAC_LOCK) return -1;
   if ( choice == 1 ) {
     LAST_DAC12_TB = value;
     tboard->dac12 = value;
@@ -136,7 +151,7 @@ int setDACHAPTB(int choice, int value)
     LAST_DAC16_TB = value;
     tboard->dac16 = value;
   }
-  return 1;
+  return value;
 }
  
 /*****************************************************
@@ -148,7 +163,7 @@ int setDACHAPTB(int choice, int value)
 int setTimeHAPTB(int delay, int time)
 {
   if ( !did_init_TB ) return -1;
-  if (CODA_RUN_IN_PROGRESS==1) return errorPrintHAPTB(2);
+  //if (CODA_RUN_IN_PROGRESS==1) return errorPrintHAPTB(2);
   tboard->rampdelay = delay;
   tboard->integtime = time;    
   return 1;
