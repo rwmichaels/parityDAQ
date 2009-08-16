@@ -1,3 +1,4 @@
+#  -*- c -*-
 #  Source for VME control of Trigger Supervisor
 #    (CODA 2.0 readout list)
 #    David Abbott, CEBAF 1996
@@ -97,7 +98,7 @@ inj = getflag(INJ);
    ROC0 branch 2  -  Injector crate
    ROC1 branch 3  -  Test crate
    ROC3 branch 4  -  PVDIS crate on R-HRS
-   unassigned     -  PVDIS crate on L-HRS
+   ROC4 branch 4  -  PVDIS crate on L-HRS
 
 */
 
