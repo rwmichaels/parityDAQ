@@ -24,14 +24,18 @@
 #ifndef Crate_Injector 
 #define Crate_Injector  (3)
 #endif
+#ifndef Crate_TestCrate
+#define Crate_TestCrate (4)
+#endif
 
 struct greenRequest
 { 
-   long  command_type;
-   long  command;
-   long  par1;
-   long  par2;
-   char  *reply;
-   char message[GREEN_REQUEST_MSG_SIZE];     /* message buffer */
+  long  command_type;
+  long  command;
+  long  par1;
+  long  par2;
+  long  par3;
+  char  *reply;
+  char message[GREEN_REQUEST_MSG_SIZE];     /* message buffer */
 };
 

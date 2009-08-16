@@ -50,6 +50,7 @@ int cfSockCli (
   int i, j;
   char optval;
   char * servername;
+  int verbose = 0;
 
   /* create client's socket */
   switch (crate_number) {
@@ -64,6 +65,9 @@ int cfSockCli (
     break;
   case Crate_Injector:
     servername = ServerName_Injector;
+    break;
+  case Crate_TestCrate:
+    servername = ServerName_TestCrate;
     break;
   default:
     return (SOCK_ERROR);
@@ -90,6 +94,9 @@ int cfSockCli (
   serverAddr.sin_family = PF_INET;
   serverAddr.sin_port = htons (SERVER_PORT_NUM);
   
+
+  if (verbose) printf("Connect to crate num %d   server = %s   port = %d \n",crate_number, servername, SERVER_PORT_NUM); 
+
   if ((serverAddr.sin_addr.s_addr = inet_addr (servername)) == SOCK_ERROR)
     {
       perror ("unknown server name");
@@ -105,15 +112,17 @@ int cfSockCli (
       return (SOCK_ERROR);
     }
   
-  /*
-    buildRequestInteractive(myRequest);
+  
+  /*    buildRequestInteractive(myRequest); */
+  if (verbose) {
     printf("\n");
     printf("your command type will be: %d \n",ntohl(myRequest->command_type));
     printf("your command will be: %d \n",ntohl(myRequest->command));
     printf("your magic_cookie will be: %d \n",ntohl(myRequest->magic_cookie));
     printf("your request param_1 will be: %d \n",ntohl(myRequest->par1));
     printf("your request param_2 will be: %d \n",ntohl(myRequest->par2));
-  */
+    printf("your request param_3 will be: %d \n",ntohl(myRequest->par3));
+  }
 
   /* send request to server */
   nWrite = send (sFd, (char *) myRequest, sizeof (*myRequest), 0);
@@ -203,7 +212,7 @@ int cfSockCli (
 
 int cfSockCommand(int crate_number,
 		  long command_type, long command,  
-		  long req_param,    long req_param_2, 
+		  long req_param,    long req_param_2, long req_param_3, 
 		  char *reply,       char *msg  )
 {
   struct request myRequest;     // request to send to server 
@@ -217,6 +226,7 @@ int cfSockCommand(int crate_number,
   myRequest.magic_cookie = htonl(MAGIC_COOKIE);
   myRequest.par1 = htonl(req_param);
   myRequest.par2 = htonl(req_param_2);
+  myRequest.par3 = htonl(req_param_3);
   switch (*reply) 
    {
     case 'y':
@@ -249,6 +259,7 @@ int cfSockCommand(int crate_number,
         command = htonl(serverReply.command);
         req_param = htonl(serverReply.par1);
         req_param_2 = htonl(serverReply.par2);
+        req_param_3 = htonl(serverReply.par3);
 	//	        printf ("MESSAGE FROM SERVER:\n%s\n", msg);
 	//	        printf("Server reply command: %d \n",command);
 	//	        printf("Server reply param_1: %d \n",req_param);
@@ -277,6 +288,7 @@ int GreenSockCommand(int crate_number, struct greenRequest *gRequest)
   myRequest.magic_cookie = htonl(MAGIC_COOKIE);
   myRequest.par1 = htonl(gRequest->par1);
   myRequest.par2 = htonl(gRequest->par2);
+  myRequest.par3 = htonl(gRequest->par3);
 
   switch (*(gRequest->reply))
     {
@@ -311,6 +323,7 @@ int GreenSockCommand(int crate_number, struct greenRequest *gRequest)
     gRequest->command = htonl(serverReply.command);
     gRequest->par1 = htonl(serverReply.par1);
     gRequest->par2 = htonl(serverReply.par2);
+    gRequest->par3 = htonl(serverReply.par3);
     
     //    printf ("cfSockCli: MESSAGE FROM SERVER:   %s\n", gRequest->message);
     //    printf("Server reply command: %d \n",gRequest->command);
@@ -342,6 +355,8 @@ void buildRequestInteractive(struct request *myRequest) {
   printf("your request param_1 will be: %d \n",ntohl(myRequest->par1));
   myRequest->par2 = htonl(2);
   printf("your request param_2 will be: %d \n",ntohl(myRequest->par2));
+  myRequest->par3 = htonl(3);
+  printf("your request param_3 will be: %d \n",ntohl(myRequest->par3));
 
 
   printf ("Would you like a reply (Y or N): \n");
@@ -363,6 +378,7 @@ void handleReplyInteractive(struct request *serverReply) {
       printf("Server reply command: %d \n",ntohl(serverReply->command));
       printf("Server reply param_1: %d \n",ntohl(serverReply->par1));
       printf("Server reply param_2: %d \n",ntohl(serverReply->par2));
+      printf("Server reply param_3: %d \n",ntohl(serverReply->par3));
       printf("Server reply msgLen: %d \n",ntohl(serverReply->msgLen));
 }
 

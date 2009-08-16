@@ -1,4 +1,3 @@
-
 /* cfSockSer.c - configuration utility VXWORKS server */
 
 /*
@@ -26,10 +25,11 @@ int           closeSocket = 0;  /* switch to close socket and terminate */
 
 void cfSockWorkTask (int task_sFd, char * address, u_short port);
 
-extern void taskSCAN_CF(long*,long*,long*);
-extern void taskHAPTB_CF(long*,long*,long*);
-extern void taskHAPADC_CF(long*,long*,long*);
-extern void task_BMW(long*,long*,long*);
+extern void taskSCAN_CF(long*,long*,long*,long*);
+extern void taskHAPTB_CF(long*,long*,long*,long*);
+extern void taskHAPADC_CF(long*,long*,long*,long*);
+extern void taskADC18_CF(long*,long*,long*,long*);
+extern void task_BMW(long*,long*,long*,long*);
 
 /****************************************************************************
  *
@@ -157,6 +157,7 @@ void cfSockWorkTask
   int ireq = 0;
   char                workName[16];  /* process name of requested task */
   long ltmp;
+  int verbose = 0;  
   
   /* read client request, display message */
   
@@ -169,18 +170,23 @@ void cfSockWorkTask
       ltmp = ntohl(clientRequest.command); clientRequest.command = ltmp;
       ltmp = ntohl(clientRequest.par1); clientRequest.par1 = ltmp;
       ltmp = ntohl(clientRequest.par2); clientRequest.par2 = ltmp;
+      ltmp = ntohl(clientRequest.par3); clientRequest.par3 = ltmp;
       ltmp = ntohl(clientRequest.msgLen); clientRequest.msgLen = ltmp;
 
-      //      printf("magic_cookie is %ld\n",clientRequest.magic_cookie);
-      //      printf("MAGIC_COOKIE is %ld\n",MAGIC_COOKIE);
-      //      printf("Command Type is %ld\n",clientRequest.command_type);
-      //      printf("Command is %ld\n",clientRequest.command);
-      //      printf("Request param_1 is %ld\n",clientRequest.par1);
-      //      printf("Request param_2 is %ld\n",clientRequest.par2);
-      //      printf("msgLen is %ld\n",clientRequest.msgLen);
-      //      printf ("MESSAGE FROM CLIENT (Internet Address %s, port %d):\n%s\n",
-      //	      address, port, clientRequest.message);
+      if (verbose) {
+            printf("magic_cookie is %ld\n",clientRequest.magic_cookie);
+            printf("MAGIC_COOKIE is %ld\n",MAGIC_COOKIE);
+            printf("Command Type is %ld\n",clientRequest.command_type);
+            printf("Command is %ld\n",clientRequest.command);
+            printf("Request param_1 is %ld\n",clientRequest.par1);
+            printf("Request param_2 is %ld\n",clientRequest.par2);
+            printf("Request param_3 is %ld\n",clientRequest.par3);
+            printf("msgLen is %ld\n",clientRequest.msgLen);
+            printf ("MESSAGE FROM CLIENT (Internet Address %s, port %d):\n%s\n",
+      	      address, port, clientRequest.message);
       
+      }
+
       free (address);                 /* free malloc from inet_ntoa() */
 
       if (strncmp(clientRequest.message,"Q",sizeof(clientRequest.message)) == 0) 
@@ -191,26 +197,34 @@ void cfSockWorkTask
       
       if (clientRequest.command_type==COMMAND_HAPTB) {
 	taskHAPTB_CF(&clientRequest.command,
-                     &clientRequest.par1,&clientRequest.par2);
-	//	sprintf (workName, "request%d", ireq++);
-	//	if (taskSpawn(workName, SERVER_WORK_PRIORITY, 0, SERVER_STACK_SIZE,
-	//		      taskHAPTB_CF, clientRequest.command,
-	//		      clientRequest.par1,clientRequest.par2,
-	//		      0, 0, 0, 0, 0, 0, 0) == SOCK_ERROR)
-	//	  {
-	//	    /* if taskSpawn fails, close fd and return to top of loop */
-	//	    perror ("taskSpawn");
-	//	  }
-	//	printf("HAPTB config utility returns:\n");
-	//	printf("  command: %d\n",clientRequest.command);
-	//	printf("  par1:    %d\n",clientRequest.par1);
-	//	printf("  par2:    %d\n",clientRequest.par2);
+                     &clientRequest.par1,
+		     &clientRequest.par2,
+		     &clientRequest.par3);
+		sprintf (workName, "request%d", ireq++);
+		if (taskSpawn(workName, SERVER_WORK_PRIORITY, 0, SERVER_STACK_SIZE,
+			      taskHAPTB_CF, clientRequest.command,
+			      clientRequest.par1,
+			      clientRequest.par2,
+			      clientRequest.par3,
+			      0, 0, 0, 0, 0, 0, 0) == SOCK_ERROR)
+		  {
+		    /* if taskSpawn fails, close fd and return to top of loop */
+		    perror ("taskSpawn");
+		  }
+		printf("HAPTB config utility returns:\n");
+		printf("  command: %d\n",clientRequest.command);
+		printf("  par1:    %d\n",clientRequest.par1);
+		printf("  par2:    %d\n",clientRequest.par2);
+		printf("  par3:    %d\n",clientRequest.par3);
+	printf("HAPTB call ended\n");
       }
 
 
       if (clientRequest.command_type==COMMAND_HAPADC) {
 	taskHAPADC_CF(&clientRequest.command,
-                     &clientRequest.par1,&clientRequest.par2);
+		      &clientRequest.par1,
+		      &clientRequest.par2,
+		      &clientRequest.par3);
 	//	printf("HAPADC config utility returns:\n");
 	//	printf("  command: %d\n",clientRequest.command);
 	//	printf("  par1:    %d\n",clientRequest.par1);
@@ -219,12 +233,31 @@ void cfSockWorkTask
 
       if (clientRequest.command_type==COMMAND_BMW) {
 	task_BMW(&clientRequest.command,
-                     &clientRequest.par1,&clientRequest.par2);
+		 &clientRequest.par1,
+		 &clientRequest.par2,
+		 &clientRequest.par3);
       }
 
       if (clientRequest.command_type==COMMAND_SCAN) {
 	taskSCAN_CF(&clientRequest.command,
-                     &clientRequest.par1,&clientRequest.par2);
+		    &clientRequest.par1,
+		    &clientRequest.par2,
+		    &clientRequest.par3);
+      }
+
+      if (clientRequest.command_type==COMMAND_ADC18) {
+        if (verbose) {
+   	  printf("Calling 18 bit ADC \n");
+	  printf("  command: %d\n",clientRequest.command);
+	  printf("  par1:    %d\n",clientRequest.par1);
+	  printf("  par2:    %d\n",clientRequest.par2);
+	  printf("  par3:    %d\n",clientRequest.par3);
+          printf("Will call ADC18_CF    ++++++++++++++++++++++++++++\n");
+	}
+	taskADC18_CF(&clientRequest.command,
+		     &clientRequest.par1,
+		     &clientRequest.par2,
+		     &clientRequest.par3);
       }
 
 
@@ -241,9 +274,10 @@ void cfSockWorkTask
 	serverReply.magic_cookie = htonl(clientRequest.magic_cookie);
 	serverReply.par1 = htonl(clientRequest.par1);
 	serverReply.par2 = htonl(clientRequest.par2);
+	serverReply.par3 = htonl(clientRequest.par3);
 	serverReply.msgLen = htonl(strlen(serverReply.message));
 	if (write (task_sFd, (char *) &serverReply, sizeof (serverReply)) == SOCK_ERROR)
-	  perror ("write");
+	perror ("write");
       }
 
 

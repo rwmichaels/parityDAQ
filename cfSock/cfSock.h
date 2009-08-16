@@ -4,7 +4,7 @@
 #define SERVER_PORT_NUM         5001  /* server's port number for bind() */
 #define SERVER_WORK_PRIORITY    125    /* priority of server's work task */
 #define SERVER_STACK_SIZE       10000  /* stack size of server's work task */
-#define SERVER_MAX_CONNECTIONS  4      /* max clients connected at a time */
+#define SERVER_MAX_CONNECTIONS  5      /* max clients connected at a time */
 
 #define REQUEST_MSG_SIZE        1024   /* max size of request message */
 #define REPLY_MSG_SIZE          1024   /* max size of reply message */
@@ -29,6 +29,7 @@ struct request
    long  command;
    long  par1;
    long  par2;
+   long  par3;
    long  reply;                        /* TRUE = request reply from server */
    char  message[REQUEST_MSG_SIZE];    /* message buffer */
    long  msgLen;                       // length of message text
