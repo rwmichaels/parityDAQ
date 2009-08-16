@@ -39,7 +39,8 @@ void auto_rhwp() {
 	 iloop++;
      }
      setCleanSCAN(1);
-     taskDelay(3600);    //    wait 100 sec;
+     //     taskDelay(3600);    //    wait 60 sec;
+     taskDelay(36);    //    wait 0.6 sec;
   }
 
   setCleanSCAN(0);
