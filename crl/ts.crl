@@ -114,7 +114,7 @@ if(righthrs) {
 }
 
 if(lefthrs) {
-  jj |= 0x2000000;  /* enable ROC1 on branch 4 */
+  jj |= 0x2000000;  /* enable ROC4 on branch 4 */
   printf("Add Left HRS crate \n");
 }
 
@@ -122,6 +122,12 @@ if(pvdisright) {
   jj |= 0x8000000;  /* enable ROC3 on branch 4 */
   printf("Add PVDIS crate on R-HRS \n");
 }
+
+if(pvdisleft) {
+  jj |= 0x10000000;  /* enable ROC4 on branch 4 */
+  printf("Add PVDIS crate on R-HRS \n");
+}
+
 
 if(inj) {
   jj |= 0x100;      /* enable ROC0 on branch 2 */
