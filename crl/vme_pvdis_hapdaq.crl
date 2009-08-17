@@ -22,7 +22,7 @@ const LINUXHOST = 1
 const NUM_3801_SCALERS = 4
 const SCALER_BASE = 0xce1000
 const FIFO_EMPTY = hex 100
-const DATA_MASK = 0xffffffff
+const DATA_MASK = 0xffffff
 
 # To use SIS3820 scaler or not
 const use3820=0
