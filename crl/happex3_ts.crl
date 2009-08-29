@@ -427,7 +427,7 @@ if (adc16bit) {
        //adc18_setconv(iadc,0);  /* conv (gain): 0-15 where 0 is minimum */
        //adc18_setsample(iadc,1);
 
-       adc18_loaddac(iadc,0);
+       // adc18_loaddac(iadc,0);
 
 
 // The 2 ADC18 on R-HRS are, resp. rev2-1 and rev2-3. (Oct 2008)
