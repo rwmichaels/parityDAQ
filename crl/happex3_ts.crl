@@ -19,7 +19,7 @@ include "usrstrutils.c"
 #const  DEF_DAC12   =    0       /* output voltage = 0 */
 #const  DEF_DAC16   =    32767   /* output voltage = 0 */
 const DEF_DAC12 = 400    /* Set the output voltage to get about 3.3 KHz out of V2f */
-const DEF_DAC16 = 26450 /* Set the starting voltage to get about 7.0 KHz out of V2f */
+const DEF_DAC16 = 26500 /* Set the starting voltage to get about 7.0 KHz out of V2f */
 const  MAX_DAC12   =    3500    /* max DAC12 */ 
 const  V_MODE      =    0
 # all other timing parameters are set in separate utilities
@@ -330,6 +330,7 @@ tir[1]->tir_oport=oport_state;
 
 %%
 
+
 log inform "User Download Executed"
 
 end download
@@ -345,6 +346,7 @@ log inform "Entering User Prestart"
   int j;
   unsigned short tmp_rand;
   int iadc, ped_test;
+  int fdbfile;
   int bad_randmake=0;
   extern void srand();
   extern int rand();
@@ -389,15 +391,8 @@ if (adc16bit) {
   }
 }
 
-  oport_state = 0;  /* start at zero */
-/* inhibit bit */
-  oport_state |= OPORT_INB;   
-  tir[1]->tir_oport=oport_state;
-
   if(tbreadout==1) {
     /* Send timing board information to ~apar/db/timebrd/timebrd.cfg */
-    
-    int fdbfile;
     
     fdbfile=fopen("~apar/db/timebrd/timebrd.cfg","w");
     fprintf(fdbfile,"# Timing board information:\n# Integrate Time = %.2f ms, Ramp Delay = %.2f us\n\ \ \ \ oversamp %d ",
@@ -406,6 +401,12 @@ if (adc16bit) {
 	    (int)getOverSampleHAPTB()+1);
     fclose(fdbfile);
   }
+
+
+  oport_state = 0;  /* start at zero */
+/* inhibit bit */
+  oport_state |= OPORT_INB;   
+  tir[1]->tir_oport=oport_state;
 
   numadc18 = 0;
 
@@ -425,7 +426,8 @@ if (adc16bit) {
        //adc18_intgain(iadc,3);   /* intgain: 0-3, where 3 is minimum */
        //adc18_setconv(iadc,0);  /* conv (gain): 0-15 where 0 is minimum */
        //adc18_setsample(iadc,1);
-       //adc18_loaddac(iadc,1);
+
+       adc18_loaddac(iadc,1);
 
 
 // The 2 ADC18 on R-HRS are, resp. rev2-1 and rev2-3. (Oct 2008)
@@ -889,17 +891,21 @@ if(getOverSampleCurrentHAPTB()==0) {
 /* For the synch monitor.  Use dac12. */
 /* Note that dac12 will saturate the v2f at high voltage 
    so, set the max around 3650.*/ 
-  if ( rampdac12 ) {   /* ramp function */ 
+ if ( rampdac12 ) {   /* ramp function */ 
+   
+   //dac12val += 10;  
+   dac12val = 400+rand()%3600;
+   //logMsg("new pitadac is %d\n", dac12val);
+   if (dac12val >= MAX_DAC12) dac12val = 400;
+   setDACHAPTB(1,dac12val); 
+   getDACHAPTB(1);              
 
-    dac12val += 10;  
-    if (dac12val >= MAX_DAC12) dac12val = 0;
-
-  } else {             /* random */
+ } else {             /* random */
+   
+   //dac12val = 1602+rand()%2048;
+   
+ }
  
-     dac12val = 1602+rand()%2048;
-
-  }
-
 /* blanked block by rupesh aug15, 2009 */
 /*  setDACHAPTB(1,dac12val);  */
 /*  getDACHAPTB(1);           */   
