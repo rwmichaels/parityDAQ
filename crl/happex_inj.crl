@@ -206,11 +206,11 @@ if(flexio2 == 1) {
 
 /* Timing Board configuration */
 /* THIS VERSION: sets the timing board HERE */
-   setDACHAPTB(1,DEF_DAC12);
-   setDACHAPTB(2,DEF_DAC16);
-   setTimeHAPTB(0,13200);
-   setOverSampleHAPTB(0);
-   printf("Setting Oversampleing");
+//   setDACHAPTB(1,DEF_DAC12); 
+//   setDACHAPTB(2,DEF_DAC16);
+//   setTimeHAPTB(0,13200);
+//   setOverSampleHAPTB(0);
+//   printf("Setting Oversampleing");
    dumpRegHAPTB();
 
 
