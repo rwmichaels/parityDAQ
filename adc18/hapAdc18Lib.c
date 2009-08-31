@@ -1,6 +1,22 @@
 /* Library for JLab 18bit ADC for HAPPEX             */
 /* R. Michaels, Nov 2006                             */
 
+/*  Modifications  Aug 2009   R. Michaels
+
+     1. adc18_DataAvail:
+        Corrected logic for when data is ready or not.
+        Added logMsg for various error conditions.
+
+     2. adc18_getevtcnt:
+        Change mask from FF to 3FFFFFF
+
+     3. Add new function adc18_stop  (inverse of go).
+
+
+ */
+
+
+
 #include "vxWorks.h"
 #include "stdio.h"
 #include "string.h"
@@ -68,8 +84,10 @@ int adc18_Busy(int id);
 int adc18_DataAvail(int id);
 /* Print the ADC setup */
 int adc18_print_setup(int id);
-/* Get one event (initiate DAQ sequence) */
+/* Start the DAQ sequencing */
 int adc18_go(int id);
+/* Stop the DAQ sequencing */
+int adc18_stop(int id);
 /* Get number of events (number of oversamples) */
 int adc18_getevtcnt(int id);
 /* Get event word count */
@@ -207,7 +225,7 @@ int adc18_initall() {
     printf("No ADCs initialized !!\n");
     return -1;
   }
-  printf("(Jan 19, x11)  Num ADC18 = %d \n",NADC);
+  printf("(version Aug 29, 2009)  Num ADC18 = %d \n",NADC);
 
   for (id = 0; id < NADC; id++) {
     adc_addr = ADCADDR[id];
@@ -377,7 +395,7 @@ int adc18_getevtcnt(int id) {
 
   if (adc18_chkid(id) < 1) return 0;
 
-  event_count = 0xFF & (adc18p[id]->evt_ct);
+  event_count = 0x3FFFFFF & (adc18p[id]->evt_ct);
   return event_count;
 }
 
@@ -502,21 +520,44 @@ void adc18_reg_decode(id)
 int adc18_DataAvail(int id) {
   /* To check if data are available (1) or not (0) */
   
-    long value;
-    int event_avail_flag = 0x3;
+    long csrvalue, threebits, dready;
+    int csr_mask = 0x7;
+    int ready_mask = 0x1;
+    int debug = 0;
 
-    value = adc18_getcsr(id);
+    csrvalue = adc18_getcsr(id);
 
-    value = value & event_avail_flag;
+    threebits = csrvalue & csr_mask;
+    dready = csrvalue & ready_mask;
 
-    //    printf("csr= %x\n",value);
+    // Logic of the 1st three bits
+    // if 1stbit = 1 data are ready.  forget about 2ndbit
+    // if 3rdbit = 1 the event buffer is full --> serious error
     
-    if(value == 0x2) /*csr=0b XXXX XXXX XXXX XXXX XXXX XXXX XXXX XX10 meaning that there isnt data waiting AND the buffer is empty*/
-      return 0;
+    //  bit=  1        2         3         result
 
-    return 1;
+    //        1        0         0       ok, data ready
+    //        1        1         0       Bad (data ready but buffer empty ??)
+    //        0        0         0       data not ready, busy condition
+    //        0        1         0       data not ready
+    //       any      any        1       serious error, buffer full
 
-    //return (value & event_avail_flag);
+    if ((threebits & 0x4) != 0) {
+      logMsg("\n ADC18 ERROR: Buffer full ! Id %d Csr = 0x%x\n",id,csrvalue,0,0,0,0);
+      logMsg("\n You must power-cycle the crate\n",0,0,0,0,0,0);
+    }
+    if ((threebits & 0x3) == 3) {
+      logMsg("\n ADC18 ERROR:  data ready yet buffer empty ! Id %d Csr = 0x%x\n",
+            id,csrvalue,0,0,0,0);
+    }
+
+    if (debug) {
+      logMsg("\n ADC18 DataAvail: CSR = 0x%x  threebits = 0x%x  dready = %d\n",csrvalue,threebits,dready,0,0,0);
+    }
+
+    if (dready == 1) return 1;
+    return 0;
+
 }  
 
 
@@ -533,7 +574,7 @@ int adc18_Busy(int id) {
 
       value = adc18p[id]->csr;
 	
-      if ( value & event_avail_flag && !(value & busy_flag) ) return 0;
+      if ( value & event_avail_flag ) return 0;  
       return 1;
 }
 
@@ -879,6 +920,17 @@ int adc18_go(int id) {
    adc18p[id]->ctrl = 1 | (t_mode << 2);	/* go */
 
    if (t_mode) adc18p[id]->csr = 0x8000;
+
+   return 0;
+}
+
+int adc18_stop(int id) {
+  // Stop the DAQ sequencing
+
+  // ADC must be configured
+   if (adc18_chkid(id) != 2) return -1;  
+
+   adc18p[id]->ctrl = 0;
 
    return 0;
 }
