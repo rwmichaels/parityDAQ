@@ -14,6 +14,7 @@ ts control
 include "../module_map.h"
 /* User strings to control some readout */
 include "usrstrutils.c"
+include "tir_oport_utils.c"
 
 # default timing board DAC values
 #const  DEF_DAC12   =    0       /* output voltage = 0 */
@@ -45,6 +46,8 @@ const FIFO_EMPTY = hex 100
 const OPORT_BUSY = 1   /* bit 1 = busy output */
 const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
+const LED_BASE = 8     /* bit 4 = baseline led */
+const LED_DIFF = 16    /* bit 5 = diff led */
 
   /* 18-Bit ADC Parameters*/ 
 
@@ -355,11 +358,11 @@ log inform "Entering User Prestart"
 
 /* If no Green Monster Timing Board should get set here */
 
-/*   setTimeHAPTB(20, 13200);
+   setTimeHAPTB(0, 13200);
    setOverSampleHAPTB(0);
    printf("Setting Oversampling");
    dumpRegHAPTB();
-*/
+
    
 /*******************************************************/
 
@@ -606,7 +609,9 @@ open event type EVTYPE of BT_UI4
 *rol->dabufp++ = 0xffb0b444;    
 
 %%
-
+/* Enable LEDs */
+   set_tir_oport(LED_BASE);
+   set_tir_oport(LED_DIFF);
 
 if ( !mtread )  {
 
@@ -933,6 +938,8 @@ tir[1]->tir_oport=oport_state;
 
 %%
 
+   unset_tir_oport(LED_BASE);
+   unset_tir_oport(LED_DIFF);
 
 close event
 
