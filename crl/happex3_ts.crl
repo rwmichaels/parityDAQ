@@ -42,12 +42,9 @@ const TRIG_ADDR = hex 0ad0
 const FLEXIO_ADDR = hex 0ed0
 
 const FIFO_EMPTY = hex 100
-
+ 
 const OPORT_BUSY = 1   /* bit 1 = busy output */
-const OPORT_INB  = 2   /* bit 2 = inhibit output for other 2 DAQs */
 const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
-const LED_BASE = 8     /* bit 4 = baseline led */
-const LED_DIFF = 16    /* bit 5 = diff led */
 
   /* 18-Bit ADC Parameters*/ 
 
@@ -117,7 +114,7 @@ begin download
 init_strings();
 
 noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0,flexio2=0;
-adc18bit=0;adc16bit=0;mtread=0;rampdac12=0; autoled=0;
+adc18bit=0;adc16bit=0;mtread=0;rampdac12=0; autoled=0; lefthrs=0; righthrs=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 scaler2   = getflag(SCALER2);    /* Use 2 scalers for this crate */
 bmwscan   = getflag(BMWSCAN);    /* Readout Beam Modulation and Scan Words */
@@ -135,6 +132,12 @@ righthrs  = getflag(RIGHTHRS);   /*  just so you know you are on the right arm *
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
+if (lefthrs) {
+  printf("This is the LEFT HRS crate\n");
+} 
+if (righthrs) {
+  printf("This is the RIGHT HRS crate\n");
+} 
 if (adc18bit) {
   printf("Will use 18-bit ADC \n");
 } 
@@ -327,8 +330,6 @@ tir[1]->tir_csr = 0x80;
 
 %%
 oport_state = 0;  /* start at zero */
-/* inhibit bit */
-oport_state |= OPORT_INB;   
 tir[1]->tir_oport=oport_state;
 
 %%
@@ -407,8 +408,6 @@ if (adc16bit) {
 
 
   oport_state = 0;  /* start at zero */
-/* inhibit bit */
-  oport_state |= OPORT_INB;   
   tir[1]->tir_oport=oport_state;
 
   numadc18 = 0;
@@ -459,13 +458,9 @@ begin end
 
   CDODISABLE(VME,1,0);
 
-# inhibit bit
-  oport_state |= OPORT_INB;   
-  tir[1]->tir_oport=oport_state;
 
 /* Disable LNE Flag */
-   oport_state |= oport_state & 0xfb;
-   tir[1]->tir_oport=oport_state;
+   unset_tir_oport(OPORT_LNE);
 
   CODA_RUN_IN_PROGRESS = 0;
 
@@ -536,8 +531,7 @@ if (adc18bit) for (iadc = 0; iadc<numadc18; iadc++) {
 }
 
 /* Enable LNE Flag */
-   oport_state |= OPORT_LNE;
-   tir[1]->tir_oport=oport_state;
+   set_tir_oport(OPORT_LNE);
 
   if (rampdac12) setDACHAPTB(1,DEF_DAC12);
 
@@ -576,6 +570,7 @@ int localBMWval;
 int localBMWcycnum;
 int nscaler;
 int iocTime;
+int state;
 static int dacnoise18=10000;
 static int MINDAC18=10000;
 static int MAXDAC18=30000;
@@ -585,12 +580,11 @@ static int setdac18_local = 0;
 
 int* intpointer;
 
-/* Enable BUSY Flag, remove inhibit */
-oport_state |= OPORT_BUSY;
-oport_state & 0xfd; 
-# oport_state = ff;  
-tir[1]->tir_oport=oport_state;
-# logMsg("tir oport = 0x%x  \n",oport_state);
+
+# Enable BUSY Flag
+set_tir_oport(OPORT_BUSY);
+
+# If you put this back, please use set_tir_oport here: if (lefthrs) tir[1]->tir_oport=oport_state; 
 
 %%
 if(evtypefix==1) EVTYPE &= 1;  /* Fix event type for Injector DAQ */
@@ -609,9 +603,6 @@ open event type EVTYPE of BT_UI4
 *rol->dabufp++ = 0xffb0b444;    
 
 %%
-/* Enable LEDs */
-   set_tir_oport(LED_BASE);
-   set_tir_oport(LED_DIFF);
 
 if ( !mtread )  {
 
@@ -635,7 +626,7 @@ if(flexio==1) {
   /* In TS Control, readout from IPORT */
   tirdata = tir[1]->tir_iport;
   *rol->dabufp++ = tirdata & 0xfff;
-  }
+ }
 
 //#ifdef BMWSTUFF
 if(bmwscan==1) {
@@ -889,10 +880,28 @@ if(getOverSampleCurrentHAPTB()==0) {
   dac16val = dac16val + 5; 
 } 
 
- if ( autoled ) 
+ if ( autoled ) {
+
    if (inProgressAutoLED()) stepAutoLED();
 
+   if (lefthrs) {
+     //     if (lefthrs && inProgressAutoLED()) {
+     // kludge to avoid tir library include issues
 
+     // enable/disable if needed.
+     //     state = getStateBaseAutoLED();
+     //     if(state==1) set_tir_oport(0x08);
+     //     if(state==0) unset_tir_oport(0x08);  
+     //set_tir_oport(0x08);
+
+     // state = getStateDiffAutoLED();
+     //if(state==1) set_tir_oport(0x10);
+     //if(state==0) unset_tir_oport(0x10);  
+     //setDataSCAN(2,state);
+
+   }
+ }
+ 
 /* For the synch monitor.  Use dac12. */
 /* Note that dac12 will saturate the v2f at high voltage 
    so, set the max around 3650.*/ 
@@ -929,17 +938,12 @@ if(getOverSampleCurrentHAPTB()==0) {
 
 /* Disable BUSY Flag */
 
-oport_state = 0; /* oport_state & 0xfe; */
-tir[1]->tir_oport=oport_state; 
-/* logMsg("end tir oport = 0x%x  \n",oport_state); */
-
+  unset_tir_oport(OPORT_BUSY);
+ 
 
 }  /* matches   "if ( !mtread )  {"   */
 
 %%
-
-   unset_tir_oport(LED_BASE);
-   unset_tir_oport(LED_DIFF);
 
 close event
 
