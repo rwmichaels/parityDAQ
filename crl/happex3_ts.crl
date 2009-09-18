@@ -59,7 +59,7 @@ int oport_state=0;   /* output port state (global variable) */
 
 static int noscaler, scaler2, bmwscan, tbreadout, evtypefix, flexio, flexio2;
 static int adc18bit, numadc18, adc16bit, mtread, rampdac12;
-static int autoled, lefthrs, righthrs;
+static int autoled, lefthrs, righthrs, counthouse;
 
 unsigned short ranny[RANDNUM];  /* array of random integers */
 
@@ -115,6 +115,7 @@ init_strings();
 
 noscaler=0;scaler2=0;bmwscan=0;tbreadout=0;evtypefix=0;flexio=0,flexio2=0;
 adc18bit=0;adc16bit=0;mtread=0;rampdac12=0; autoled=0; lefthrs=0; righthrs=0;
+counthouse=0;
 noscaler  = getflag(NOSCALER);   /* No scaler used for this crate */
 scaler2   = getflag(SCALER2);    /* Use 2 scalers for this crate */
 bmwscan   = getflag(BMWSCAN);    /* Readout Beam Modulation and Scan Words */
@@ -129,6 +130,7 @@ rampdac12 = getflag(RAMPDAC12);  /* To ramp the 12-bit DAC */
 autoled   = getflag(AUTOLED);    /* for LED linearity tests in HRS crates */
 lefthrs   = getflag(LEFTHRS);    /*  just so you know you are on the left arm */
 righthrs  = getflag(RIGHTHRS);   /*  just so you know you are on the right arm */
+counthouse = getflag(COUNTHOUSE); /* just so you know you are on the CH crate */
 
 /* Printout User String Configuration */
 printf("*** User String Configuration ***\n");
@@ -138,6 +140,9 @@ if (lefthrs) {
 if (righthrs) {
   printf("This is the RIGHT HRS crate\n");
 } 
+if (counthouse) {
+  printf("This is the counting house crate \n");
+}
 if (adc18bit) {
   printf("Will use 18-bit ADC \n");
 } 
@@ -480,8 +485,11 @@ begin go
   log inform "Entering User Go Go (bob)"
   
 %% 
-  int i, iadc, nscaler;
+  int i, iadc, nscaler, timeout, didreadsca;
+  int nmax, nloop;
   unsigned short temp;
+
+
 
 if(noscaler == 0) {
 #ifdef TYPE_SIS3801
@@ -492,11 +500,45 @@ if(noscaler == 0) {
     nscaler = 1;
   }
   for (i=0; i<nscaler; i++) {
+    taskDelay(2);   /* 2 = 1/30 sec *?
     pscaler[i]->csr = 0x1000000; /* disable LNE */
+    taskDelay(2);   
     pscaler[i]->clear = 1;
+    taskDelay(2);   
     pscaler[i]->next = 1;  /* flush FIFO */
+    taskDelay(2);   
     pscaler[i]->csr = 0x10000; /* enable LNE */
   }
+
+  if (counthouse) {
+
+    nmax = 100;
+
+    for (i = 0; i <nscaler; i++) {
+
+      for (nloop = 0; nloop < nmax; nloop++) {
+        didreadsca = 0;
+        timeout = 0;
+        while ( (pscaler[i]->csr&FIFO_EMPTY) != FIFO_EMPTY && timeout++ < 10) {
+           didreadsca = 1;
+        }
+        if (didreadsca == 0) {  
+            pscaler[i]->csr = 0x1000000; /* disable LNE */
+            pscaler[i]->clear = 1;
+            pscaler[i]->next = 1;  /* flush FIFO */
+            pscaler[i]->csr = 0x10000; /* enable LNE */
+	} else {
+	    goto okscaler1;
+	}
+      }
+okscaler1:
+      logMsg("Scaler %d cleared %d times \n",i,nloop,0,0,0,0);
+
+    }
+
+  }
+
+
 #endif
 #ifdef TYPE_SIS3800
   /* SIS3800 */
@@ -513,7 +555,7 @@ if(noscaler == 0) {
   }
 #endif
 }
-
+  
 if(flexio == 1) {
   flex_io->csr1 = 0x100; /* Re-Activate Strobe */
   flex_io->csr1 = 0x03; /* Re-Activate Strobe */
@@ -531,11 +573,22 @@ if (adc18bit) for (iadc = 0; iadc<numadc18; iadc++) {
 }
 
 /* Enable LNE Flag */
-   set_tir_oport(OPORT_LNE);
+set_tir_oport(OPORT_LNE);
 
-  if (rampdac12) setDACHAPTB(1,DEF_DAC12);
+if (rampdac12) setDACHAPTB(1,DEF_DAC12);
 
-  if (autoled) initAutoLED();
+if (autoled){ 
+
+  initAutoLED();
+  
+  if(lefthrs){
+    unlockAutoLED();
+    enableBaseAutoLED(0); enableDiffAutoLED(0);
+    unset_tir_oport(0x08); unset_tir_oport(0x10); 
+    lockAutoLED();
+  }
+ }
+
 
   CDOENABLE(VME,1,0);
   CODA_RUN_IN_PROGRESS = 1;
@@ -555,7 +608,7 @@ static int dac12val=DEF_DAC12;
 static int maxdac16=65535;
 static int maxdac12=3650;
 int inumdat,ioverflow;
-int timeout;
+int timeout,didreadsca;
 int maxloop=50000;
 unsigned short rannum;
 int tirdata;
@@ -570,7 +623,7 @@ int localBMWval;
 int localBMWcycnum;
 int nscaler;
 int iocTime;
-int state;
+int diffstate, baseval, prevbaseval;
 static int dacnoise18=10000;
 static int MINDAC18=10000;
 static int MAXDAC18=30000;
@@ -580,11 +633,10 @@ static int setdac18_local = 0;
 
 int* intpointer;
 
-
 # Enable BUSY Flag
 set_tir_oport(OPORT_BUSY);
 
-# If you put this back, please use set_tir_oport here: if (lefthrs) tir[1]->tir_oport=oport_state; 
+# if (lefthrs) set_tir_oport(??); 
 
 %%
 if(evtypefix==1) EVTYPE &= 1;  /* Fix event type for Injector DAQ */
@@ -593,7 +645,6 @@ event_no = *rol->nevents;
 iocTime = vxTicks;
 
 %%
-
 
 if (adc18bit) for (iadc=0;iadc<numadc18;iadc++) adc18_softreset(iadc);
 
@@ -658,9 +709,11 @@ if(noscaler == 0) {
     nscaler=1;
   }
   errstat = 0;
+  didreadsca = 0;
   for (i = 0; i <nscaler; i++) {
     timeout = 0;
     while ( (pscaler[i]->csr&FIFO_EMPTY) != FIFO_EMPTY && timeout++ < 10) {
+      didreadsca = 1;
       for (j = 0; j < 32; j++) {
 	sdata[i*32+j] = ((int)pscaler[i]->fifo[0])&DATA_MASK;  
       }
@@ -672,6 +725,7 @@ if(noscaler == 0) {
       pscaler[i]->clear = 1;
     }
   }
+  if (didreadsca == 0) errstat |= 2;
   *rol->dabufp++ = 0xfffca000 + nscaler + (errstat<<4); /* Header for scaler */
   for (i = 0; i <nscaler; i++){
     for (j = 0; j < 32; j++) {
@@ -880,28 +934,29 @@ if(getOverSampleCurrentHAPTB()==0) {
   dac16val = dac16val + 5; 
 } 
 
- if ( autoled ) {
+ if (autoled) {
+   
+   // for cycleAutoLED
+   if (inProgressAutoLED()) {
 
-   if (inProgressAutoLED()) stepAutoLED();
-
-   if (lefthrs) {
-     //     if (lefthrs && inProgressAutoLED()) {
      // kludge to avoid tir library include issues
+  
+     // turn the baseline on, cause inProgressAutoLED==1!       
+     // this has to come before stepAutoLED() !!!!
+     if (lefthrs && getStateBaseAutoLED())       set_tir_oport(0x08); 
+       
+     stepAutoLED();
 
-     // enable/disable if needed.
-     //     state = getStateBaseAutoLED();
-     //     if(state==1) set_tir_oport(0x08);
-     //     if(state==0) unset_tir_oport(0x08);  
-     //set_tir_oport(0x08);
-
-     // state = getStateDiffAutoLED();
-     //if(state==1) set_tir_oport(0x10);
-     //if(state==0) unset_tir_oport(0x10);  
-     //setDataSCAN(2,state);
-
+     // if cycleAutoLED in progress, turn the diff on/off based on 
+     // enableDiffAutoLED called from stepAutoLED
+     // this has to come after stepAutoLED()!!!
+     if(lefthrs){
+       if (getStateDiffAutoLED())       set_tir_oport(0x10);
+       else                           unset_tir_oport(0x10);
+     }
    }
  }
- 
+   
 /* For the synch monitor.  Use dac12. */
 /* Note that dac12 will saturate the v2f at high voltage 
    so, set the max around 3650.*/ 
