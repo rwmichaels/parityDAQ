@@ -171,6 +171,9 @@ begin prestart
   }
 %%
 
+  coda_run_flag = 1;
+  taskDelay(2*60);  /* wait 2 sec */
+
   GlobalScalerClr();  /* for PVDIS scaler data in memory */
 
   log inform "User Prestart Executed"
@@ -178,6 +181,8 @@ begin prestart
 end prestart
 
 begin end
+
+  coda_run_flag=0;
 
   CDODISABLE(VME,1,0);
   log inform "User End Executed"
@@ -201,7 +206,10 @@ begin go
 
   log inform "Entering User Go"
 
+  coda_run_flag=1;
+
 %%
+
   if (use767>0) {
     MAXT=50000;
     for (i=TDC_ID1;i<TDC_ID1+V767_NMOD;i++) {
@@ -265,6 +273,8 @@ begin trigger partrig
 
   rol->dabufp = (long *)0;
   open event type EVTYPE of BT_UI4
+
+  coda_run_flag=1;
 
 # Readout of the TIR board
 
