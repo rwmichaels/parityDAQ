@@ -1,7 +1,7 @@
 /* vxWscaler.h  -- used by server and client */
 
 /* The following defines the IP address of the server */
-/* pvdis.jlab.org */
+/* pvdis1.jlab.org on R-HRS */
 #define SERVER_INET_ADDR "129.57.192.58"   
 /* The following defines the port number of the server */
 #define SERVER_PORT_NUM (5026)
