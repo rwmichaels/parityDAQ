@@ -3,8 +3,19 @@
 # CODA Readout list for HAPPEX-H/He
 #
 #    Bob Michaels, Antonin Vacheret  (Oct 2000)
-#    Kent Paschke, Bryan Moffit (since then)
+#    Kent Paschke, Bryan Moffit (2000 - 2008)
+#    R. Michaels, L. Mercado,  R. Silwal (2009)
 # 
+#  Modifications Oct 2009   R. Michaels
+#  All for 18-bit ADC
+#      1. Hard reset of ADC in prestart (initall or reset)
+#   Turns out this did not clear buffer; power cycling does and
+#   if the go/stop logic is correct the buffere is always not-full.
+#      2. adc18_stop in "end".  Very important.
+#      3. In trigger routine partrig
+#         (i) First event does "soft_reset" and "go"
+#        (ii) If data available, flag event but do NOT flush buffer.
+
 
 readout list VME1
 maximum 10240,100
@@ -49,7 +60,7 @@ const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
   /* 18-Bit ADC Parameters*/ 
 
 const MAX18CNT = 100
-const BAD18DATA = 9999
+const BAD18DATA = 0
 const INTERNAL=0
 const EXTERNAL=1
 const TIME18 = INTERNAL
@@ -95,6 +106,8 @@ volatile struct caen_v560_scaler *pscaler[NSCALER];
 %%
 
 begin download
+
+  variable iadc
 
 # Sending data to Little-Endian EB
 %%  
@@ -337,6 +350,56 @@ tir[1]->tir_csr = 0x80;
 oport_state = 0;  /* start at zero */
 tir[1]->tir_oport=oport_state;
 
+numadc18 = 0;
+if (adc18bit) {
+
+/* Set up 18-bit ADC */
+
+     adc18_zeromem();
+     adc18_initall();   /* this does a reset */
+
+     taskDelay(4*60);
+
+     numadc18 = adc18_getNum();
+
+     for (iadc = 0; iadc < numadc18; iadc++) {
+
+       printf("Setting up ADC18 # %d \n",iadc);
+
+       adc18_stop(iadc);
+
+       adc18_timesrc(iadc,0,0,0);  /* External time source */
+       adc18_gatemode(iadc,1);            
+       adc18_intgain(iadc,3);      /* intgain: 0-3, where 3 is minimum */
+       adc18_setconv(iadc,0);      /* conv (gain): 0-15 where 0 is minimum */
+       adc18_setsample(iadc,1);
+
+       adc18_loaddac(iadc,0);
+
+       adc18_flush(iadc);
+       
+     }
+
+     if (righthrs) {
+       printf("Setting ADC18 pedestals on R-HRS \n");
+       adc18_setpedestal(0,1821,1547,1769,1581);
+       adc18_setpedestal(1,1446,1197,1935,1571);
+       adc18_setpedestal(2,1173,2059,1872,2365);
+       adc18_setpedestal(3,600,1772,1231,1628);  /* [Oct 28, '09] was previously 5th adc */
+     }
+     if (lefthrs) {
+       printf("Setting ADC18 pedestals on L-HRS \n");
+       adc18_setpedestal(0,1364,1908,1946,1493);
+     }
+     if (counthouse) {
+       printf("Setting ADC18 pedestals in counting room crate \n");
+       adc18_setpedestal(0,2182,2023,2440,1706);
+       adc18_setpedestal(1,1456,1539,1738,1538);
+     }
+
+}   /* if (adc18bit) */
+
+
 %%
 
 
@@ -354,7 +417,7 @@ log inform "Entering User Prestart"
 %%
   int j;
   unsigned short tmp_rand;
-  int iadc, ped_test;
+  int ped_test;
   int fdbfile;
   int bad_randmake=0;
   extern void srand();
@@ -415,43 +478,6 @@ if (adc16bit) {
   oport_state = 0;  /* start at zero */
   tir[1]->tir_oport=oport_state;
 
-  numadc18 = 0;
-
-  if (adc18bit) {
-
-/* Set up 18-bit ADC */
-
-    //adc18_zeromem();
-    //adc18_initall();
-     numadc18 = adc18_getNum();
-
-     for (iadc = 0; iadc < numadc18; iadc++) {
-       printf("Setting up ADC18 # %d \n",iadc);
-
-       adc18_timesrc(iadc,0,0,0);  /* External time source */
-       adc18_gatemode(iadc,1);            
-       //adc18_intgain(iadc,3);   /* intgain: 0-3, where 3 is minimum */
-       //adc18_setconv(iadc,0);  /* conv (gain): 0-15 where 0 is minimum */
-       //adc18_setsample(iadc,1);
-
-       // adc18_loaddac(iadc,0);
-
-
-// The 2 ADC18 on R-HRS are, resp. rev2-1 and rev2-3. (Oct 2008)
-
-       //if (iadc==0)   adc18_setpedestal(iadc,955,2149,2467,1217);  
-       //else if (iadc==1) adc18_setpedestal(iadc, 2512,1996,1288,1071);  
-       //else if (iadc==2) adc18_setpedestal(iadc, 1451,1413,3101,1566);  
-
-       
-       //adc18_setpedestal(iadc, 1000,1000,1000,1000);
-       adc18_flush(iadc);
-       
-     }
-
-  }
-
-
 
 %%
 
@@ -461,8 +487,17 @@ end prestart
 
 begin end
 
+  int iadc;
+
   CDODISABLE(VME,1,0);
 
+%% 
+  if (adc18bit) {
+     for (iadc = 0; iadc < numadc18; iadc++) {
+       adc18_stop(iadc);  /* extremely important */
+     }
+  }
+%%
 
 /* Disable LNE Flag */
    unset_tir_oport(OPORT_LNE);
@@ -579,7 +614,7 @@ if (rampdac12) setDACHAPTB(1,DEF_DAC12);
 
 if (autoled){ 
 
-  initAutoLED();
+  init0AutoLED();
   
   if(lefthrs){
     unlockAutoLED();
@@ -609,7 +644,7 @@ static int maxdac16=65535;
 static int maxdac12=3650;
 int inumdat,ioverflow;
 int timeout,didreadsca;
-int maxloop=50000;
+int maxloop=50;
 unsigned short rannum;
 int tirdata;
 static int k;
@@ -644,9 +679,23 @@ event_ty = EVTYPE;
 event_no = *rol->nevents;
 iocTime = vxTicks;
 
-%%
 
-if (adc18bit) for (iadc=0;iadc<numadc18;iadc++) adc18_softreset(iadc);
+/* First event: reset ADC18.  This means the first event
+    is no good (big deal).  This loop should go at the TOP
+    of the interrupt routine. */
+
+  if (event_no == 1) {
+     if (adc18bit) {
+       logMsg("ADC18: Normal reset and go on first event \n",0,0,0,0,0,0);
+       for (iadc = 0; iadc < numadc18; iadc++) {
+          adc18_softreset(iadc);
+          adc18_go(iadc);
+       }
+     }
+  }
+
+
+%%
 
 rol->dabufp = (long *)0;
 open event type EVTYPE of BT_UI4
@@ -769,11 +818,8 @@ if(noscaler == 0) {
  if (adc18bit) {  /* read out the 18-bit ADCs.  */
    *rol->dabufp++ = 0xfadc1800+numadc18;
    for (iadc = 0; iadc < numadc18; iadc++) {
-     
-     
-     adc18_softreset(iadc);
-     adc18_go(iadc); 
-     
+    
+     adc18_DataAvail(iadc);
      csrA = adc18_getcsr(iadc); 
      
      if (setdac18_local) {
@@ -784,18 +830,13 @@ if(noscaler == 0) {
      }
      
      icnt=0;
+     timeout=0;
      for (j=0; j<maxloop; j++) {
        icnt++;
        if ( !adc18_Busy(iadc) ) break;
      } 
-     
-     /* Put a little more delay, once through is ~10 usec */
-     /*
-     /for (j=0; j<5; j++) {
-       adc18_Busy(iadc);
-       } */
-     
-     
+     if(icnt > maxloop-4 ) timeout=1; 
+
      csrB = adc18_getcsr(iadc); 
      
      *rol->dabufp++ = 0xfb0b4000; 
@@ -813,43 +854,37 @@ if(noscaler == 0) {
      *rol->dabufp++ = nevt;
      *rol->dabufp++ = nword;
      
-     if(icnt > maxloop-10 ) { 
-       *rol->dabufp++ = 0xfa180bad; 
+     if(timeout) { 
+       *rol->dabufp++ = 0xfa180bad;  
      } else {
        *rol->dabufp++ = nadc18cnt;
-       
-       ioverflow = 0;  /* flag indicating an overflow */
-       
-       // Put only 'nword' data into datastream. Decoding 
-       // requires event size does not change.
-       // Possible flaw if nword is changing which it doesnt seem to.
-       
-       for (j=0; j<nword; j++) {
-	 if (adc18_DataAvail(iadc)) {
-	   *rol->dabufp++ =  adc18_getdata(iadc);
-	 } else {
-	   *rol->dabufp++ =  BAD18DATA;  /* should not happen ! */
-	 }
-       }
-       
-       // If data still available, flag this event and flush 
-       // the buffer (but not forever, timeout)
-       // We'll need to figure out what this means.
-       
-       timeout = 0;
-       while (adc18_DataAvail(iadc) && timeout++ < 10000)  {
-	 ioverflow = 1; 
-	 adc18_flush(iadc); 
-       }
-       if (ioverflow) {
-	 *rol->dabufp++ = 0xfa18bad1;  /* Might be a bad event (deadtime ?)  */
-       } else {
-	 *rol->dabufp++ = 0xfa18b0b1; 
-       }
-       
      }
-     
-   }
+ 
+ // Read buffer: Put 'nword' data into datastream. 
+ // But ! the first event is junk (see comments above)  
+      
+     if (timeout) {
+       for (j=0; j<nword; j++) {
+	 *rol->dabufp++ =  BAD18DATA;  //  don't analyze
+       }
+     } else {
+      for (j=0; j<nword; j++) {
+	 *rol->dabufp++ =  adc18_getdata(iadc);
+       }
+     }
+ 
+// If data still available, flag this event but do NOT flush 
+// the buffer as this can lead to synch problems.  The data
+// you want is always at the top of the buffer.  If the buffer
+// fills you'll see a logMsg.
+         
+     if (adc18_DataAvail(iadc)) {
+	 *rol->dabufp++ = 0xfa18bad1;  /* Might be a bad event (deadtime ?)  */
+     } else {
+	 *rol->dabufp++ = 0xfa18b0b1; 
+     }
+
+   }  /* loop over 18-bit ADCs */          
    
  }  /* end of 18-bit ADC */
  
@@ -943,7 +978,10 @@ if(getOverSampleCurrentHAPTB()==0) {
   
      // turn the baseline on, cause inProgressAutoLED==1!       
      // this has to come before stepAutoLED() !!!!
-     if (lefthrs && getStateBaseAutoLED())       set_tir_oport(0x08); 
+     if (lefthrs){
+       if (getStateBaseAutoLED())       set_tir_oport(0x08); 
+       else                           unset_tir_oport(0x08); 
+     }
        
      stepAutoLED();
 
@@ -951,6 +989,7 @@ if(getOverSampleCurrentHAPTB()==0) {
      // enableDiffAutoLED called from stepAutoLED
      // this has to come after stepAutoLED()!!!
      if(lefthrs){
+       // scan word updated in stepautoLED
        if (getStateDiffAutoLED())       set_tir_oport(0x10);
        else                           unset_tir_oport(0x10);
      }
