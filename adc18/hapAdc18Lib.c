@@ -1,7 +1,7 @@
 /* Library for JLab 18bit ADC for HAPPEX             */
 /* R. Michaels, Nov 2006                             */
 
-/*  Modifications  Aug 2009   R. Michaels
+/*  Modifications  Oct 2009   R. Michaels
 
      1. adc18_DataAvail:
         Corrected logic for when data is ready or not.
@@ -225,7 +225,7 @@ int adc18_initall() {
     printf("No ADCs initialized !!\n");
     return -1;
   }
-  printf("(version Aug 29, 2009)  Num ADC18 = %d \n",NADC);
+  printf("(version Oct 29, 2009)  Num ADC18 = %d \n",NADC);
 
   for (id = 0; id < NADC; id++) {
     adc_addr = ADCADDR[id];
@@ -293,8 +293,8 @@ int adc18_reset(int id) {
    In CODA do this in download.  */
   if (adc18_chkid(id) < 1) return -1;
   adc18p[id]->csr  = 0;
-  adc18p[id]->ctrl = 0x100;  /* hard reset */
-  adc18p[id]->ctrl = 0x200;  /* soft reset */
+  adc18p[id]->csr  = 0x100;  /* hard reset */
+  adc18p[id]->csr  = 0x200;  /* soft reset */
   adc18p[id]->config = 0;
   adc18p[id]->dac_value = 0;
   adc18p[id]->delay_1 = 0;
@@ -305,7 +305,7 @@ int adc18_reset(int id) {
 
 int adc18_softreset(int id) {
   if (adc18_chkid(id) < 1) return -1;
-  adc18p[id]->ctrl = 0x200;  /* soft reset */
+  adc18p[id]->csr = 0x200;  /* soft reset */
   return 0;
 }
 
