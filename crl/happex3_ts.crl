@@ -680,9 +680,9 @@ event_no = *rol->nevents;
 iocTime = vxTicks;
 
 
-/* First event: reset ADC18.  This means the first event
-    is no good (big deal).  This loop should go at the TOP
-    of the interrupt routine. */
+/* First event: start the ADC18.  This means the 1st event 
+   is no good.  This loop should go at the TOP
+   of the interrupt routine. */
 
   if (event_no == 1) {
      if (adc18bit) {
