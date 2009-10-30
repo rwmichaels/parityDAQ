@@ -60,7 +60,7 @@ const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
   /* 18-Bit ADC Parameters*/ 
 
 const MAX18CNT = 100
-const BAD18DATA = 0
+const BAD18DATA = 999
 const INTERNAL=0
 const EXTERNAL=1
 const TIME18 = INTERNAL
@@ -356,7 +356,7 @@ if (adc18bit) {
 /* Set up 18-bit ADC */
 
      adc18_zeromem();
-     adc18_initall();   /* this does a reset */
+     adc18_initall();   /* this does a hard reset */
 
      taskDelay(4*60);
 
@@ -686,9 +686,7 @@ iocTime = vxTicks;
 
   if (event_no == 1) {
      if (adc18bit) {
-       logMsg("ADC18: Normal reset and go on first event \n",0,0,0,0,0,0);
        for (iadc = 0; iadc < numadc18; iadc++) {
-          adc18_softreset(iadc);
           adc18_go(iadc);
        }
      }
