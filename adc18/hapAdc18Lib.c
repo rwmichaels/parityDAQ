@@ -1000,14 +1000,13 @@ int adc18_setup(int id, int time, int intgain, int conv) {
 
 int adc18_defaultSetup(int id) {
 
-  adc18_initall();  /* VME address of board */
-
   adc18_reset(id);
     
   adc18_timesrc(id,0,0,30000);     
   adc18_gatemode(id,1);            
   adc18_intgain(id,3);  
   adc18_setconv(id,0);
+  adc18_setsample(id,0);
 
   adc18_print_setup(id);
 
