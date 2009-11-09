@@ -32,6 +32,7 @@
    change them*/
 #define LEFTHRS "lefthrs"
 #define RIGHTHRS "righthrs"
+#define COUNTHOUSE "counthouse"
 #define PVDISLEFT "pvdisleft"
 #define PVDISRIGHT "pvdisright"
 #define NOCNTHOUSE "nocnthouse"
