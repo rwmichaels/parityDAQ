@@ -15,8 +15,8 @@
 #      3. In trigger routine partrig
 #         (i) First event does "soft_reset" and "go"
 #        (ii) If data available, flag event but do NOT flush buffer.
-
-
+  
+  
 readout list VME1
 maximum 10240,100
 vme readout
@@ -60,11 +60,11 @@ const OPORT_LNE  = 4   /* bit 3 = LNE for scaler FIFO */
   /* 18-Bit ADC Parameters*/ 
 
 const MAX18CNT = 100
-const BAD18DATA = 999
 const INTERNAL=0
 const EXTERNAL=1
 const TIME18 = INTERNAL
 
+static int BAD18DATA = -999;
 
 int oport_state=0;   /* output port state (global variable) */
 
@@ -258,11 +258,6 @@ if(flexio2 == 1) {
     showHAPADC(-1);
   }
 
-/* Timing Board configuration */
-/* Normally, all timing configuration should be done in separate routines, to
-avoid ambiguity, but at the moment (3/09) the Green Monster isn't working */
-
-  dumpRegHAPTB();
 
 if(noscaler == 0) {
   /* switch this, depending on which kind of scaler */
