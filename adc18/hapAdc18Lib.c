@@ -544,11 +544,15 @@ int adc18_DataAvail(int id) {
 
     if ((threebits & 0x4) != 0) {
       logMsg("\n ADC18 ERROR: Buffer full ! Id %d Csr = 0x%x\n",id,csrvalue,0,0,0,0);
-      logMsg("\n You must power-cycle the crate\n",0,0,0,0,0,0);
     }
-    if ((threebits & 0x3) == 3) {
-      logMsg("\n ADC18 ERROR:  data ready yet buffer empty ! Id %d Csr = 0x%x\n",
+    if (csrvalue == 0xffffffff) {
+      logMsg("\n ADC18 ERROR: Id %d Csr = 0x%x (momentarily non-addressable)\n",
+                       id,csrvalue,0,0,0,0);
+    } else {
+      if ((threebits & 0x3) == 3) {
+        logMsg("\n ADC18 ERROR:  data ready yet buffer empty ! Id %d Csr = 0x%x\n",
             id,csrvalue,0,0,0,0);
+      }
     }
 
     if (debug) {

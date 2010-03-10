@@ -13,21 +13,21 @@
 
 /* number of HAPPEX 18-bit ADCs */
 #ifdef  TESTCRATE
-#define NADC 0   
+#define NADC 3   
 #endif
 #ifdef  COUNTINGHOUSE
-#define NADC 2    
+#define NADC 3
 #endif
 #ifdef  INJECTOR
 #define NADC 0    
 #endif
 // dropped L-HRS Oct 28, 2009
 #ifdef  LEFTSPECT
-#define NADC 0    
+#define NADC 3    
 #endif
 // reduced to 4, Oct 28, 2009
 #ifdef  RIGHTSPECT
-#define NADC 4   
+#define NADC 5   
 #endif
 
 #define TIME_INT 11.0	 /* sample time (us) for internal timing sequence */	
@@ -36,45 +36,46 @@
 
 #ifdef   TESTCRATE
 
-#define  ADC0 0xCB0000
-#define  ADC1 0xCA0000
-#define  ADC2 0xB44000
-#define  ADC3 0xB04000
-#define  ADC4 0xB24000
-#define  ADC5 0xCE0000
-#define  ADC6 0x02C000
-#define  ADC7 0xCD0000   // Undefined.
+#define  ADC0 0xCE0000
+#define  ADC1 0xB44000
+#define  ADC2 0xB04000
+#define  ADC3 0xfff000
+#define  ADC4 0xfff000
+#define  ADC5 0xfff000
+#define  ADC6 0xfff000
+#define  ADC7 0xfff000   // Undefined.
 #define  ADC8 0xff0000
 #define  ADC9 0xff0000
 
-#define  ADCLAB0 1
-#define  ADCLAB1 0
-#define  ADCLAB2 9
-#define  ADCLAB3 10
-#define  ADCLAB4 7
-#define  ADCLAB5 17
-#define  ADCLAB6 6   
-#define  ADCLAB7 15
+#define  ADCLAB0 17
+#define  ADCLAB1 9
+#define  ADCLAB2 10
+#define  ADCLAB3 0xf
+#define  ADCLAB4 0xf
+#define  ADCLAB5 0xf
+#define  ADCLAB6 0xf   
+#define  ADCLAB7 0xf
 #define  ADCLAB8 0xf
 #define  ADCLAB9 0xf
 
 #endif
 
+/* Yes, ADC0 = ADC1.  Please leave it.  (Bob M. Mar,'10) */
 #ifdef   COUNTINGHOUSE
-#define  ADC0 0xCA0000
-#define  ADC1 0xCB0000
+#define  ADC0 0xB44000
+#define  ADC1 0xB44000
 #define  ADC2 0xCB0000
-#define  ADC3 0x118000
+#define  ADC3 0xfff000
 #define  ADC4 0xfff000
 #define  ADC5 0xfff000
 #define  ADC6 0xfff000
 #define  ADC7 0xfff000
 #define  ADC8 0xfff000
 #define  ADC9 0xfff000
-#define  ADCLAB0 0
-#define  ADCLAB1 1
-#define  ADCLAB2 1
-#define  ADCLAB3 12
+#define  ADCLAB0 1
+#define  ADCLAB1 0
+#define  ADCLAB2 0xf
+#define  ADCLAB3 0xf
 #define  ADCLAB4 0xf
 #define  ADCLAB5 0xf
 #define  ADCLAB6 0xf
@@ -109,7 +110,7 @@
 #ifdef   LEFTSPECT
 #define  ADC0 0x22C000
 #define  ADC1 0x15C000
-#define  ADC2 0xfff000
+#define  ADC2 0xB24000
 #define  ADC3 0xfff000
 #define  ADC4 0xfff000
 #define  ADC5 0xfff000
@@ -119,7 +120,7 @@
 #define  ADC9 0xfff000
 #define  ADCLAB0 4
 #define  ADCLAB1 5
-#define  ADCLAB2 0xf
+#define  ADCLAB2 7
 #define  ADCLAB3 0xf
 #define  ADCLAB4 0xf
 #define  ADCLAB5 0xf
@@ -135,7 +136,7 @@
 #define  ADC2 0x218000
 // Oct 28, old ADC3 (02c000) was removed; put 318000 here.
 #define  ADC3 0x318000
-#define  ADC4 0x02C000
+#define  ADC4 0xCD0000
 #define  ADC5 0xfff000
 #define  ADC6 0xfff000
 #define  ADC7 0xfff000
@@ -144,8 +145,8 @@
 #define  ADCLAB0 11
 #define  ADCLAB1 8
 #define  ADCLAB2 2
-#define  ADCLAB3 6
-#define  ADCLAB4 3
+#define  ADCLAB3 3
+#define  ADCLAB4 15
 #define  ADCLAB5 0xf
 #define  ADCLAB6 0xf
 #define  ADCLAB7 0xf
