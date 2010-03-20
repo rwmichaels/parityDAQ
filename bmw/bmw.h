@@ -8,7 +8,7 @@
 #include <vxWorks.h>
 #include <stdio.h>
 #include "../caFFB/caFFB.h"
-#include "../flexio/flexioLib.h"
+#include "/adaqfs/home/apar/devices/flexio/flexioLib.h"
 
 /***** defines *****/
 
@@ -28,22 +28,22 @@ struct bmwSequence {
   int amp_1;
   int amp_2;
   float freq;
-}
+};
 
 /***** locals *****/
-LOCAL int                 bmw_IsInit=0;
-
+LOCAL int                 bmw_IsInit = 0;
+LOCAL int                 bmw_trig = 2;
 LOCAL int                 bmw_flag_1 = 3;
 LOCAL int                 bmw_flag_2 = 4;
 LOCAL int                 bmw_flag_3 = 5;
 
 // Definitions of up to 8 cycles
-LOCAL struct bmwSequence *bmw_seqs[MAX_SEQS];
+LOCAL struct bmwSequence *bmw_seq[MAX_SEQS];
 
 LOCAL int bmw_seq_coil_1[MAX_SEQS] = {   1,   2,   3,   4,   5,   6,   7,   8};
-LOCAL int bmw_seq_coil_0[MAX_SEQS] = {   0,   0,   0,   0,   0,   0,   0,   0};
+LOCAL int bmw_seq_coil_2[MAX_SEQS] = {   0,   0,   0,   0,   0,   0,   0,   0};
 LOCAL int bmw_seq_amp_1[MAX_SEQS]  = {  10,  10,  10,  10,  10,  10,  10,  10};
-LOCAL int bmw_seq_amp_0[MAX_SEQS]  = {   0,   0,   0,   0,   0,   0,   0,   0};
+LOCAL int bmw_seq_amp_2[MAX_SEQS]  = {   0,   0,   0,   0,   0,   0,   0,   0};
 LOCAL int bmw_seq_periods[MAX_SEQS]= {  10,  10,  10,  10,  10,  10,  10,  10};
 LOCAL int bmw_seq_activated[MAX_SEQS]= { 1,   1,   1,   1,   1,   1,   1,   1};
 
@@ -52,15 +52,16 @@ LOCAL int bmw_energy_channel = 7;  // channel number that maps to energy in caFF
 /***** globals *****/
 
 // Global frequency
-real bmw_dither_frequency = 15.0;
+float bmw_dither_frequency = 15.0;
 
-// manage RF lock issues
+// manage RF lock issues,
 int bmw_RFlock_in_HallC = 1;
 int bmw_RFlock_in_HallA = 0;
 
 //  bmw diagnostic message level
-int bmw_c_verbose = 0;                /* 1 to get lots of diagnostics */
-int bmw_c_terse = 0;                  /* 1 to get a few diagnostics */
+BOOL bmw_c_verbose = 0;                /* 1 to get lots of diagnostics */
+BOOL bmw_c_terse = 0;                  /* 1 to get a few diagnostics */
+BOOL bmw_test=1;
 
 /* These globals are used to communicate between the client and the ROC task. */
 int   bmw_arm_trig=0;
@@ -81,7 +82,10 @@ BOOL  bmw_die_die_die = FALSE;
    provide status for external programs */
 int  bmw_alive = 0; 
 
-// globals used only to communicate with test2
+// dummy variable, so that vxworks crates does not crash
+int  bmw_status = 0; 
+
+// globals used only to communicate with test
 int bmw_test_object=1;
 int bmw_test_value =0;
 
@@ -96,12 +100,13 @@ int bmw_arm_wait         =    24;  /* number of ticks to allow function generato
 /***** forward declarations *****/
 STATUS bmwClient();
 STATUS bmwClient_script();
-STATUS modulateObjectBMW ( int object, int server );
+STATUS modulateObjectBMW( int object, int server );
 STATUS setNotice(int flag, int val);
 
-STATUS initBMW ();
+STATUS initBMW();
 STATUS defineSeqBMW(int iseq, int coil, int amp, int nperiods);
 STATUS defineSeq2CoilBMW(int iseq, int coil, int amp, int coil2, int amp2, int ncycles);
-STATUS activateSeqBMW(int iseq, int active=1);
-STATUS getConfigBMW ();
-STATUS getConfigSeqBMW (int iseq);
+STATUS activateSeqBMW(int iseq, int active);
+STATUS getConfigBMW();
+STATUS getConfigSeqBMW(int iseq);
+STATUS trigBMW(int trig);
