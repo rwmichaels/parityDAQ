@@ -18,24 +18,24 @@ sp bmwClient
 STATUS defineSeqBMW(int iseq, int coil, int amp, int nperiods) {
 
   if(iseq>=0 && iseq<MAX_SEQS) {
-    bmw_seq[iseq]->active=0;
-    bmw_seq[iseq]->nobj=1;
-    bmw_seq[iseq]->coil_1 = 0;
-    bmw_seq[iseq]->amp_1 = 0;
-    bmw_seq[iseq]->coil_2 = 0;
-    bmw_seq[iseq]->amp_2 = 0;
-    bmw_seq[iseq]->freq = bmw_dither_frequency;
+    bmw_seq[iseq].active=0;
+    bmw_seq[iseq].nobj=1;
+    bmw_seq[iseq].coil_1 = 0;
+    bmw_seq[iseq].amp_1 = 0;
+    bmw_seq[iseq].coil_2 = 0;
+    bmw_seq[iseq].amp_2 = 0;
+    bmw_seq[iseq].freq = bmw_dither_frequency;
     if (coil>0&&coil<=MAX_OBJS) {
-      bmw_seq[iseq]->active=1;
-      bmw_seq[iseq]->coil_1 = coil;
+      bmw_seq[iseq].active=1;
+      bmw_seq[iseq].coil_1 = coil;
       if (amp<=Max_Amplitude) {
-	bmw_seq[iseq]->amp_1 = amp; 
+	bmw_seq[iseq].amp_1 = amp; 
       }      
     }
     if (nperiods>0 && nperiods<512) {
-      bmw_seq[iseq]->periods = nperiods;
+      bmw_seq[iseq].periods = nperiods;
     } else {
-      bmw_seq[iseq]->periods= 1;
+      bmw_seq[iseq].periods= 1;
     }
   }  
   return( getConfigSeqBMW(iseq) );
@@ -47,46 +47,47 @@ STATUS defineSeq2CoilBMW(int iseq, int coil1, int amp, int coil2, int amp2, int 
 
   if(iseq>=0 && iseq<MAX_SEQS) {
 
-    bmw_seq[iseq]->active=0;
-    bmw_seq[iseq]->nobj=1;
+    bmw_seq[iseq].active=0;
+    bmw_seq[iseq].nobj=1;
 
-    bmw_seq[iseq]->coil_1 = 0;
-    bmw_seq[iseq]->amp_1 = 0;
+    bmw_seq[iseq].coil_1 = 0;
+    bmw_seq[iseq].amp_1 = 0;
 
-    bmw_seq[iseq]->coil_2 = 0;
-    bmw_seq[iseq]->amp_2 = 0;
+    bmw_seq[iseq].coil_2 = 0;
+    bmw_seq[iseq].amp_2 = 0;
 
-    bmw_seq[iseq]->freq = bmw_dither_frequency;
+    bmw_seq[iseq].freq = bmw_dither_frequency;
 
-    if(bmw_c_verbose){ 
-      fprintf(stdout, "Default configuration:: \n");
-      getConfigSeqBMW(iseq);
-    }
+/*     if(bmw_c_verbose){  */
+/*       fprintf(stdout, "\nDefault Configuration:: \n"); */
+/*       printSeqBMW(iseq); */
+/*     } */
 
     if (coil1>0&&coil1<=MAX_OBJS) {
-      bmw_seq[iseq]->active=1;
-      bmw_seq[iseq]->coil_1 = coil1;
+      bmw_seq[iseq].active=1;
+      bmw_seq[iseq].coil_1 = coil1;
       if (amp<=Max_Amplitude) {
-	bmw_seq[iseq]->amp_1 = amp; 
+	bmw_seq[iseq].amp_1 = amp; 
       }      
 
       if (coil2>0&&coil2<=MAX_OBJS && coil2!=coil1) {
-	bmw_seq[iseq]->nobj=2;
-	bmw_seq[iseq]->coil_2 = coil2;
+	bmw_seq[iseq].nobj=2;
+	bmw_seq[iseq].coil_2 = coil2;
 	if (amp<=Max_Amplitude) {
-	  bmw_seq[iseq]->amp_2 = amp2; 
+	  bmw_seq[iseq].amp_2 = amp2; 
 	}
       }
     }
     if (nperiods>0 && nperiods<512) {
-      bmw_seq[iseq]->periods = nperiods;
+      bmw_seq[iseq].periods = nperiods;
     } else {
-      bmw_seq[iseq]->periods= 1;
+      bmw_seq[iseq].periods= 1;
     }
   }  
 
-  if(bmw_c_verbose) fprintf(stdout, "Configured Sequence:: \n");
+/*   if(bmw_c_verbose) fprintf(stdout, "Configured:: \n"); */
   return( getConfigSeqBMW(iseq) );
+  //  return( printSeqBMW(iseq) );
 }
 
 /******************************************************************************
@@ -98,23 +99,39 @@ getConfigSeqBMW - print out coils, amplitude, frequency and period for a specifi
 STATUS getConfigSeqBMW (int iseq)
 {
   int nob;
-  struct bmwSequence* seq;
+  struct bmwSequence seq;
 
   fprintf(stdout,"Sequence %d: \n",iseq);
-  if (iseq<0 || iseq>MAX_SEQS) return(ERROR);
+  if (iseq<0 || iseq>=MAX_SEQS) return(ERROR);
   seq = bmw_seq[iseq];
-  if (seq->active > 0) {
-    nob = seq->nobj;
+  if (seq.active > 0) {
+    nob = seq.nobj;
     if (nob==2) fprintf(stdout,"  2-coil modulation \n");
-    fprintf(stdout,"  coil = %d,  amplitude = %d \n",seq->coil_1,seq->amp_1);
-    if (nob==2) fprintf(stdout,"  coil #2 = %d,  amplitude = %d \n",seq->coil_2,seq->amp_2);
-    fprintf(stdout,"  # of periods = %d, frequency = %d \n",seq->periods,seq->freq);
+    fprintf(stdout,"  coil = %d,  amplitude = %d \n",seq.coil_1,seq.amp_1);
+    if (nob==2) fprintf(stdout,"  coil #2 = %d,  amplitude = %d \n",seq.coil_2,seq.amp_2);
+    fprintf(stdout,"  # of periods = %d, frequency = %d \n",seq.periods,seq.freq);
   } else {
     fprintf(stdout,"  sequence not active \n");
   }    
   return (ERROR);
 }
 
+STATUS printSeqBMW (int iseq)
+{
+  int nob;
+  struct bmwSequence seq;
+
+  fprintf(stdout,"Sequence %d: \n",iseq);
+  if (iseq<0 || iseq>MAX_SEQS) return(ERROR);
+  seq = bmw_seq[iseq];
+  nob = seq.nobj;
+  fprintf(stdout,"  active = %d,  nobj = %d \n",seq.active,nob);
+  fprintf(stdout,"  coil #1 = %d,  amplitude = %d \n",seq.coil_1,seq.amp_1);
+  fprintf(stdout,"  coil #2 = %d,  amplitude = %d \n",seq.coil_2,seq.amp_2);
+  fprintf(stdout,"  # of periods = %d, frequency = %d \n",seq.periods,seq.freq);
+
+  return (ERROR);
+}
 
 /******************************************************************************
 getConfigBMW - print coils, amplitude, frequency and period for all sequences
@@ -129,6 +146,7 @@ STATUS getConfigBMW ()
   for ( i = 0; i < MAX_SEQS; i++ ) {
     getConfigSeqBMW(i);
   }
+
   fprintf (stdout,"  Timing information, in steps with %d clock ticks per step \n",bmw_ticks_per_step);
   fprintf (stdout,"     pause between cycles = %d steps \n",bmw_steps_per_pause);
   fprintf (stdout,"     wait to pause (resume) FFB = %d (%d) ticks \n",bmw_FFBpause_wait,bmw_FFBresume_wait);
@@ -140,7 +158,7 @@ STATUS getConfigBMW ()
 STATUS activateSeqBMW(int iseq, int active) {
   // set iseq to active =1 or =0
   if(iseq>=0 && iseq<MAX_SEQS) {
-    bmw_seq[iseq]->active = active;
+    bmw_seq[iseq].active = active;
     return(OK);
   } else {
     return(ERROR);
@@ -152,8 +170,8 @@ STATUS trigBMW(int trig){
   // bmw_trig = 2, means 0x02
   flexioWriteChan(trig, bmw_trig);
   if(bmw_c_verbose){
-    if(trig==0) fprintf(stdout, "initBMW():: Trigger Disabled.\n");
-    else if(trig==1) fprintf(stdout, "initBMW():: Trigger Enabled.\n");
+    if(trig==0) fprintf(stdout, "trigBMW():: Trigger Disabled.\n");
+    else if(trig==1) fprintf(stdout, "trigBMW():: Trigger Enabled.\n");
     else return (ERROR);
   }
   return(OK);
@@ -205,12 +223,13 @@ STATUS bmwClient_script ()
   float fwait;
   int waittime;
   int coil, nobs;
-  int count=0;
+  int count=0, count2=0;
 
   // turn beam modulation on if it is not
   if(!bmw_test)  if(cagetFFB_modState()!=1){
-    if(bmw_c_verbose) fprintf(stdout, "Beam Modulation was off. Turning it ON. \n");
-    caputFFB_modState(1);
+    fprintf(stdout, "Beam Modulation is OFF. Call MCC to turn it ON!! \n");
+    return(ERROR);
+    //    caputFFB_modState(1.0);
   }
   
   bmw_alive = 1; // reset bmw_alive test flag
@@ -221,24 +240,19 @@ STATUS bmwClient_script ()
   if (!bmw_IsInit) initBMW();
   bmw_alive=1;
 
+  //  return(OK);
   //
   // Start Loop
   //
 /*   while (!bmw_die_die_die)  { */
 
-  while(count<4){
+  while(count<2){
     count++;
     if(bmw_test) fprintf(stdout,"bmwClient:: ***Running is test mode*** \n");
 
     // Start supercycle
     bmw_cycle_number = ++bmw_cycle_count;
 
-    // Configure this modulation sequence, and enter trig state
-    //    for ( iseq = 0;iseq<=MAX_SEQS && !bmw_die_die_die; ++iseq ){
-
-      // check that the object is in CONFIG_STATE
-      //
-    
     //
     // Notify World that supercycle is starting
     //
@@ -268,17 +282,27 @@ STATUS bmwClient_script ()
       bmw_alive =1;
 
       // check if sequence is active, else skip
-      if ( bmw_seq[iseq]->active ==1 ) {
+      if ( bmw_seq[iseq].active ==1 ) {
 	
 	// If modulating energy, pause Hall C energy lock (if running)
 	
-	if(iseq==bmw_energy_channel) { // if energy (iseq==7)
+	//	fprintf ( stdout, "bmwClient:: \nSequence %d\n",iseq);
+	fprintf ( stdout, "\nbmwClient:: Selecting coil(s) for Seq %d \n", iseq);
+	coil = bmw_seq[iseq].coil_1;
+	nobs = bmw_seq[iseq].nobj;
+
+	if(bmw_c_verbose){
+	  fprintf ( stdout, "bmwClient:: Coil # %d \n", coil);
+	  fprintf ( stdout, "bmwClient:: # objs %d \n", nobs);
+	}
+
+	// if energy coil, could be either coil 1 or 2
+	if(coil==bmw_energy_channel) { 
 	  
 	  if (bmw_RFlock_in_HallC==1) {
 	    //
 	    // Notify begining of energy pause
 	    //
-BOOL verbose=1;
 	    fprintf(stdout,"bmwClient:: Here I set Hall C line flag\n");
 	    setNotice(2,1);
 	    //
@@ -295,33 +319,33 @@ BOOL verbose=1;
 	  setNotice(3,1);
 	  //	  
 	}
-	
-	fprintf ( stdout, "bmwClient:: Selecting coil\n");
-	coil = bmw_seq[iseq]->coil_1;
-	nobs = bmw_seq[iseq]->nobj;
-	
+		
 	// set the state to CONFIG_STATE
 	if(!bmw_test){
-	  while (cagetFFB_wavestate(coil!=1)){
+	  while ((cagetFFB_waveState(coil)!=1) && count2<5){
+	    count2++;
 	    caputFFB_leaveTrig(coil,1); // this sets the trig state to 0, and
-	    //	  taskDelay(72); // 1 sec
+	    taskDelay(72); // 1/6 sec
+	    if(count2==5) fprintf(stdout,"Exiting the loop. Count limit exceeded!!\n");
 	  }
 	}
+
+	count2=0;
 
 	// set the config parameters
 	// coil:{1,8}
 	if (coil>0 && coil<=MAX_OBJS) {
 	  if(!bmw_test){
-	    caputFFB_freq(   iseq,bmw_seq[iseq]->freq);
-	    caputFFB_period( iseq,bmw_seq[iseq]->periods);
-	    caputFFB_amp(    iseq,bmw_seq[iseq]->amp_1);
+	    caputFFB_freq(   coil,bmw_seq[iseq].freq);
+	    caputFFB_period( coil,bmw_seq[iseq].periods);
+	    caputFFB_amp(    coil,bmw_seq[iseq].amp_1);
 	  }
 	  /* 	  if (nobs==2) { */
-	  /* 	    coil2 = bmw_seq[iseq]->coil_2; */
+	  /* 	    coil2 = bmw_seq[iseq].coil_2; */
 	  /* 	    if (coil2>=0 && coil2 < MAX_OBJS) { */
-	  /* 	      caputFFB_bmw_freq(   coil2,bmw_seq[iseq]->freq); */
-	  /* 	      caputFFB_bmw_periods(coil2,bmw_seq[iseq]->periods); */
-	  /* 	      caputFFB_bmw_amp(    coil2,bmw_seq[iseq]->amp_2); */
+	  /* 	      caputFFB_bmw_freq(   coil2,bmw_seq[iseq].freq); */
+	  /* 	      caputFFB_bmw_periods(coil2,bmw_seq[iseq].periods); */
+	  /* 	      caputFFB_bmw_amp(    coil2,bmw_seq[iseq].amp_2); */
 	  /* 	    } else { */
 	  /* 	      nobs = 1; */
 	  /* 	    } */
@@ -340,12 +364,27 @@ BOOL verbose=1;
 	// wait after arming
 	taskDelay(bmw_arm_wait);
 	bmw_alive =1;
+
+	if(bmw_c_verbose) getConfigSeqBMW(iseq);
 	
 	// enter trig state, takes about 1 sec to get to TRIGGER_STATE from CONFIG_STATE
-	if(!bmw_test) caputFFB_enterTrig(coil,1);
+	//	if(!bmw_test) caputFFB_enterTrig(coil,1);
+
+	if(!bmw_test){
+	  while ((cagetFFB_waveState(coil)!=2) && count2<5){
+	    count2++;
+	    caputFFB_enterTrig(coil,1); // this sets the trig state to 0, and
+	    taskDelay(100); // 72 is 1 sec
+	    if(count2==5) fprintf(stdout,"Exiting the loop. Count limit exceeded!!\n");
+	  }
+	}
+
+	count2=0;
+
+	//	if(!bmw_test) cagetFFB_waveState(coil);
 
 	// calculate wait time, in seconds, * 72, + 4 clock ticks for safety margin
-	fwait = bmw_seq[iseq]->periods / bmw_seq[iseq]->freq * 72 + 4;
+	fwait = bmw_seq[iseq].periods / bmw_seq[iseq].freq * 72 + 4;
 	waittime = (int) fwait;
 	
 	fprintf ( stdout, "bmwClient:: In trig state now\n");
@@ -358,18 +397,19 @@ BOOL verbose=1;
 	//   bmw_arm_trig=0;
 	// }
 
-	if(bmw_c_verbose) getConfigSeqBMW(iseq);
-	
+	// set the bmw_freq to the currnt coil freq
+	bmw_freq = cagetFFB_freq(coil);
+	// set the bmw_object to the current coil
+	bmw_object = coil; 
+
 	fprintf ( stdout, "bmwClient:: Selecting bmw_arm_trig to 1\n");
 	bmw_arm_trig=1;
 	
-	bmw_object = coil;  // need to modify this *********
-
 	// wait for end of modulation cycle
 	//****************************//      
 	taskDelay( waittime );
-	bmw_clean = FALSE; // need to modify this ***********
-	bmw_object = -1;  // need to modify this **********
+	//	bmw_clean = FALSE; // need to modify this ***********
+	bmw_object = -1; 
 	bmw_alive =1;
 
 	fprintf ( stdout, "bmwClient:: Selecting bmw_arm_trig to 0\n");
@@ -379,13 +419,21 @@ BOOL verbose=1;
 	// so come out of TRIGGER_STATE
 	// this, by default, is the CONFIG_STATE
 	if(!bmw_test){
-	  while(cagetFFB_leaveTrig(coil))	{
+	  while(cagetFFB_waveState(coil)!=1 && count2<5)	{
+	    count2++;
 	    caputFFB_leaveTrig(coil,1);
+	    taskDelay(36);
+	    if(count2==5) fprintf(stdout,"Exiting the loop. Count limit exceeded!!\n");
 	  }
 	}
+
+	count2=0;
+
 	/* 	if (nobs==2)  */
 	/* 	  caputFFB_bmw_state(coil2,0); */
        
+	//	if(!bmw_test) cagetFFB_waveState(coil);
+
 	if(iseq==bmw_energy_channel) { // if energy
 	  
 	  //
