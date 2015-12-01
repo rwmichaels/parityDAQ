@@ -16,20 +16,21 @@
 
 /* number of HAPPEX ADCs */
 #ifdef  COUNTINGHOUSE
-#define NADC 5    // must be <10, or requires changes to static arrays.
+#define NADC 2    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  INJECTOR
 #define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
+/* dropped, Oct 28, 2009 */
 #ifdef  LEFTSPECT
 #define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
 #ifdef  RIGHTSPECT
-#define NADC 3    // must be <10, or requires changes to static arrays.
+#define NADC 0    // must be <10, or requires changes to static arrays.
 #endif
 
 #ifdef TESTCRATE
-#define NADC 1  
+#define NADC 0  
 #endif
 
 #define MAXRETRY 20   // max number of attempts to write csr
@@ -40,8 +41,33 @@
 
 //   Relative Addresses of ADCs
 #ifdef   TESTCRATE
-#define  ADC0 0x440000
-#define  ADC1 0x430000   // Undefined.
+#define  ADC0 0x850000
+#define  ADC1 0x830000   // Undefined.
+#define  ADC2 0xff0000
+#define  ADC3 0xff0000
+#define  ADC4 0xff0000
+#define  ADC5 0xff0000
+#define  ADC6 0xff0000
+#define  ADC7 0xff0000
+#define  ADC8 0xff0000
+#define  ADC9 0x440000
+
+#define  ADCLAB0 26
+#define  ADCLAB1 28   // Undefined
+#define  ADCLAB2 0xf
+#define  ADCLAB3 0xf
+#define  ADCLAB4 0xf
+#define  ADCLAB5 0xf
+#define  ADCLAB6 0xf
+#define  ADCLAB7 0xf
+#define  ADCLAB8 0xf
+#define  ADCLAB9 20
+
+#endif
+
+#ifdef   COUNTINGHOUSE
+#define  ADC0 0x4d0000
+#define  ADC1 0x520000
 #define  ADC2 0xff0000
 #define  ADC3 0xff0000
 #define  ADC4 0xff0000
@@ -51,8 +77,8 @@
 #define  ADC8 0xff0000
 #define  ADC9 0xff0000
 
-#define  ADCLAB0 20
-#define  ADCLAB1 0xf   // Undefined
+#define  ADCLAB0 22
+#define  ADCLAB1 11
 #define  ADCLAB2 0xf
 #define  ADCLAB3 0xf
 #define  ADCLAB4 0xf
@@ -61,31 +87,6 @@
 #define  ADCLAB7 0xf
 #define  ADCLAB8 0xf
 #define  ADCLAB9 0xf
-
-#endif
-
-#ifdef   COUNTINGHOUSE
-#define  ADC0 0x400000
-#define  ADC1 0x520000
-#define  ADC2 0x4b0000
-#define  ADC3 0x510000
-#define  ADC4 0x490000
-#define  ADC5 0x490000
-#define  ADC6 0x490000
-#define  ADC7 0x470000
-#define  ADC8 0x4d0000
-#define  ADC9 0x480000
-
-#define  ADCLAB0 23
-#define  ADCLAB1 11
-#define  ADCLAB2 7
-#define  ADCLAB3 12
-#define  ADCLAB4 14
-#define  ADCLAB5 14
-#define  ADCLAB6 14
-#define  ADCLAB7 2
-#define  ADCLAB8 22
-#define  ADCLAB9 15
 #endif
 
 #ifdef   INJECTOR
@@ -112,7 +113,7 @@
 #endif
 
 #ifdef   LEFTSPECT
-#define  ADC0 0x420000
+#define  ADC0 0x850000
 #define  ADC1 0x430000
 #define  ADC2 0x820000
 #define  ADC3 0x500000
@@ -122,7 +123,7 @@
 #define  ADC7 0x510000
 #define  ADC8 0x490000
 #define  ADC9 0x5F0000
-#define  ADCLAB0 18
+#define  ADCLAB0 26
 #define  ADCLAB1 19
 #define  ADCLAB2 27
 #define  ADCLAB3 9
@@ -135,19 +136,19 @@
 #endif
 
 #ifdef   RIGHTSPECT
-#define  ADC0 0x8F0000
-#define  ADC1 0x4C0000
-#define  ADC2 0x840000
-#define  ADC3 0x4E0000
-#define  ADC4 0x4B0700
-#define  ADC5 0x480000
-#define  ADC6 0x820000
-#define  ADC7 0x4b0000
-#define  ADC8 0x510000
-#define  ADC9 0x490000
-#define  ADCLAB0 17
-#define  ADCLAB1 13
-#define  ADCLAB2 29
+#define  ADC0 0x830000   
+#define  ADC1 0x4E0000
+#define  ADC2 0x4B0700
+#define  ADC3 0x480000
+#define  ADC4 0x820000
+#define  ADC5 0x4b0000
+#define  ADC6 0x510000
+#define  ADC7 0x490000
+#define  ADC8 0x8F0000
+#define  ADC9 0x4C0000
+#define  ADCLAB0 28
+#define  ADCLAB1 17
+#define  ADCLAB2 13
 #define  ADCLAB3 8
 #define  ADCLAB4 64
 #define  ADCLAB5 65
@@ -162,8 +163,8 @@
 #ifdef   COUNTINGHOUSE
 #define ADC0_DEF_GAINBIT LO_GAIN
 #define ADC1_DEF_GAINBIT LO_GAIN
-#define ADC2_DEF_GAINBIT LO_GAIN
-#define ADC3_DEF_GAINBIT LO_GAIN
+#define ADC2_DEF_GAINBIT HI_GAIN  // changed 13sep09, rupesh
+#define ADC3_DEF_GAINBIT LO_GAIN 
 #define ADC4_DEF_GAINBIT LO_GAIN
 #define ADC5_DEF_GAINBIT LO_GAIN
 #define ADC6_DEF_GAINBIT LO_GAIN
