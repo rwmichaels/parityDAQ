@@ -295,13 +295,13 @@ int cagetFFB(int chAlias) {
   status = ca_search(chName, &channelID);
   MY_SEVCHK(status);
   
-  status = ca_pend_io(0.0);
+  status = ca_pend_io(10.0);
   MY_SEVCHK(status);
   
   status = ca_get(DBR_DOUBLE,channelID, &val);
   MY_SEVCHK(status);
   
-  status = ca_pend_io(0.0);
+  status = ca_pend_io(10.0);
   MY_SEVCHK(status);
   
 /*   printf("caget(): Current Value = %f\n",val); */
@@ -349,13 +349,17 @@ int caputFFB(int chAlias, double val) {
   status = ca_search(chName, &channelID);
   MY_SEVCHK(status);
 
-  status = ca_pend_io(0.0);
+  // changed so that if compton is hung up, just continue...
+  // 09/05/10 rupesh
+  //  status = ca_pend_io(0.0);
+  status = ca_pend_io(10.0);
   MY_SEVCHK(status);
   
   status = ca_put(DBR_DOUBLE, channelID, &val);
   MY_SEVCHK(status);
 
-  status = ca_pend_io(0.0);
+  //  status = ca_pend_io(0.0);
+  status = ca_pend_io(10.0);
   MY_SEVCHK(status);
 
   
@@ -485,31 +489,31 @@ int cagetFFB_waveState(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:WAVESTATE";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:WAVESTATE";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:WAVESTATE";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:WAVESTATE";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:WAVESTATE";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:WAVESTATE";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:WAVESTATE";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:WAVESTATE";
@@ -518,7 +522,7 @@ int cagetFFB_waveState(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:WAVESTATE";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -557,31 +561,31 @@ int cagetFFB_freq(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:FREQUENCY";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:FREQUENCY";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:FREQUENCY";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:FREQUENCY";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:FREQUENCY";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:FREQUENCY";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:FREQUENCY";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:FREQUENCY";
@@ -590,7 +594,7 @@ int cagetFFB_freq(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:FREQUENCY";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
  
   status = ca_task_initialize();
@@ -630,31 +634,31 @@ int cagetFFB_amp(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:AMPLITUDE";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:AMPLITUDE";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:AMPLITUDE";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:AMPLITUDE";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:AMPLITUDE";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:AMPLITUDE";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:AMPLITUDE";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:AMPLITUDE";
@@ -663,7 +667,7 @@ int cagetFFB_amp(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:AMPLITUDE";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
  
   status = ca_task_initialize();
@@ -703,31 +707,31 @@ int cagetFFB_period(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:RCRINPUT";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:RCRINPUT";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:RCRINPUT";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:RCRINPUT";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:RCRINPUT";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:RCRINPUT";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:RCRINPUT";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:RCRINPUT";
@@ -736,7 +740,7 @@ int cagetFFB_period(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:RCRINPUT";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
  
   status = ca_task_initialize();
@@ -776,31 +780,31 @@ int cagetFFB_load(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:SINEWAVE";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:SINEWAVE";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:SINEWAVE";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:SINEWAVE";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:SINEWAVE";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:SINEWAVE";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:SINEWAVE";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:SINEWAVE";
@@ -809,7 +813,7 @@ int cagetFFB_load(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:SINEWAVE";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -850,31 +854,31 @@ int cagetFFB_enterTrig(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:TRIGSTATEBTN";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:TRIGSTATEBTN";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:TRIGSTATEBTN";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:TRIGSTATEBTN";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:TRIGSTATEBTN";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:TRIGSTATEBTN";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:TRIGSTATEBTN";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:TRIGSTATEBTN";
@@ -883,7 +887,7 @@ int cagetFFB_enterTrig(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:TRIGSTATEBTN";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -923,31 +927,31 @@ int cagetFFB_leaveTrig(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:STOPBTN";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:STOPBTN";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:STOPBTN";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:STOPBTN";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:STOPBTN";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:STOPBTN";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:STOPBTN";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:STOPBTN";
@@ -956,7 +960,7 @@ int cagetFFB_leaveTrig(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:STOPBTN";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -995,31 +999,31 @@ int cagetFFB_trig(int chAlias) {
     {      
     case 1:
       chName = "BMOD1:CHAN0:TRIGBTN";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMOD1:CHAN1:TRIGBTN";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMOD1:CHAN2:TRIGBTN";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMOD1:CHAN3:TRIGBTN";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMOD2:CHAN0:TRIGBTN";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMOD2:CHAN1:TRIGBTN";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMOD2:CHAN2:TRIGBTN";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMOD2:CHAN3:TRIGBTN";
@@ -1028,7 +1032,7 @@ int cagetFFB_trig(int chAlias) {
 
     default:
       chName = "BMOD1:CHAN0:TRIGBTN";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -1075,31 +1079,31 @@ int cagetFFB_relay(int chAlias) {
     {      
     case 1:
       chName = "BMRELAYSET.B0";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMRELAYSET.B2";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMRELAYSET.B4";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMRELAYSET.B6";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMRELAYSET.B8";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMRELAYSET.BA";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMRELAYSET.BC";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMRELAYSET.BE";
@@ -1107,31 +1111,31 @@ int cagetFFB_relay(int chAlias) {
       break;      
     case 9:
       chName = "BMRELAYSET.B1";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 10:
       chName = "BMRELAYSET.B3";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 11:
       chName = "BMRELAYSET.B5";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 12:
       chName = "BMRELAYSET.B7";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 13:
       chName = "BMRELAYSET.B9";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 14:
       chName = "BMRELAYSET.BB";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 15:
       chName = "BMRELAYSET.BD";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 16:
       chName = "BMRELAYSET.BF";
@@ -1140,7 +1144,7 @@ int cagetFFB_relay(int chAlias) {
 
     default:
       chName = "BMRELAYSET.B0";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -1254,31 +1258,31 @@ int caputFFB_freq(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:FREQUENCY";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:FREQUENCY";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:FREQUENCY";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:FREQUENCY";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:FREQUENCY";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:FREQUENCY";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:FREQUENCY";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:FREQUENCY";
@@ -1287,7 +1291,7 @@ int caputFFB_freq(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:FREQUENCY";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1336,31 +1340,31 @@ int caputFFB_amp(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:AMPLITUDE";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:AMPLITUDE";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:AMPLITUDE";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:AMPLITUDE";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:AMPLITUDE";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:AMPLITUDE";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:AMPLITUDE";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:AMPLITUDE";
@@ -1369,7 +1373,7 @@ int caputFFB_amp(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:AMPLITUDE";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1418,31 +1422,31 @@ int caputFFB_period(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:RCRINPUT";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:RCRINPUT";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:RCRINPUT";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:RCRINPUT";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:RCRINPUT";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:RCRINPUT";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:RCRINPUT";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:RCRINPUT";
@@ -1451,7 +1455,7 @@ int caputFFB_period(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:RCRINPUT";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1500,31 +1504,31 @@ int caputFFB_load(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:SINEWAVE";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:SINEWAVE";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:SINEWAVE";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:SINEWAVE";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:SINEWAVE";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:SINEWAVE";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:SINEWAVE";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:SINEWAVE";
@@ -1533,7 +1537,7 @@ int caputFFB_load(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:SINEWAVE";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1583,31 +1587,31 @@ int caputFFB_enterTrig(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:TRIGSTATEBTN";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:TRIGSTATEBTN";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:TRIGSTATEBTN";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:TRIGSTATEBTN";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:TRIGSTATEBTN";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:TRIGSTATEBTN";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:TRIGSTATEBTN";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:TRIGSTATEBTN";
@@ -1616,7 +1620,7 @@ int caputFFB_enterTrig(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:TRIGSTATEBTN";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1665,31 +1669,31 @@ int caputFFB_leaveTrig(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:STOPBTN";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:STOPBTN";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:STOPBTN";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:STOPBTN";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:STOPBTN";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:STOPBTN";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:STOPBTN";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:STOPBTN";
@@ -1698,7 +1702,7 @@ int caputFFB_leaveTrig(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:STOPBTN";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1746,31 +1750,31 @@ int caputFFB_trig(int chAlias, int val1) {
       {      
       case 1:
 	chName = "BMOD1:CHAN0:TRIGBTN";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
 	break;      
       case 2:
 	chName = "BMOD1:CHAN1:TRIGBTN";
-	chDesc = "MHF0I08V";
+	chDesc = "MHF1C08V";
 	break;      
       case 3:
 	chName = "BMOD1:CHAN2:TRIGBTN";
-	chDesc = "MHF0I010H";
+	chDesc = "MHF1C10H";
 	break;      
       case 4:
 	chName = "BMOD1:CHAN3:TRIGBTN";
-	chDesc = "MHF0I010V";
+	chDesc = "MHF1C10V";
 	break;      
       case 5:
 	chName = "BMOD2:CHAN0:TRIGBTN";
-	chDesc = "MHF0I01H";
+	chDesc = "MHF1C01H";
 	break;      
       case 6:
 	chName = "BMOD2:CHAN1:TRIGBTN";
-	chDesc = "MHF0I02H";
+	chDesc = "MHF1C02H";
 	break;      
       case 7:
 	chName = "BMOD2:CHAN2:TRIGBTN";
-	chDesc = "MHF0I03V";
+	chDesc = "MHF1C03V";
 	break;      
       case 8:
 	chName = "BMOD2:CHAN3:TRIGBTN";
@@ -1779,7 +1783,7 @@ int caputFFB_trig(int chAlias, int val1) {
 	
       default:
 	chName = "BMOD1:CHAN0:TRIGBTN";
-	chDesc = "MHF0I08H";
+	chDesc = "MHF1C08H";
       }
     
     status = ca_task_initialize();
@@ -1831,31 +1835,31 @@ int caputFFB_relay(int chAlias, int val1) {
     {      
     case 1:
       chName = "BMRELAYSET.B0";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 2:
       chName = "BMRELAYSET.B2";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 3:
       chName = "BMRELAYSET.B4";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 4:
       chName = "BMRELAYSET.B6";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 5:
       chName = "BMRELAYSET.B8";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 6:
       chName = "BMRELAYSET.BA";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 7:
       chName = "BMRELAYSET.BC";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 8:
       chName = "BMRELAYSET.BE";
@@ -1863,31 +1867,31 @@ int caputFFB_relay(int chAlias, int val1) {
       break;      
     case 9:
       chName = "BMRELAYSET.B1";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
       break;      
     case 10:
       chName = "BMRELAYSET.B3";
-      chDesc = "MHF0I08V";
+      chDesc = "MHF1C08V";
       break;      
     case 11:
       chName = "BMRELAYSET.B5";
-      chDesc = "MHF0I010H";
+      chDesc = "MHF1C10H";
       break;      
     case 12:
       chName = "BMRELAYSET.B7";
-      chDesc = "MHF0I010V";
+      chDesc = "MHF1C10V";
       break;      
     case 13:
       chName = "BMRELAYSET.B9";
-      chDesc = "MHF0I01H";
+      chDesc = "MHF1C01H";
       break;      
     case 14:
       chName = "BMRELAYSET.BB";
-      chDesc = "MHF0I02H";
+      chDesc = "MHF1C02H";
       break;      
     case 15:
       chName = "BMRELAYSET.BD";
-      chDesc = "MHF0I03V";
+      chDesc = "MHF1C03V";
       break;      
     case 16:
       chName = "BMRELAYSET.BF";
@@ -1896,7 +1900,7 @@ int caputFFB_relay(int chAlias, int val1) {
 
     default:
       chName = "BMRELAYSET.B0";
-      chDesc = "MHF0I08H";
+      chDesc = "MHF1C08H";
     }
 
   status = ca_task_initialize();
@@ -1960,31 +1964,31 @@ int caputFFB_relay(int chAlias, int val1) {
 /*     {       */
 /*     case 0: */
 /*       chName = "BMOD1:CHAN0:"; */
-/*       chDesc = "MHF0I08H"; */
+/*       chDesc = "MHF1C08H"; */
 /*       break;       */
 /*     case 1: */
 /*       chName = "BMOD1:CHAN1:"; */
-/*       chDesc = "MHF0I08V"; */
+/*       chDesc = "MHF1C08V"; */
 /*       break;       */
 /*     case 2: */
 /*       chName = "BMOD1:CHAN2:"; */
-/*       chDesc = "MHF0I010H"; */
+/*       chDesc = "MHF1C10H"; */
 /*       break;       */
 /*     case 3: */
 /*       chName = "BMOD1:CHAN3:"; */
-/*       chDesc = "MHF0I010V"; */
+/*       chDesc = "MHF1C10V"; */
 /*       break;       */
 /*     case 4: */
 /*       chName = "BMOD2:CHAN0:"; */
-/*       chDesc = "MHF0I01H"; */
+/*       chDesc = "MHF1C01H"; */
 /*       break;       */
 /*     case 5: */
 /*       chName = "BMOD2:CHAN1:"; */
-/*       chDesc = "MHF0I02H"; */
+/*       chDesc = "MHF1C02H"; */
 /*       break;       */
 /*     case 6: */
 /*       chName = "BMOD2:CHAN2:"; */
-/*       chDesc = "MHF0I03V"; */
+/*       chDesc = "MHF1C03V"; */
 /*       break;       */
 /*     case 7: */
 /*       chName = "BMOD2:CHAN3:"; */
@@ -1993,7 +1997,7 @@ int caputFFB_relay(int chAlias, int val1) {
 
 /*     default: */
 /*       chName = "BMOD1:CHAN0:"; */
-/*       chDesc = "MHF0I08H"; */
+/*       chDesc = "MHF1C08H"; */
 /*     } */
 
 /*   strcat(chName, var); */
@@ -2012,31 +2016,31 @@ int caputFFB_relay(int chAlias, int val1) {
 /*     {       */
 /*     case 0: */
 /*       chName = "B0"; */
-/*       chDesc = "MHF0I08H"; */
+/*       chDesc = "MHF1C08H"; */
 /*       break;       */
 /*     case 1: */
 /*       chName = "B2"; */
-/*       chDesc = "MHF0I08V"; */
+/*       chDesc = "MHF1C08V"; */
 /*       break;       */
 /*     case 2: */
 /*       chName = "B4"; */
-/*       chDesc = "MHF0I010H"; */
+/*       chDesc = "MHF1C10H"; */
 /*       break;       */
 /*     case 3: */
 /*       chName = "B6"; */
-/*       chDesc = "MHF0I010V"; */
+/*       chDesc = "MHF1C10V"; */
 /*       break;       */
 /*     case 4: */
 /*       chName = "B8"; */
-/*       chDesc = "MHF0I01H"; */
+/*       chDesc = "MHF1C01H"; */
 /*       break;       */
 /*     case 5: */
 /*       chName = "BA"; */
-/*       chDesc = "MHF0I02H"; */
+/*       chDesc = "MHF1C02H"; */
 /*       break;       */
 /*     case 6: */
 /*       chName = "BC"; */
-/*       chDesc = "MHF0I03V"; */
+/*       chDesc = "MHF1C03V"; */
 /*       break;       */
 /*     case 7: */
 /*       chName = "BE"; */
@@ -2044,31 +2048,31 @@ int caputFFB_relay(int chAlias, int val1) {
 /*       break;       */
 /*     case 8: */
 /*       chName = "B1"; */
-/*       chDesc = "MHF0I08H"; */
+/*       chDesc = "MHF1C08H"; */
 /*       break;       */
 /*     case 9: */
 /*       chName = "B2"; */
-/*       chDesc = "MHF0I08V"; */
+/*       chDesc = "MHF1C08V"; */
 /*       break;       */
 /*     case 10: */
 /*       chName = "B5"; */
-/*       chDesc = "MHF0I010H"; */
+/*       chDesc = "MHF1C10H"; */
 /*       break;       */
 /*     case 11: */
 /*       chName = "B7"; */
-/*       chDesc = "MHF0I010V"; */
+/*       chDesc = "MHF1C10V"; */
 /*       break;       */
 /*     case 12: */
 /*       chName = "B9"; */
-/*       chDesc = "MHF0I01H"; */
+/*       chDesc = "MHF1C01H"; */
 /*       break;       */
 /*     case 13: */
 /*       chName = "BB"; */
-/*       chDesc = "MHF0I02H"; */
+/*       chDesc = "MHF1C02H"; */
 /*       break;       */
 /*     case 14: */
 /*       chName = "BD"; */
-/*       chDesc = "MHF0I03V"; */
+/*       chDesc = "MHF1C03V"; */
 /*       break;       */
 /*     case 15: */
 /*       chName = "BF"; */
@@ -2077,7 +2081,7 @@ int caputFFB_relay(int chAlias, int val1) {
 
 /*     default: */
 /*       chName = "B1"; */
-/*       chDesc = "MHF0I08H"; */
+/*       chDesc = "MHF1C08H"; */
 /*     } */
 
 /*   chName2 = "BMRELAYSET."; */
