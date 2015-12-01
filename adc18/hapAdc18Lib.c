@@ -12,6 +12,11 @@
 
      3. Add new function adc18_stop  (inverse of go).
 
+   Apr 24, 2010
+
+     modify the alarm about ADC18 buff full in the
+     case where csr = 0xffffffff.
+
 
  */
 
@@ -32,9 +37,10 @@
 #include "hapAdc18Lib.h"
 #include "ADC18_cf_commands.h"
 
-
 /* default ADC config bits */
 #define DEFAULT_CONFIG_BITS 0xC00
+
+static int verbose=1;
 
 /* set the pedestal */
 int adc18_setpedestal(int id, int ped1, int ped2, int ped3, int ped4);
@@ -542,11 +548,12 @@ int adc18_DataAvail(int id) {
     //        0        1         0       data not ready
     //       any      any        1       serious error, buffer full
 
-    if ((threebits & 0x4) != 0) {
-      logMsg("\n ADC18 ERROR: Buffer full ! Id %d Csr = 0x%x\n",id,csrvalue,0,0,0,0);
-    }
+    if ((threebits & 0x4) != 0 && csrvalue != 0xffffffff) {
+      //      logMsg("\n ADC18 ERROR: Buffer full ! Id %d Csr = 0x%x\n",id,csrvalue,0,0,0,0);
+      return 3;
+      }
     if (csrvalue == 0xffffffff) {
-      logMsg("\n ADC18 ERROR: Id %d Csr = 0x%x (momentarily non-addressable)\n",
+      logMsg("\n ADC18 Warning (prob. ok): Id %d Csr = 0x%x (momentarily non-addressable)\n",
                        id,csrvalue,0,0,0,0);
     } else {
       if ((threebits & 0x3) == 3) {
@@ -641,9 +648,10 @@ int adc18_loaddac(int id, int type) {
   
   adc18p[id]->ctrl = 0;  /* set GO = 0 */
   
-  printf("adc18_loaddac:  DAC pattern = %d \n",pattern);
+  if(verbose) printf("adc18_loaddac:  DAC pattern = %d  ncnt = %d \n",pattern, ncnt);
   
   dac_value = dac_max;
+
   for (i = 0; i <= ncnt; i++) {  
     
     //for steady fluctuations
@@ -719,7 +727,7 @@ int adc18_setped(int id, int chan, int ped1) {
 /* We'll needs some sort of switch here to distinguish between
    version1 (has no pedestal register) and version2 */
 
-  printf("Loading ADC pedestal=%d for chan  %d successfully\n",ped1,chan);
+  if(verbose) printf("Loading ADC pedestal=%d for chan  %d successfully\n",ped1,chan);
 
   if (adc18_chkid(id) < 1) return -1;
 
@@ -744,13 +752,13 @@ int adc18_setpedestal(int id, int ped1, int ped2, int ped3, int ped4) {
 /* We'll needs some sort of switch here to distinguish between
    version1 (has no pedestal register) and version2 */
 
-  printf("Loading ADC pedestals %d %d %d %d successfully\n",ped1,ped2,ped3,ped4);
+  if(verbose) printf("Loading ADC pedestals %d %d %d %d successfully\n",ped1,ped2,ped3,ped4);
 
   if (adc18_chkid(id) < 1) return -1;
 
   if (ped1 < 0 || ped1 > 4095 || ped2 < 0 || ped2 > 4095 ||
       ped3 < 0 || ped3 > 4095 || ped4 < 0 || ped4 > 4095 ) {
-    printf("adc18_setpedstal::ERROR  pedestals must be 0 - 4095 \n");
+    if(verbose) printf("adc18_setpedstal::ERROR  pedestals must be 0 - 4095 \n");
     return -1;
   }
 
@@ -806,7 +814,7 @@ int adc18_intgain(int id, long gain) {
 
   adc18_reset(id);
 
-  printf("adc18_intgain  adc %d   gain = %d \n",id,gain);
+  if(verbose) printf("adc18_intgain  adc %d   gain = %d \n",id,gain);
 
   if (gain < 0 || gain > 3) {
       printf("ADC18:ERR:  int_gain is outside of range. \n",id,gain);
@@ -834,7 +842,7 @@ int adc18_setconv(int id, long conv) {
 
   adc18_reset(id);
 
-  printf("adc18_setconv  adc %d   conv = %d \n",id,conv);
+  if(verbose) printf("adc18_setconv  adc %d   conv = %d \n",id,conv);
 
   if (conv < 0 || conv > 15) {
       printf("ADC18:ERR:  vc_gain is outside of range. \n");
@@ -867,28 +875,28 @@ int adc18_setsample(int id, int nsample) {
 
   if (adc18_chkid(id) < 1) return -1;
 
-  printf("adc18_setsample  adc %d   sample = %d \n",id,nsample);
+  if(verbose) printf("adc18_setsample  adc %d   sample = %d \n",id,nsample);
 
   switch (nsample) {
 
     case 1:
-      printf("Using sample by 1 \n");
+      if(verbose) printf("Using sample by 1 \n");
       n_mode=0;
       break;
     case 2:
-      printf("Using sample by 2 \n");
+      if(verbose) printf("Using sample by 2 \n");
       n_mode=1;
       break;
     case 4: 
-      printf("Using sample by 4 \n");
+      if(verbose) printf("Using sample by 4 \n");
       n_mode=2;
       break;
     case 8:
-      printf("Using sample by 8 \n");
+      if(verbose) printf("Using sample by 8 \n");
       n_mode=3;
       break;
     default:
-      printf("ADC18:ERR: nsample can only be 1, 2, 4, or 8 \n");
+      if(verbose) printf("ADC18:ERR: nsample can only be 1, 2, 4, or 8 \n");
       return -1;
 
   }

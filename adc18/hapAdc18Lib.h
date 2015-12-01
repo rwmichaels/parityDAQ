@@ -6,6 +6,13 @@
 /* Sept 2007,  RWM,   modified to have crate-dependent parameters 
                       like NADC, and ADC* 
 
+
+  dirty trick, when needed: define 1st adc twice but read it the 2nd time 
+
+  July 30, 2014  RWM, reviving CH config, start with 2 ADCs
+  Aug 15,  2015          trying more ADCs
+  October 2015           prepareing for Fall 2015 run with CH and RHRS
+
 */
 
 
@@ -15,19 +22,24 @@
 #ifdef  TESTCRATE
 #define NADC 3   
 #endif
+// October 2015
 #ifdef  COUNTINGHOUSE
-#define NADC 3
+#define NADC 6
 #endif
 #ifdef  INJECTOR
 #define NADC 0    
 #endif
-// dropped L-HRS Oct 28, 2009
+// added L-HRS to 5, Sep 28, 2011
 #ifdef  LEFTSPECT
-#define NADC 3    
+#define NADC 5    
 #endif
-// reduced to 4, Oct 28, 2009
+// October 2015
 #ifdef  RIGHTSPECT
-#define NADC 5   
+#define NADC 6   
+#endif
+// for UVa Crate, 19Aug10, kdp
+#ifdef  UVACRATE
+#define NADC 1   
 #endif
 
 #define TIME_INT 11.0	 /* sample time (us) for internal timing sequence */	
@@ -37,8 +49,8 @@
 #ifdef   TESTCRATE
 
 #define  ADC0 0xCE0000
-#define  ADC1 0xB44000
-#define  ADC2 0xB04000
+#define  ADC1 0x118000
+#define  ADC2 0xCC0000
 #define  ADC3 0xfff000
 #define  ADC4 0xfff000
 #define  ADC5 0xfff000
@@ -48,8 +60,8 @@
 #define  ADC9 0xff0000
 
 #define  ADCLAB0 17
-#define  ADCLAB1 9
-#define  ADCLAB2 10
+#define  ADCLAB1 12
+#define  ADCLAB2 14
 #define  ADCLAB3 0xf
 #define  ADCLAB4 0xf
 #define  ADCLAB5 0xf
@@ -60,25 +72,24 @@
 
 #endif
 
-/* Yes, ADC0 = ADC1.  Please leave it.  (Bob M. Mar,'10) */
 #ifdef   COUNTINGHOUSE
-#define  ADC0 0xB44000
-#define  ADC1 0xB44000
-#define  ADC2 0xCB0000
-#define  ADC3 0xfff000
-#define  ADC4 0xfff000
-#define  ADC5 0xfff000
+#define  ADC0 0x6A4000 
+#define  ADC1 0x320000
+#define  ADC2 0x3b8000  
+#define  ADC3 0x218000
+#define  ADC4 0xCD0000  
+#define  ADC5 0xB48000   /* brd 3 2008 */
 #define  ADC6 0xfff000
-#define  ADC7 0xfff000
-#define  ADC8 0xfff000
-#define  ADC9 0xfff000
-#define  ADCLAB0 1
-#define  ADCLAB1 0
+#define  ADC7 0xfff000   // fff = Undefined.
+#define  ADC8 0xff0000
+#define  ADC9 0xff0000
+#define  ADCLAB0 8
+#define  ADCLAB1 10
 #define  ADCLAB2 0xf
 #define  ADCLAB3 0xf
 #define  ADCLAB4 0xf
 #define  ADCLAB5 0xf
-#define  ADCLAB6 0xf
+#define  ADCLAB6 0xf   
 #define  ADCLAB7 0xf
 #define  ADCLAB8 0xf
 #define  ADCLAB9 0xf
@@ -109,20 +120,20 @@
 
 #ifdef   LEFTSPECT
 #define  ADC0 0x22C000
-#define  ADC1 0x15C000
-#define  ADC2 0xB24000
-#define  ADC3 0xfff000
-#define  ADC4 0xfff000
+#define  ADC1 0xCD0000
+#define  ADC2 0xED0000
+#define  ADC3 0x320000
+#define  ADC4 0xB24000
 #define  ADC5 0xfff000
 #define  ADC6 0xfff000
 #define  ADC7 0xfff000
 #define  ADC8 0xfff000
 #define  ADC9 0xfff000
 #define  ADCLAB0 4
-#define  ADCLAB1 5
-#define  ADCLAB2 7
-#define  ADCLAB3 0xf
-#define  ADCLAB4 0xf
+#define  ADCLAB1 15
+#define  ADCLAB2 13
+#define  ADCLAB3 21
+#define  ADCLAB4 7
 #define  ADCLAB5 0xf
 #define  ADCLAB6 0xf
 #define  ADCLAB7 0xf
@@ -132,21 +143,48 @@
 
 #ifdef   RIGHTSPECT
 #define  ADC0 0xb14000
-#define  ADC1 0xb34000
-#define  ADC2 0x218000
-// Oct 28, old ADC3 (02c000) was removed; put 318000 here.
+#define  ADC1 0x15C000
+#define  ADC2 0xB18000
 #define  ADC3 0x318000
-#define  ADC4 0xCD0000
-#define  ADC5 0xfff000
+#define  ADC4 0xCC0000
+#define  ADC5 0x118000
 #define  ADC6 0xfff000
 #define  ADC7 0xfff000
 #define  ADC8 0xfff000
 #define  ADC9 0xfff000
 #define  ADCLAB0 11
-#define  ADCLAB1 8
+#define  ADCLAB1 20
 #define  ADCLAB2 2
 #define  ADCLAB3 3
-#define  ADCLAB4 15
+#define  ADCLAB4 5
+#define  ADCLAB5 0xf
+#define  ADCLAB6 0xf
+#define  ADCLAB7 0xf
+#define  ADCLAB8 0xf
+#define  ADCLAB9 0xf
+#endif
+
+// only have adcx6 @UVA
+// copy RIGHTSPECT and modify it
+// switch ADC0 with ADC3
+// wipe out other adcs
+#ifdef   UVACRATE
+#define  ADC0 0x02C000
+#define  ADC1 0xfff000
+#define  ADC2 0xfff000
+// Oct 28, old ADC3 (02c000) was removed; put 318000 here.
+#define  ADC3 0xfff000
+#define  ADC4 0xfff000
+#define  ADC5 0xfff000
+#define  ADC6 0xfff000
+#define  ADC7 0xfff000
+#define  ADC8 0xfff000
+#define  ADC9 0xfff000
+#define  ADCLAB0 6
+#define  ADCLAB1 0xf
+#define  ADCLAB2 0xf
+#define  ADCLAB3 0xf
+#define  ADCLAB4 0xf
 #define  ADCLAB5 0xf
 #define  ADCLAB6 0xf
 #define  ADCLAB7 0xf
