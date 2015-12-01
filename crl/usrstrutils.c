@@ -45,6 +45,7 @@
 #define TBREADOUT "tbreadout"
 #define FLEXIO "flexio"
 #define FLEXIO2 "flexio2"
+#define QWEAKADC "qweakadc"
 #define ADC18BIT "adc18bit"
 #define ADC16BIT "adc16bit"
 #define MTREAD "mtread"  /* empty readout (for test) */
