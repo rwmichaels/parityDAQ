@@ -1,7 +1,7 @@
 /* bmw.h - include file for beam modulation works */
 
 /*
-  $Header$
+  $Header: /group/halla/parity/cvs/devices/bmw/bmw.h,v 1.2 2010/03/10 17:07:47 paschke Exp $
  */
 
 /***** includes *****/
@@ -40,11 +40,15 @@ LOCAL int                 bmw_flag_3 = 5;
 LOCAL struct bmwSequence bmw_seq[MAX_SEQS];
 
 LOCAL int bmw_seq_coil_1[MAX_SEQS] = {   1,   2,   3,   4,   5,   6,   7,   8};
+//LOCAL int bmw_seq_coil_1[MAX_SEQS] = {   1,   1,   1,   1,   1,   1,   1,   1};
 LOCAL int bmw_seq_coil_2[MAX_SEQS] = {   0,   0,   0,   0,   0,   0,   0,   0};
 //LOCAL int bmw_seq_amp_1[MAX_SEQS]  = {  1,  2,  3,  4,  5,  6,  7,  8};
-LOCAL int bmw_seq_amp_1[MAX_SEQS]  = {  10,  10,  10,  10,  10,  10,  10,  10};
+//LOCAL int bmw_seq_amp_1[MAX_SEQS]  = {  100,  100,  100,  100,  100,  100,  100,  100};
+LOCAL int bmw_seq_amp_1[MAX_SEQS]  = {  70,  100,  70,  100,  70,  70,  100, 70};
+//LOCAL int bmw_seq_amp_1[MAX_SEQS]  = {  10,  10,  10,  10,  10,  10,  10,  10};
 LOCAL int bmw_seq_amp_2[MAX_SEQS]  = {   0,   0,   0,   0,   0,   0,   0,   0};
-LOCAL int bmw_seq_periods[MAX_SEQS]= {  10,  10,  10,  10,  10,  10,  10,  10};
+LOCAL int bmw_seq_periods[MAX_SEQS]= {  50,  50,  50,  50,  50,  50, 50,  50};
+//LOCAL int bmw_seq_periods[MAX_SEQS]= {  20,  20,  20,  20,  20,  20, 20,  20};
 LOCAL int bmw_seq_activated[MAX_SEQS]= { 1,   1,   1,   1,   1,   1,   1,   1};
 
 LOCAL int bmw_energy_channel = 8;  // channel number that maps to energy in caFFB
@@ -68,11 +72,15 @@ int   bmw_arm_trig=0;
 int   bmw_seq_ind = -1;             /* current Sequence index */
 BOOL  bmw_clean = FALSE;           /* TRUE if this sequence should have been triggered */
 
-int bmw_object=0;
+int bmw_object=-1;
 int bmw_freq=0;
+int bmw_phase=0;
+int bmw_period=0;
+int bmw_phase_num=0;
+int bmw_phase_cnt=-1;
 
 int   bmw_cycle_count = 0;            // A running count of dithering cycles
-int   bmw_cycle_number;               // Holds cycle number, or zero if cycle is over
+int   bmw_cycle_number = -1;               // Holds cycle number, or zero if cycle is over
 
 /* This global flag is used to communicate the desired function */
 int bmw_flight_plan = 0;
@@ -93,12 +101,12 @@ int bmw_test_object=1;
 int bmw_test_value =0;
 
 // I'm pretty sure that the clock ticks at 72 Hz
-int bmw_ticks_per_step   =     72;  /* pause counts in steps to allow check of die word */
-int bmw_steps_per_pause  =   40; /*480; /* Number of steps to rest after last object, 480 sec = 8 min*/
-int bmw_FFBpause_wait    =    1*72; /* number of steps before cycle for FFB pause = 1 sec */
-int bmw_FFBresume_wait   =    3*72; /* number of ticks after cycle for FFB resume  = 3 sec*/
-int bmw_config_wait      =    1*72; /* number of ticks to allow function generator configuration  1 sec */
-int bmw_arm_wait         =    24;  /* number of ticks to allow function generator to arm  1/3 sec */
+int bmw_ticks_per_step   =   72;  /* pause counts in steps to allow check of die word */
+int bmw_steps_per_pause  =   480; /* Number of steps to rest after last object, 480 sec = 8 min*/
+int bmw_FFBpause_wait    =   1*72; /* number of steps before cycle for FFB pause = 1 sec */
+int bmw_FFBresume_wait   =   3*72; /* number of ticks after cycle for FFB resume  = 3 sec*/
+int bmw_config_wait      =   1*72; /* number of ticks to allow function generator configuration  1 sec */
+int bmw_arm_wait         =   24;  /* number of ticks to allow function generator to arm  1/3 sec */
 
 /***** forward declarations *****/
 STATUS bmwClient();

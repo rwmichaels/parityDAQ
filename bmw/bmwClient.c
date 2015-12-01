@@ -8,7 +8,7 @@ sp bmwClient
  */
 
 /*
-  $Header$
+  $Header: /group/halla/parity/cvs/devices/bmw/bmwClient.c,v 1.8 2010/03/10 17:07:48 paschke Exp $
  */
 
 /***** includes *****/
@@ -169,11 +169,11 @@ STATUS trigBMW(int trig){
   // for trig, set it to 0
   // bmw_trig = 2, means 0x02
   flexioWriteChan(trig, bmw_trig);
-  if(bmw_c_verbose){
-    if(trig==0) fprintf(stdout, "trigBMW():: Trigger Disabled.\n");
-    else if(trig==1) fprintf(stdout, "trigBMW():: Trigger Enabled.\n");
-    else return (ERROR);
-  }
+  //  if(bmw_c_verbose){
+  //    if(trig==0) fprintf(stdout, "trigBMW():: Trigger Disabled.\n");
+  //    else if(trig==1) fprintf(stdout, "trigBMW():: Trigger Enabled.\n");
+  //    else return (ERROR);
+  //  }
   return(OK);
 }
 
@@ -183,8 +183,8 @@ STATUS initBMW()
 
   if(bmw_c_verbose){
     fprintf(stdout, "initBMW():: Initializing BMW\n");
-    fprintf(stdout, "initBMW():: MAX_SEQS::%d\n", MAX_SEQS);
-    fprintf(stdout, "initBMW():: MAX_OBJS::%d\n", MAX_OBJS);
+    fprintf(stdout, "initBMW():: MAX_SEQS:: %d\n", MAX_SEQS);
+    fprintf(stdout, "initBMW():: MAX_OBJS:: %d\n", MAX_OBJS);
   }
 
   // initial modulation definitions
@@ -204,12 +204,17 @@ STATUS initBMW()
 
 STATUS bmwClient() 
 {
-  bmw_flight_plan = 0;
+  //  bmw_flight_plan = 0;
   while (TRUE) {
     if (!bmw_die_die_die) {
-      if (bmw_flight_plan==1) bmwClient_script();
-/*       if (bmw_flight_plan==2) bmwClient_test(); */
-/*       if (bmw_flight_plan==3) bmwClient_test2(); */
+      if (bmw_flight_plan==1){
+	bmw_test=0;
+	bmwClient_script();
+      }
+      if (bmw_flight_plan==2){
+	bmw_test=1;
+	bmwClient_script(); 
+      }
     }
     taskDelay (72*10);  // (seconds*72) wait to check for start
   }
@@ -224,6 +229,7 @@ STATUS bmwClient_script ()
   int waittime;
   int coil, nobs;
   int count=0, count2=0;
+  int delaycounter=0;
 
   // turn beam modulation on if it is not
   if(!bmw_test)  if(cagetFFB_modState()!=1){
@@ -246,12 +252,16 @@ STATUS bmwClient_script ()
   //
 /*   while (!bmw_die_die_die)  { */
 
-  while(count<2){
+  while(!bmw_die_die_die){
     count++;
     if(bmw_test) fprintf(stdout,"bmwClient:: ***Running is test mode*** \n");
 
     // Start supercycle
     bmw_cycle_number = ++bmw_cycle_count;
+    if(bmw_test){
+      fprintf(stdout,"bmwClient:: bmw_cycle_number: \t %d\n", bmw_cycle_number);
+      fprintf(stdout,"bmwClient:: bmw_cycle_count: \t %d\n", bmw_cycle_count);
+    }
 
     //
     // Notify World that supercycle is starting
@@ -280,6 +290,7 @@ STATUS bmwClient_script ()
     //********* modify to loop over defined sequences ***** //
     for ( iseq = 0;  iseq<=MAX_SEQS && !bmw_die_die_die; ++iseq ){
       bmw_alive =1;
+      bmw_object = -1; 
 
       // check if sequence is active, else skip
       if ( bmw_seq[iseq].active ==1 ) {
@@ -367,48 +378,63 @@ STATUS bmwClient_script ()
 
 	if(bmw_c_verbose) getConfigSeqBMW(iseq);
 	
-	// enter trig state, takes about 1 sec to get to TRIGGER_STATE from CONFIG_STATE
-	//	if(!bmw_test) caputFFB_enterTrig(coil,1);
-
+	// enter  TRIGGER_STATE
 	if(!bmw_test){
 	  while ((cagetFFB_waveState(coil)!=2) && count2<5){
 	    count2++;
-	    caputFFB_enterTrig(coil,1); // this sets the trig state to 0, and
-	    taskDelay(100); // 72 is 1 sec
+	    caputFFB_enterTrig(coil,1); 
+	    taskDelay(150); // 72 is 1 sec
 	    if(count2==5) fprintf(stdout,"Exiting the loop. Count limit exceeded!!\n");
 	  }
 	}
 
+	fprintf ( stdout, "bmwClient:: In trig state now\n");
 	count2=0;
 
-	//	if(!bmw_test) cagetFFB_waveState(coil);
-
-	// calculate wait time, in seconds, * 72, + 4 clock ticks for safety margin
-	fwait = bmw_seq[iseq].periods / bmw_seq[iseq].freq * 72 + 4;
-	waittime = (int) fwait;
-	
-	fprintf ( stdout, "bmwClient:: In trig state now\n");
-	// Now we are all set to initiate the software trigger
-	
-	// set bmw_arm_trig to 1
-	// in crl, 
-	// if(bmw_arm_trig==1){
-	//   flexioWriteMask(1,flexio_trig_bit);
-	//   bmw_arm_trig=0;
-	// }
-
-	// set the bmw_freq to the currnt coil freq
+	// set the variable bmw_freq to the currnt coil freq
 	bmw_freq = cagetFFB_freq(coil);
-	// set the bmw_object to the current coil
-	bmw_object = coil; 
 
-	fprintf ( stdout, "bmwClient:: Selecting bmw_arm_trig to 1\n");
+	// calculate wait time, in seconds, * 72, + 36 clock ticks for safety margin
+	//	fwait = bmw_seq[iseq].periods / bmw_seq[iseq].freq * 72 + 4;
+	fwait = bmw_seq[iseq].periods / bmw_seq[iseq].freq * 73 + 36;
+	waittime = (int) fwait;
+	//	waittime = (int) fwait/bmw_seq[iseq].freq;
+
+	// initiate software enter trig 
+	//	if(!bmw_test) caputFFB_trig(coil,1);
+	
+	bmw_phase=0;
+	bmw_phase_num=240/bmw_seq[iseq].freq;
+
+	fprintf (stdout, "bmwClient:: bmw_phase_num = %d\n", bmw_phase_num);
+
+	// set the variable bmw_object to the current coil
+	bmw_object = coil; 
+	bmw_period=0;
+	bmw_phase_cnt=0;
+
+	// initiate hardware trigger (using crl)
+	fprintf (stdout, "bmwClient:: Selecting bmw_arm_trig to 1\n");
 	bmw_arm_trig=1;
+	// set bmw_arm_trig to 1
+	// in crl: x
+	// >    if(bmw_arm_trig==1){
+	// >       flexioWriteMask(1,flexio_trig_bit);
+	// >       bmw_arm_trig=0;
+	// >    }
+	//
 	
 	// wait for end of modulation cycle
 	//****************************//      
+	//	for(delaycounter=0;delaycounter<bmw_seq[iseq].periods;delaycounter++){
 	taskDelay( waittime );
+	  //	  bmw_phase++;
+	  //	}
+
 	//	bmw_clean = FALSE; // need to modify this ***********
+	bmw_phase_cnt=-1;
+	bmw_phase=0;
+	bmw_period=0;
 	bmw_object = -1; 
 	bmw_alive =1;
 
@@ -418,14 +444,16 @@ STATUS bmwClient_script ()
 	// now the modulation for this particular magnet is done
 	// so come out of TRIGGER_STATE
 	// this, by default, is the CONFIG_STATE
-	if(!bmw_test){
-	  while(cagetFFB_waveState(coil)!=1 && count2<5)	{
-	    count2++;
-	    caputFFB_leaveTrig(coil,1);
-	    taskDelay(36);
-	    if(count2==5) fprintf(stdout,"Exiting the loop. Count limit exceeded!!\n");
-	  }
-	}
+	caputFFB_leaveTrig(coil,1);
+	taskDelay(72);
+	//	if(!bmw_test){
+	//	  while(cagetFFB_waveState(coil)!=1 && count2<5)	{
+	//	    count2++;
+	//	    caputFFB_leaveTrig(coil,1);
+	//	    taskDelay(36);
+	//	    if(count2==5) fprintf(stdout,"Exiting the loop. Count limit exceeded!!\n");
+	//	  }
+	//	}
 
 	count2=0;
 
@@ -434,7 +462,7 @@ STATUS bmwClient_script ()
        
 	//	if(!bmw_test) cagetFFB_waveState(coil);
 
-	if(iseq==bmw_energy_channel) { // if energy
+	if(coil==bmw_energy_channel) { // if energy
 	  
 	  //
 	  // notify world of end of energy modulation 
@@ -482,7 +510,9 @@ STATUS bmwClient_script ()
     //
     // After last object (whether successful or not), take a break
     //
-    bmw_cycle_number =0;
+    bmw_cycle_number = -1;
+    if(bmw_test) fprintf(stdout,"bmwClient:: bmw_cycle_number: \t %d\n", bmw_cycle_number);
+    //
     if ( bmw_c_verbose || bmw_c_terse )
       fprintf ( stdout, "bmwClient::: starting rest period\n");
     
