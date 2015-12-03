@@ -56,6 +56,7 @@ class GreenADC18 : public TGCompositeFrame {
   
   void Init(ULong_t);
   Bool_t ProcessMessage(Long_t, Long_t, Long_t);
+  Int_t getNumADC();
 
  private:
 
@@ -86,7 +87,6 @@ class GreenADC18 : public TGCompositeFrame {
   
   vector <TGComboBox*> sampleBox;
   
-  Int_t getNumADC();
   Int_t getLabelADC(Int_t);
 
 

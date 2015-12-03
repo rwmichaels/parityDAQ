@@ -92,6 +92,8 @@ private:
   ULong_t grnback;
 
   Bool_t fUseCrate[MAXCRATES];
+  Int_t fUseADC[MAXCRATES];
+  Int_t fUseADCX[MAXCRATES];
   TString* fCrateNames[MAXCRATES];
   Int_t fCrateNumbers[MAXCRATES];
 

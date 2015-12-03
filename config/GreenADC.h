@@ -47,6 +47,7 @@ class GreenADC : public TGCompositeFrame {
   
   void Init(ULong_t);
   Bool_t ProcessMessage(Long_t, Long_t, Long_t);
+  Int_t getNumADC();
 
  private:
 
@@ -63,7 +64,6 @@ class GreenADC : public TGCompositeFrame {
   TGRadioButton *fDACRB[2][GA_MAXADC];
   TGLabel *fSetLab[GA_MAXADC];
 
-  Int_t getNumADC();
   Int_t getLabelADC(Int_t);
   Bool_t getValsADC();
   Bool_t getValADC(Int_t);
