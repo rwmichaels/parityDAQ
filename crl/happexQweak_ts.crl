@@ -29,17 +29,18 @@ variable firstEvents
 
 /* VQWK ADC parameters */
 const  VQWK_SAMPLE_PERIOD   =   0
-const  VQWK_NUM_BLOCKS   =   4
-						  
+
+const VQWK_NUM_BLOCKS   =   4
 /* To change the helicity frequency */
-/* 30 Hz  ...... 4130  */
+/* 30 Hz  ...... 4012  */
 /* 114.5 Hz .... 1000 */
 /* 240 Hz  .... 485 */
 /* 240Hz ....445?  */
 /* 480 Hz ......243*/
 /* 960 Hz ..... 110 */
-const  VQWK_SAMP_PER_BLOCK = 4130
-const  VQWK_GATE_DELAY = 20
+const VQWK_SAMP_PER_BLOCK = 4141
+const VQWK_GATE_DELAY = 10
+
 const  VQWK_INT_GATE_FREQ = 0
 const  BASE_ROCCONFIG_EVENT = 0x90
 /* VQWK modes */
@@ -75,8 +76,8 @@ include "/adaqfs/home/apar/scaler/SISnohel/SIS.h"
 const DEF_DAC12 = 400    /* Set the output voltage to get about 3.3 KHz out of V2f */
 #change DAC value from 26500 to 17080 - LRM 2/17/10
 const DEF_DAC16 = 17080 /* Set the starting voltage to get about 7.0 KHz out of V2f */
-const  MIN_DAC12   = 5
-const  MAX_DAC12   = 80    /* max DAC12 was 100 */ 
+const  MIN_DAC12   = 500
+const  MAX_DAC12   = 8000    /* max DAC12 was 100 */ 
 const  STEP_DAC12  = 4
 const  V_MODE      =    0
 # all other timing parameters are set in separate utilities
@@ -102,6 +103,7 @@ const FIFO_EMPTY = hex 100
 
   /* 18-Bit ADC Parameters*/ 
 
+const MAXNUMADC18 = 25
 const MAX18CNT = 100
 const INTERNAL=0
 const EXTERNAL=1
@@ -109,6 +111,8 @@ const TIME18 = INTERNAL
 const A18_NORM_NWORD = 14
 
 static int BAD18DATA = -999;
+
+static int conv_gain[MAXNUMADC18],int_gain[MAXNUMADC18];
 
 int oport_state=0;   /* output port state (global variable) */
 
@@ -415,7 +419,7 @@ oport_state = 0;  /* start at zero */
 tir[1]->tir_oport=oport_state;
 
 /* To change helicity */
-/* assuming rampdelay = 200 (= 500 usec) */
+/* assuming rampdelay = 200 (= 500 usec)  but ramp delay should probably be smaller like 20*/
 /* 30 Hz :   integrate 12840  */
 /* 120 Hz :   integrate 3090  */
 /* 240 Hz :   integrate 1465 (was rampdelay=50, integratetime=1465)  */
@@ -423,8 +427,9 @@ tir[1]->tir_oport=oport_state;
 /* 960 Hz :   rampdelay=150, integrate 240   */
 
 /* Caryn commented out timing board setting and put it in the bootfiles */
-   /* setTimeHAPTB(200, 12840);   */
-   /* setOverSampleHAPTB(0); */
+
+/*   setTimeHAPTB(40, 13260);  */
+/*    setOverSampleHAPTB(0);  */
 
    printf("Setting HAPTB and Oversampling"); 
    dumpRegHAPTB();
@@ -504,56 +509,65 @@ if (adc16bit) {
 
  numadc18 = 0; 
 /* Caryn commented out adc initialization and put it in the bootfiles */
-/* if (adc18bit) { */
+ if (adc18bit) { 
  
 /* Set up 18-bit ADC */
 
- /*     adc18_zeromem(); */
- /*     adc18_initall();   /\* this does a hard reset *\/ */
+     numadc18 = adc18_getNum(); 
 
- /*     taskDelay(2*60); */
+/* store present values of gains */
 
-      numadc18 = adc18_getNum(); 
+      for (iadc = 0; iadc < numadc18; iadc++) { 
 
- /*     for (iadc = 0; iadc < numadc18; iadc++) { */
+         conv_gain[iadc] = adc18_getconv(iadc);
+         int_gain[iadc] = adc18_getintgain(iadc);
 
- /*       printf("Setting up ADC18 # %d \n",iadc); */
+     }
 
- /*       adc18_stop(iadc); */
+      adc18_zeromem();
+      adc18_initall();   /* this does a hard reset */
 
- /*       adc18_timesrc(iadc,0,0,0);  /\* External time source *\/ */
- /*       adc18_gatemode(iadc,1);             */
- /*       adc18_intgain(iadc,3);      /\* intgain: 0-3, where 3 is minimum *\/ */
+      taskDelay(2*60); 
+ 
+      for (iadc = 0; iadc < numadc18; iadc++) { 
 
- /*       adc18_setconv(iadc,4);      /\* conv (gain): 0-15 where 0 is minimum *\/ */
+         printf("Setting up ADC18 # %d \n",iadc); 
 
- /*       adc18_setsample(iadc,1); */
+         adc18_stop(iadc); 
 
- /*       adc18_loaddac(iadc,0);  */
+         adc18_timesrc(iadc,0,0,0);  /* External time source */
+         adc18_gatemode(iadc,1);             
+         adc18_intgain(iadc,int_gain[iadc]);      /* intgain: 0-3, where 3 is minimum */
+         adc18_setconv(iadc,conv_gain[iadc]);   /* conv (gain): 0-15 where 0 is minimum */
+         adc18_setsample(iadc,1); 
 
- /*       adc18_flush(iadc); */
+         adc18_loaddac(iadc,0);  
 
- /*     } */
+         adc18_flush(iadc); 
 
- /*     if (righthrs) { */
- /*       printf("Setting ADC18 pedestals on R-HRS \n"); */
- /*       adc18_setpedestal(0,1821,1547,1769,1581); */
- /*       adc18_setpedestal(1,1446,1197,1935,1571); */
- /*       adc18_setpedestal(2,1173,2059,1872,2365); */
- /*       adc18_setpedestal(3,600,1772,1231,1628); */
- /*       adc18_setpedestal(4,1500,1500,1500,1500);  /\* [Oct 28, '09] was previously 5th adc *\/ */
- /*       adc18_setpedestal(5,1500,1500,1500,1500);  */
- /*     }else if (counthouse) { */
- /*       printf("Setting ADC18 pedestals in counting room crate \n"); */
- /*       adc18_setpedestal(0,10,10,10,10);  */
- /*       adc18_setpedestal(1,10,10,10,10); */
- /*       adc18_setpedestal(2,10,10,10,10); */
- /*       adc18_setpedestal(3,10,10,10,10); */
- /*       adc18_setpedestal(4,10,10,10,10); */
- /*       adc18_setpedestal(5,10,10,10,10); */
- /*     } */
+      } 
 
- /* }   /\* if (adc18bit) *\/ */
+ 
+      if (righthrs) { 
+        printf("Setting ADC18 pedestals on R-HRS \n"); 
+        adc18_setpedestal(0,1821,1547,1769,1581); 
+        adc18_setpedestal(1,1446,1197,1935,1571); 
+        adc18_setpedestal(2,1173,2059,1872,2365); 
+        adc18_setpedestal(3,600,1772,1231,1628); 
+        adc18_setpedestal(4,200,100,100,50);  /* [Oct 28, '09] was previously 5th adc */ 
+        adc18_setpedestal(5,100,100,50,1500);  
+      }else if (counthouse) {     
+        printf("Setting ADC18 pedestals in counting room crate \n"); 
+        adc18_setpedestal(0,1800,1000,1500,1000);   
+         adc18_setpedestal(1,1800,1400,1500,1800);  
+         adc18_setpedestal(2,1700,1300,1800,1600);  
+         adc18_setpedestal(3,1800,2000,1800,2000);  
+         adc18_setpedestal(4,1800,1800,1500,1500);  
+         adc18_setpedestal(5,1800,1700,1100,1100);       
+ 
+      } 
+
+ }   /* if (adc18bit) */
 
 
   oport_state = 0;  /* start at zero */
@@ -567,7 +581,8 @@ if (adc16bit) {
 %%
 %%
 /* Setupt the VQWK modules */
-if (counthouse && qweakadc) nvqwk=3;
+/* Caryn commented the vqwk initialzation out and moved it to the boot files*/
+if (counthouse && qweakadc) nvqwk=5;
 if (righthrs && qweakadc) nvqwk=2;
 
 printf("Number of Qweak ADCs %d\n",nvqwk);
@@ -591,16 +606,16 @@ if READOUT_VQWK is equal to 1 then
 %%
 
 /* Caryn commented the vqwk initialzation out and moved it to the boot files*/
-   /* int id=0; */ 
-   /* vqwkInit(addr_vqwk,addrinc_vqwk,nvqwk); */
-
-   /* while(id<nvqwk){ */
-   /*   vqwkSetSamplePeriod(id,VQWK_SAMPLE_PERIOD); */
-   /*   vqwkSetNumberOfBlocks(id,VQWK_NUM_BLOCKS); */
-   /*   vqwkSetSamplesPerBlock(id,VQWK_SAMP_PER_BLOCK); */
-   /*   vqwkSetGateDelay(id,VQWK_GATE_DELAY); */
-   /*   id++; */
-   /* } */
+ 
+  /* int id=0; */
+  /* vqwkInit(addr_vqwk,addrinc_vqwk,nvqwk);    */
+  /*   while(id<nvqwk){   */
+  /*     vqwkSetSamplePeriod(id,VQWK_SAMPLE_PERIOD);   */
+  /*     vqwkSetNumberOfBlocks(id,VQWK_NUM_BLOCKS);   */
+  /*     vqwkSetSamplesPerBlock(id,VQWK_SAMP_PER_BLOCK);   */
+  /*     vqwkSetGateDelay(id,VQWK_GATE_DELAY);   */
+  /*     id++;   */
+  /*   }   */
    rol->dabufp = (long *) 0;
    UEOPEN((unsigned int)(BASE_ROCCONFIG_EVENT+rol->pid),BT_UI4,0);
    if (rol->dabufp){
