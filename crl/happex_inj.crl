@@ -8,7 +8,7 @@
 # 
 
 readout list VME1
-maximum 10240,100
+maximum 4096,500
 vme readout
 ts control
 
@@ -202,15 +202,23 @@ if(flexio2 == 1) {
 
 /* ADC Configuration */
 // show default configurations
-  showHAPADC(-1);
+   showHAPADC(-1);
 
 /* Timing Board configuration */
 /* THIS VERSION: sets the timing board HERE */
 //   setDACHAPTB(1,DEF_DAC12); 
 //   setDACHAPTB(2,DEF_DAC16);
-   setTimeHAPTB(0,13200);
-   setOverSampleHAPTB(0);
-   printf("Setting Oversampleing");
+
+
+/* for ramp delay = 152 unis, we'll get a total of 500 usec rampdelay
+   so the integ time needs to be 1380 */
+//   setTimeHAPTB(152, 1380);  /* 1535 for 240Hz, 3060 for 120Hz, 13200 for 30Hz */
+//   setTimeHAPTB(0, 1535);  /* 8x at 240Hz */
+//   setTimeHAPTB(160, 2920);  /* 120Hz */ 
+   setTimeHAPTB(160, 3110);  /* 120Hz, changed 6Jun10, rupesh */ 
+//  setTimeHAPTB(160, 1430);  /* Octet 240Hz w/ ramp delay */
+  setOverSampleHAPTB(0);
+   printf("Setting Oversampling"); 
    dumpRegHAPTB();
 
 
@@ -554,7 +562,7 @@ if(bmwscan==1) {
   //
   //////////////////////////////////////////////////
   localBMWobj = bmw_object;
-  localBMWval = bmw_value;
+  /*  localBMWval = bmw_value; */
   localBMWcycnum = bmw_cycle_number;
   
   //  record if event was unclean for any portion of pulse

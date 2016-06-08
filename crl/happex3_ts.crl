@@ -197,13 +197,13 @@ if (autoled) {
   bmwscan = 1;  // must have this
  }
 
-//#ifdef BMWSTUFF
+#ifdef BMWSTUFF
 if(bmwscan==1) {
   printf("WILL readout Beam Modulation and Scan Words: %d\n",bmwscan);
 } else {
   printf("Will NOT readout Beam Modulation and Words: %d\n",bmwscan);
 }
-//#endif
+#endif
 
 if (rampdac12) printf("Will ramp the 12-bit DAC from %d to %d \n",DEF_DAC12,MAX_DAC12);
 
@@ -348,11 +348,9 @@ tir[1]->tir_csr = 0x80;
 oport_state = 0;  /* start at zero */
 tir[1]->tir_oport=oport_state;
 
-/* Default HAPTB setup.  Moved to Download Nov 1, 2009 */
+   setTimeHAPTB(40, 10000);  
+   setOverSampleHAPTB(0);
 
-/* Inj studies apparently dont like this */
-   setTimeHAPTB(0, 1535);  /* 1535 for 240Hz, 13200 for 30Hz */
-   setOverSampleHAPTB(0); 
    printf("Setting HAPTB and Oversampling"); 
    dumpRegHAPTB();
    
@@ -444,7 +442,10 @@ if (adc18bit) {
        adc18_timesrc(iadc,0,0,0);  /* External time source */
        adc18_gatemode(iadc,1);            
        adc18_intgain(iadc,3);      /* intgain: 0-3, where 3 is minimum */
-       adc18_setconv(iadc,0);      /* conv (gain): 0-15 where 0 is minimum */
+
+
+       adc18_setconv(iadc,15);      /* conv (gain): 0-15 where 0 is minimum */
+
        adc18_setsample(iadc,1);
 
        adc18_loaddac(iadc,0);
@@ -458,17 +459,25 @@ if (adc18bit) {
        adc18_setpedestal(0,1821,1547,1769,1581);
        adc18_setpedestal(1,1446,1197,1935,1571);
        adc18_setpedestal(2,1173,2059,1872,2365);
-       adc18_setpedestal(3,600,1772,1231,1628);  /* [Oct 28, '09] was previously 5th adc */
+       adc18_setpedestal(3,600,1772,1231,1628);
+       adc18_setpedestal(4,1577,1504,1183,1372);  /* [Oct 28, '09] was previously 5th adc */
      }
      if (lefthrs) {
        printf("Setting ADC18 pedestals on L-HRS \n");
        adc18_setpedestal(0,1364,1908,1946,1493);
+       adc18_setpedestal(1,1000,1686,1490,1648);
+       adc18_setpedestal(2,1655,1449,1187,1146);
+
      }
      if (counthouse) {
+       printf("Setting ADC18 GAINS in counting room crate \n");
+       adc18_setconv(0,15); 
+       adc18_setconv(1,15); 
        printf("Setting ADC18 pedestals in counting room crate \n");
-       adc18_setpedestal(0,2182,2023,2440,1706);
-       adc18_setpedestal(1,2182,2023,2440,1706); /* dirty trick: 1st 2 same*/
-       adc18_setpedestal(2,1456,1539,1738,1538);
+       adc18_setpedestal(0,500,500,500,500); 
+       adc18_setpedestal(1,500,500,500,500);
+       adc18_loaddac(0,0); 
+       adc18_loaddac(1,0); 
      }
 
  }   /* if (adc18bit) */
@@ -525,8 +534,9 @@ begin go
   unsigned short temp;
 
 
-
-if(noscaler == 0) {
+/* New (Apr 16) dont disable scaler in between runs.
+   A "looper" process continuously flushes scaler when CODA is not running. */
+if(noscaler == 0) {  
 #ifdef TYPE_SIS3801
   /* SIS3801 */
   if(scaler2==1) {
@@ -535,8 +545,8 @@ if(noscaler == 0) {
     nscaler = 1;
   }
   for (i=0; i<nscaler; i++) {
-    taskDelay(2);   /* 2 = 1/30 sec *?
-    pscaler[i]->csr = 0x1000000; /* disable LNE */
+    taskDelay(2);   /* 2 = 1/30 sec */
+    /*    pscaler[i]->csr = 0x1000000; /* disable LNE */
     taskDelay(2);   
     pscaler[i]->clear = 1;
     taskDelay(2);   
@@ -545,7 +555,7 @@ if(noscaler == 0) {
     pscaler[i]->csr = 0x10000; /* enable LNE */
   }
 
-  if (counthouse) {
+  if (counthouse) { /* may become obsolete if above trick works (Apr 16, 2010)*/
 
     nmax = 100;
 
@@ -558,7 +568,7 @@ if(noscaler == 0) {
            didreadsca = 1;
         }
         if (didreadsca == 0) {  
-            pscaler[i]->csr = 0x1000000; /* disable LNE */
+	  /*      pscaler[i]->csr = 0x1000000; /* disable LNE */
             pscaler[i]->clear = 1;
             pscaler[i]->next = 1;  /* flush FIFO */
             pscaler[i]->csr = 0x10000; /* enable LNE */
@@ -612,6 +622,7 @@ set_tir_oport(OPORT_LNE);
 
 if (rampdac12) setDACHAPTB(1,DEF_DAC12);
 
+/*
 if (autoled){ 
 
   init0AutoLED();
@@ -624,6 +635,7 @@ if (autoled){
   }
  }
 
+*/
 
   CDOENABLE(VME,1,0);
   CODA_RUN_IN_PROGRESS = 1;
@@ -655,7 +667,9 @@ unsigned long sdata[NSCALER*32*12];
 unsigned long adc18data[MAX18CNT];
 int pulseclean;
 int localBMWobj;
-int localBMWval;
+int localBMWfreq;
+int localBMWphase;
+int localBMWperiod;
 int localBMWcycnum;
 int nscaler;
 int iocTime;
@@ -667,6 +681,7 @@ static int MAXDAC18=30000;
 static int dacsign18 = 1;
 static int setdac18_local = 0;
  int what1=0;
+unsigned long tempdata;
 
 int* intpointer;
 
@@ -725,16 +740,29 @@ if(flexio==1) {
   *rol->dabufp++ = tirdata & 0xfff;
  }
 
-//#ifdef BMWSTUFF
+#ifdef BMWSTUFF
 if(bmwscan==1) {
   //////////////////////////////////////////////////
   //
   // BMW: early in readout! (the bmw process in asynchronous,
   //      and we don't want nuthin' to change before we see it
-  //
+  //1
   //////////////////////////////////////////////////
+  if(bmw_arm_trig || bmw_phase_num==bmw_phase_cnt){
+    bmw_period++;
+    bmw_phase=0;
+    bmw_phase_cnt=0;
+  }
+
+  if(bmw_phase_cnt!=-1){
+    bmw_phase_cnt++;    
+    bmw_phase++;
+  }
+  
   localBMWobj = bmw_object;
-  localBMWval = bmw_value;
+  localBMWfreq = bmw_freq;
+  localBMWphase = bmw_phase;
+  localBMWperiod = bmw_period;
   localBMWcycnum = bmw_cycle_number;
   
   //  record if event was unclean for any portion of pulse
@@ -742,9 +770,9 @@ if(bmwscan==1) {
   
   //  if pulse was at some point unclean, but ended clean, prepare
   //  next pulse to be seen as clean
-  if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;  
+  //  if (!(pulseclean==1) && (bmw_clean==1)) bmw_clean_pulse=1;  
 }
-//#endif
+#endif
 
 if(noscaler == 0) {
 
@@ -816,6 +844,8 @@ if(noscaler == 0) {
    *rol->dabufp++ = 0xfadc1800+numadc18;
    for (iadc = 0; iadc < numadc18; iadc++) {
     
+     /*     if (iadc == 1) goto cont1; */
+
      i1 = adc18_DataAvail(iadc);
      csrA = adc18_getcsr(iadc); 
      
@@ -841,14 +871,15 @@ if(noscaler == 0) {
      csrB = adc18_getcsr(iadc); 
 
      if (timeout && event_no > 1 ) {  /* if you get these, it means trouble !! */
-       logMsg("TIMEOUT: ADC %d  Info %d %d %d 0x%x 0x%x\n",iadc,i1,nevt,nword,csrA,csrB);        
+       logMsg("(huh ?) TIMEOUT: ADC %d  Info %d %d %d 0x%x 0x%x\n",iadc,i1,nevt,nword,csrA,csrB);        
+       logMsg("-- timeout %d  event_no %d %d %d %d %d \n",timeout, event_no, 0,0,0,0);
      }
      if (verbose==1 && ((i2%100)==0)) {  /* random sample of normal events */
        logMsg("NORMAL: ADC %d  Info %d %d %d 0x%x 0x%x\n",iadc,i1,nevt,nword,csrA,csrB);        
      }
 
-     if (iadc != 0 || counthouse == 0) { /* dirty trick; something crazy about CH crate */
-  
+     /*    if (iadc != 0 || counthouse == 0) { */ /* dirty trick; something crazy about CH crate */
+       
        *rol->dabufp++ = 0xfb0b4000; 
        *rol->dabufp++ = tirdata & 0xfff;
        *rol->dabufp++ = iadc;
@@ -858,39 +889,51 @@ if(noscaler == 0) {
        *rol->dabufp++ = csrB;
        *rol->dabufp++ = nevt;
        *rol->dabufp++ = nword;
-     
+       
        if(timeout) { 
          *rol->dabufp++ = 0xfa180bad;  
        } else {
          *rol->dabufp++ = nadc18cnt;
        }
- 
- // Read buffer: Put 'nword' data into datastream. 
- // But ! the first event is junk (see comments above)  
-      
+       
+       // Read buffer: Put 'nword' data into datastream. 
+       // But ! the first event is junk (see comments above)  
+       
        if (timeout) {
+	 /*         logMsg("-- timeout %d  put BAD DATA  %d nword %d %d %d %d \n",timeout, BAD18DATA, nword,0,0,0);*/
          if (nword==0) nword=A18_NORM_NWORD;
          for (j=0; j<nword; j++) {
 	   *rol->dabufp++ =  BAD18DATA;  //  don't analyze
          }
        } else {
-        for (j=0; j<nword; j++) {
-	   *rol->dabufp++ =  adc18_getdata(iadc);
+
+	 for (j=0; j<nword; j++) {
+
+           tempdata = adc18_getdata(iadc);
+	   /*           logMsg("good data %d  %d %d %d %d %d \n",tempdata,0,0,0,0,0);*/
+
+	   *rol->dabufp++ =  tempdata;
          }
        }
- 
-// If data still available, flag this event but do NOT flush 
-// the buffer as this can lead to synch problems.  The data
-// you want is always at the top of the buffer.  If the buffer
-// fills you'll see a logMsg.
-         
+       
+       // If data still available, flag this event but do NOT flush 
+       // the buffer as this can lead to synch problems.  The data
+       // you want is always at the top of the buffer.  If the buffer
+       // fills you'll see a logMsg.
+       
        if (adc18_DataAvail(iadc)) {
-	   *rol->dabufp++ = 0xfa18bad1;  /* Might be a bad event (deadtime ?)  */
+	 *rol->dabufp++ = 0xfa18bad1;  /* Might be a bad event (deadtime ?)  */
        } else {
-	   *rol->dabufp++ = 0xfa18b0b1; 
+	 *rol->dabufp++ = 0xfa18b0b1; 
        }
 
-     }
+
+       
+       /*     } */  /* end of 'dirty trick' */
+     
+cont1: 
+     nevt = adc18_getevtcnt(iadc);
+
 
    }  /* loop over 18-bit ADCs */          
    
@@ -913,26 +956,29 @@ if(noscaler == 0) {
 *rol->dabufp++ = getDACHAPTB(2); /* DAC16 */
 *rol->dabufp++ = getDACHAPTB(1); /* DAC12 */
 
-//#ifdef BMWSTUFF
+#ifdef BMWSTUFF
 if(bmwscan==1) {
   *rol->dabufp++ = 0xfdacf000;  // Header for daqflags
 
   /* Start with BMW words */
-  *rol->dabufp++ = pulseclean;  //record in bmw says entire pulse was clean
+  *rol->dabufp++ = localBMWphase;  //record where we are in a sinewave
+  *rol->dabufp++ = localBMWperiod;  //record where we are in a sinewave
   *rol->dabufp++ = localBMWobj; //record the last-moved object (from beginning of readout)
-  *rol->dabufp++ = localBMWval; // record the value of the last-moved object
+  *rol->dabufp++ = localBMWfreq; // record the value of the last-moved object
   *rol->dabufp++ = localBMWcycnum; // record the number of this supercycle 
 
   /* Scan words next */
+  /*
   *rol->dabufp++ = getCleanSCAN();
   *rol->dabufp++ = getDataSCAN(1);  
   *rol->dabufp++ = getDataSCAN(2);  
+  */
 
   /* Now the vxWorks Clock and software event increment*/
   *rol->dabufp++ = iocTime;
   *rol->dabufp++ = ncnt;
 }
-//#endif
+#endif
 
 if (adc16bit) {
   for (i = 0; i < ADC_NUMSLOTS; i++) {  
@@ -977,6 +1023,8 @@ if(getOverSampleCurrentHAPTB()==0) {
   dac16val = dac16val + 5; 
 } 
 
+/*
+
  if (autoled) {
    
    // for cycleAutoLED
@@ -990,7 +1038,6 @@ if(getOverSampleCurrentHAPTB()==0) {
        if (getStateBaseAutoLED())       set_tir_oport(0x08); 
        else                           unset_tir_oport(0x08); 
      }
-       
      stepAutoLED();
 
      // if cycleAutoLED in progress, turn the diff on/off based on 
@@ -1003,6 +1050,7 @@ if(getOverSampleCurrentHAPTB()==0) {
      }
    }
  }
+*/
    
 /* For the synch monitor.  Use dac12. */
 /* Note that dac12 will saturate the v2f at high voltage 
@@ -1041,7 +1089,19 @@ if(getOverSampleCurrentHAPTB()==0) {
 /* Disable BUSY Flag */
 
   unset_tir_oport(OPORT_BUSY);
- 
+
+/*   added for dithering, 18March10, rupesh  */
+/*
+  if(counthouse){
+    if(bmw_arm_trig==1){
+      trigBMW(1);
+      //      flexioWriteMask(1,0x02);
+      bmw_arm_trig=0;
+    }
+    else trigBMW(0);
+      //flexioWriteMask(0,0x02);
+  }
+*/
 
 }  /* matches   "if ( !mtread )  {"   */
 
@@ -1049,7 +1109,7 @@ if(getOverSampleCurrentHAPTB()==0) {
 
 close event
 
-if (lefthrs) sysTempeVeatClear(0);  /* for the 6100 board on L-HRS */
+# if (lefthrs) sysTempeVeatClear(0); /* for the 6100 board on L-HRS */
 
 end trigger
 
