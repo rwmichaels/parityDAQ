@@ -1,4 +1,4 @@
-#include <iostream.h>
+#include <iostream>
 #include <stdlib.h>
 #include "TGClient.h"
 #include "Rtypes.h"

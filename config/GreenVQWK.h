@@ -16,25 +16,25 @@
 
 #include "../cfSock/cfSock_types.h"
 #include "GMSock.h"
-#include "../timebrd/HAPTB_cf_commands.h"
+#include "../qweak/VQWK_cf_commands.h"
 
-#define GM_HAPTB   1000
-#define GM_TB_GET  1001
-#define GM_TB_SET  1002
+#define GM_VQWK   7000
+#define GM_VQWK_GET  7001
+#define GM_VQWK_SET  7002
 
-class GreenTB : public TGCompositeFrame {
+class GreenVQWK : public TGCompositeFrame {
 
 //    RQ_OBJECT()
 
-//    ClassDef(GreenTB, 0) 
+//    ClassDef(GreenVQWK, 0) 
 
  public:
 
 
-  GreenTB(Int_t crate_number, const char * crate_name,
+  GreenVQWK(Int_t crate_number, const char * crate_name,
 	  const TGWindow *p, UInt_t w, UInt_t h);
 
-  ~GreenTB();
+  ~GreenVQWK();
   
   void Init(ULong_t);
   Bool_t ProcessMessage(Long_t, Long_t, Long_t);
@@ -44,13 +44,13 @@ class GreenTB : public TGCompositeFrame {
   Int_t crateNumber;
   TString *crateName;
   
-  Int_t CurrentRD, CurrentIT, CurrentOS;
+  Int_t CurrentSPB, CurrentGD, CurrentNB;
 
   // objects for timebrd tabpage
-  TGTextEntry  *tentRD, *tentIT, *tentOS;
+  TGTextEntry  *tentSPB, *tentGD, *tentNB;
 
-  Bool_t getValsTB();
-  Bool_t setValsTB();
-  Int_t setParTB(const int parNum, const int value);
+  Bool_t getValsVQWK();
+  Bool_t setValsVQWK(const int index);
+  Int_t setParVQWK(const int parNum, const int value,const int index);
 
 };

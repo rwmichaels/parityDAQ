@@ -28,7 +28,7 @@ using namespace std;
 
 #define GA_MAXADC 20
 
-#define DACRADIO  100
+#define DACRADIO18  100 //
 
 #define GM_ADC_GET 101
 #define GM_ADC_SET 201
@@ -36,7 +36,7 @@ using namespace std;
 #define DACTRI   0
 #define DACSAW   1
 #define DACCONST 2
-#define DACOFF   3
+#define DACOFF18   3 //
 
 using namespace std;
 

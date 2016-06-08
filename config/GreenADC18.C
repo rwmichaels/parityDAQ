@@ -21,8 +21,8 @@ void GreenADC18::Init(ULong_t backgrnd) {
 					     kLHintsExpandY, 
 					     5, 5, 5, 5);
   TGLayoutHints *center = new TGLayoutHints(kLHintsTop|kLHintsCenterX ,5,5,5,5);
-  TGLayoutHints *left = new TGLayoutHints(kLHintsLeft ,5,5,5,5);
-  TGLayoutHints *right = new TGLayoutHints(kLHintsRight ,5,5,5,5);
+  //TGLayoutHints *left = new TGLayoutHints(kLHintsLeft ,5,5,5,5);
+  //TGLayoutHints *right = new TGLayoutHints(kLHintsRight ,5,5,5,5);
 
 
   SetBackgroundColor(backgrnd);
@@ -139,16 +139,16 @@ void GreenADC18::Init(ULong_t backgrnd) {
 
     // add dacnoise radio buttons, third column
 
-    fDACRB[0][i] = new TGRadioButton(tcf1a,"Tri",DACRADIO+i*10+0);
+    fDACRB[0][i] = new TGRadioButton(tcf1a,"Tri",DACRADIO18+i*10+0);
     fDACRB[0][i]->SetBackgroundColor(backgrnd);
     fDACRB[0][i]->Associate(this);
-    fDACRB[1][i] = new TGRadioButton(tcf1a,"Saw",DACRADIO+i*10+1);
+    fDACRB[1][i] = new TGRadioButton(tcf1a,"Saw",DACRADIO18+i*10+1);
     fDACRB[1][i]->SetBackgroundColor(backgrnd);
     fDACRB[1][i]->Associate(this);
-    fDACRB[2][i] = new TGRadioButton(tcf1a,"Const",DACRADIO+i*10+2);
+    fDACRB[2][i] = new TGRadioButton(tcf1a,"Const",DACRADIO18+i*10+2);
     fDACRB[2][i]->SetBackgroundColor(backgrnd);
     fDACRB[2][i]->Associate(this);
-    fDACRB[3][i] = new TGRadioButton(tcf1a,"Off",DACRADIO+i*10+3);
+    fDACRB[3][i] = new TGRadioButton(tcf1a,"Off",DACRADIO18+i*10+3);
     fDACRB[3][i]->SetBackgroundColor(backgrnd);
     fDACRB[3][i]->Associate(this);
 
@@ -304,10 +304,10 @@ void GreenADC18::DoRadio(Int_t id)
   
   Int_t adcnum, butnum;
   
-  if (id>=DACRADIO) {
+  if (id>=DACRADIO18) {
     
     
-    id-=DACRADIO;
+    id-=DACRADIO18;
     adcnum=id/10;
     butnum=id%10;
     
@@ -336,8 +336,8 @@ Int_t GreenADC18::getNumADC() {
   int errFlag;
   struct greenRequest gRequest;
   int command, par1, par2, command_type;
-  char *msgReq = "ADC Get Number";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC Get Number";
+  char *reply = (char *)"Y";
   
   command_type = COMMAND_ADC18;    gRequest.command_type = command_type;
   command = ADC18_GET_NUMADC;      gRequest.command = command;
@@ -363,8 +363,8 @@ Int_t GreenADC18::getLabelADC(Int_t index) {
   int errFlag;
   struct greenRequest gRequest;
   int command, par1, par2, command_type;
-  char *msgReq = "ADC Get Label";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC Get Label";
+  char *reply = (char *)"Y";
   
   command_type = COMMAND_ADC18;    gRequest.command_type = command_type;
   command = ADC18_GET_LABEL;       gRequest.command = command;
@@ -397,8 +397,8 @@ Bool_t GreenADC18::getValADC(Int_t index) {
   int errFlag;
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "ADC18 Get Sample";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC18 Get Sample";
+  char *reply = (char *)"Y";
   
   command_type = COMMAND_ADC18;     gRequest.command_type = command_type;
   command = ADC18_GET_SAMP;         gRequest.command = command;
@@ -490,7 +490,7 @@ Bool_t GreenADC18::getValADC(Int_t index) {
     else if (par2==DACTRI){
       fDAC[index]=DACTRI;
     }
-    else fDAC[index]=DACOFF;
+    else fDAC[index]=DACOFF18;
     
   } else {
     printf("ERROR accessing socket! Conv\n");
@@ -518,10 +518,12 @@ Bool_t GreenADC18::setValADC(Int_t index) {
   int errFlag;
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "ADC18 Set Data";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC18 Set Data";
+  char *reply = (char *)"Y";
   int value;
 
+
+  // CalPed(index);
 
   // First set the int gain
 
@@ -635,7 +637,7 @@ Bool_t GreenADC18::setValADC(Int_t index) {
 void GreenADC18::CalPed(Int_t index) {
 
 
-  TString file = "/adaqfs/home/apar/dev_luis/config/ped_adcx";
+  TString file = "/adaqfs/home/apar/caryn/devices/adc18/ped_adcx";
   file+=fLabel[index];
   file+=".txt";
 
@@ -645,7 +647,7 @@ void GreenADC18::CalPed(Int_t index) {
 
   ifstream input(file_name);
   
-  int num=1, i=0;
+  //  int num=1, i=0;//Caryn comment out
 
 
 
@@ -659,7 +661,7 @@ void GreenADC18::CalPed(Int_t index) {
 
   int column=0; 
   string temp;
-  int conv_count=0;
+  //  int conv_count=0; //Caryn comment out 
 
   while(input.good()) {
     
@@ -671,10 +673,10 @@ void GreenADC18::CalPed(Int_t index) {
       
       temp+=ch;
       
-      if      (column==0) {igain.push_back(temp);   temp=""; }
-      else if (column==1) {cgain.push_back(temp);   temp=""; }
-      else if (column==2) {board.push_back(temp);   temp=""; }
-      else if (column==3) {channel.push_back(temp); temp=""; } 
+      if      (column==0) {igain.push_back(temp);    }
+      else if (column==1) {cgain.push_back(temp);    }
+      else if (column==2) {board.push_back(temp);    }
+      else if (column==3) {channel.push_back(temp);  } 
       else if (column==5&&atoi(temp.c_str())>500) 
 	{dac.push_back(temp);     temp=""; }
     }
@@ -702,7 +704,7 @@ void GreenADC18::CalPed(Int_t index) {
   
   for (int chan=0; chan<4; chan++) {
     
-    for (int j=0; j<igain.size(); j++){
+    for (int j=0; j<(int) igain.size(); j++){
       
       
       TString buffer1;
@@ -716,31 +718,34 @@ void GreenADC18::CalPed(Int_t index) {
       
       Bool_t h = igain[j]==buffer1;
       Bool_t k = cgain[j]==buffer2;
-      Bool_t l = board[j]==buffer3;
+      //      Bool_t l = board[j]==buffer3;//Caryn comment out
       Bool_t m = channel[j]==buffer4;
 
 
-      /*cout << buffer1 << endl;
-      cout << buffer2 << endl;
-      cout << buffer3 << endl;
-      cout << buffer4 << endl;*/
-      
       
       if (h&&k&&m) {
+	/*cout << buffer1 << endl;
+	cout << buffer2 << endl;
+	cout << buffer3 << endl;
+	cout << buffer4 << endl;*/
+	
 	cout<<","<<dac[j];
 	fPedDac[chan][index]=atoi(dac[j].c_str());
+	break;
       }
+
       
     }
+      ;
     
   }
   
-  char buff[10];
+  //  char buff[10];//Caryn comment out
   int errFlag;
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "ADC18 Set Data";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC18 Set Data";
+  char *reply = (char *)"Y";
   //int value;
   
   // Oh, and we need to change the pedestal DAC

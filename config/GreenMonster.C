@@ -14,22 +14,37 @@ ClassImp(GreenMonster)
 
   this->SetBackgroundColor(grnback);
   fUseCrate[0]= kTRUE;
+  fUseADC[0]= 0;
+  fUseADCX[0]= 1;
+  fUsevqwk[0]= 1;
   fCrateNames[0] = new TString("CH");
   fCrateNumbers[0] = Crate_CountingHouse;
 
   fUseCrate[1]= kFALSE;
+  fUseADC[1]= 0;
+  fUseADCX[1]= 0;
+  fUsevqwk[1]= 0;
   fCrateNames[1] = new TString("Inj");
   fCrateNumbers[1] = Crate_Injector;
 
-  fUseCrate[2]= kTRUE;
+  fUseCrate[2]= kFALSE;
+  fUseADC[2]= 0;
+  fUseADCX[2]= 0;
+  fUsevqwk[2]= 0;
   fCrateNames[2] = new TString("LftSpec");
   fCrateNumbers[2] = Crate_LeftSpect;
 
   fUseCrate[3]= kTRUE;
+  fUseADC[3]= 0;
+  fUseADCX[3]= 1;
+  fUsevqwk[3]= 1;
   fCrateNames[3] = new TString("RtSpec");
   fCrateNumbers[3] = Crate_RightSpect;
 
-  fUseCrate[4]= kTRUE;
+  fUseCrate[4]= kFALSE;
+  fUseADC[4]= 0;
+  fUseADCX[4]= 0;
+  fUsevqwk[4]= 0;
   fCrateNames[4] = new TString("Test");
   fCrateNumbers[4] = Crate_TestCrate;
 }
@@ -76,7 +91,7 @@ void GreenMonster::InitGui() {
   sizebtn->AddFrame(bt,new TGLayoutHints(kLHintsBottom|kLHintsExpandX,5,10,4,2));
 
   TGPictureButton* mike = 
-    new TGPictureButton(tf,gClient->GetPicture("gm.xpm"));
+    new TGPictureButton(tf,gClient->GetPicture("/adaqfs/home/apar/devices/config/gm.xpm"));
   mike->SetBackgroundColor(grnback);
   mike->SetToolTipText("grrr...");
   tf->AddFrame(mike,new TGLayoutHints(kLHintsBottom|kLHintsLeft,5,10,4,2));
@@ -112,11 +127,39 @@ void GreenMonster::InitGui() {
 
 
   //
+  // create next page, vqwk adcs
+  //
+  Int_t vqwkTAB=0;
+  for(Int_t i=0; i<MAXCRATES;i++){
+    vqwkTAB=vqwkTAB+fUsevqwk[i];
+  }
+  if(vqwkTAB>0){
+  tf = fTab->AddTab("VQWK ADCs");
+  tabel = fTab->GetTabTab(1);
+  tabel->ChangeBackground(grnback);
+  tf->SetLayoutManager(new TGMatrixLayout(tf, 2, 2, 10));
+  tf->SetBackgroundColor(grnback);
+
+
+  TGLayoutHints *addVQWKLayout = new TGLayoutHints(kLHintsTop | kLHintsExpandX | 
+						 kLHintsExpandY, 5, 5, 5, 5);
+
+  for (Int_t i=0; i<MAXCRATES; i++) {
+    if (fUseCrate[i]&&fUsevqwk[i]) {
+      fVQWK[i] = new GreenVQWK(fCrateNumbers[i],fCrateNames[i]->Data(),
+				  tf, 350, 200);
+      fVQWK[i]->Init(grnback);
+      tf->AddFrame(fVQWK[i],addVQWKLayout);
+    }
+  }  
+  }
+
+  //
   // create next page, ADCs
   //
   char buff[15];
   for (Int_t i=0; i<MAXCRATES; i++) {
-    if (fUseCrate[i]) {
+    if (fUseCrate[i]&&fUseADC[i]) {
       sprintf(buff,"ADC16s, %s",fCrateNames[i]->Data());
       tf = fTab->AddTab(buff);
       tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
@@ -134,7 +177,7 @@ void GreenMonster::InitGui() {
   // create next page, ADCs
   //
   for (Int_t i=0; i<MAXCRATES; i++) {
-    if (fUseCrate[i]) {
+    if (fUseCrate[i]&&fUseADCX[i]) {
       sprintf(buff,"ADC18s, %s",fCrateNames[i]->Data());
       tf = fTab->AddTab(buff);
       tabel = fTab->GetTabTab(fTab->GetNumberOfTabs()-1);  // get tab index
@@ -147,6 +190,8 @@ void GreenMonster::InitGui() {
       tf->AddFrame(fADC18[i],framout);
     } 
   }  
+
+
 
   //
   // create BMW page
@@ -179,7 +224,7 @@ void GreenMonster::InitGui() {
   tcf4a->SetBackgroundColor(grnback);
   tf->AddFrame(tcf4a,noex);
 
-  // create SCAN page
+  // create SCA page
   tf = fTab->AddTab("ScanUtil");
   fSCN_TABID = fTab->GetNumberOfTabs()-1;  // set tab index for later use
   tabel = fTab->GetTabTab(fSCN_TABID);  // get tab index
@@ -290,8 +335,10 @@ void GreenMonster::InitGui() {
   checkStatusBtBMW->Associate(this);
   checkStatusBtBMW->SetBackgroundColor(grnback);
 
+  // tcfbmw1->AddFrame(statusLabelBMW = 
+// 		    new TGLabel(tcfbmw1,"Beam Modulation is OFF"));
   tcfbmw1->AddFrame(statusLabelBMW = 
-		    new TGLabel(tcfbmw1,"Beam Modulation is OFF"));
+ 		    new TGLabel(tcfbmw1,"*************"));
   statusLabelBMW->SetBackgroundColor(grnback);
   changeStatusBtBMW = new TGTextButton(tcfbmw1,"Start Beam Modulation",
   				       GM_BMW_CHANGE);
@@ -299,7 +346,8 @@ void GreenMonster::InitGui() {
   changeStatusBtBMW->SetBackgroundColor(grnback);
   tcfbmw1->AddFrame(changeStatusBtBMW);
 
-  activeLabelBMW = new TGLabel(tcfbmw1,"Beam Modulation script is INACTIVE");
+  //  activeLabelBMW = new TGLabel(tcfbmw1,"Beam Modulation script is INACTIVE");
+  activeLabelBMW = new TGLabel(tcfbmw1,"Beam Modulation script is ***");
   activeLabelBMW->SetBackgroundColor(grnback);
   tcfbmw1->AddFrame(activeLabelBMW);
 
@@ -326,13 +374,13 @@ void GreenMonster::InitGui() {
   tmpfrm->SetLayoutManager(new TGMatrixLayout(tmpfrm, 0, 4));
   tmpfrm->SetBackgroundColor(grnback);
   tcfbmw_t->AddFrame(tmpfrm);
-  fTestObjRBtBMW[0] = new TGRadioButton(tmpfrm,"MAT1C01H ",BMW_OBJRADIO1);
-  fTestObjRBtBMW[1] = new TGRadioButton(tmpfrm,"MAT1C02V ",BMW_OBJRADIO2);
-  fTestObjRBtBMW[2] = new TGRadioButton(tmpfrm,"MAT1C03H ",BMW_OBJRADIO3);
-  fTestObjRBtBMW[3] = new TGRadioButton(tmpfrm,"MAT1C04H ",BMW_OBJRADIO4);
-  fTestObjRBtBMW[4] = new TGRadioButton(tmpfrm,"MAT1C05V ",BMW_OBJRADIO5);
-  fTestObjRBtBMW[5] = new TGRadioButton(tmpfrm,"MAT1C06H ",BMW_OBJRADIO6);
-  fTestObjRBtBMW[6] = new TGRadioButton(tmpfrm,"MAT1C07V ",BMW_OBJRADIO7);
+  fTestObjRBtBMW[0] = new TGRadioButton(tmpfrm,"MHF1C01H ",BMW_OBJRADIO1);
+  fTestObjRBtBMW[1] = new TGRadioButton(tmpfrm,"MHF1C02H ",BMW_OBJRADIO2);
+  fTestObjRBtBMW[2] = new TGRadioButton(tmpfrm,"MHF1C03V ",BMW_OBJRADIO3);
+  fTestObjRBtBMW[3] = new TGRadioButton(tmpfrm,"MHF1C08H ",BMW_OBJRADIO4);
+  fTestObjRBtBMW[4] = new TGRadioButton(tmpfrm,"MHF1C08V ",BMW_OBJRADIO5);
+  fTestObjRBtBMW[5] = new TGRadioButton(tmpfrm,"MHF1C10H ",BMW_OBJRADIO6);
+  fTestObjRBtBMW[6] = new TGRadioButton(tmpfrm,"MHF1C10V ",BMW_OBJRADIO7);
   fTestObjRBtBMW[7] = new TGRadioButton(tmpfrm,"SL Zone 20",BMW_OBJRADIO8);
   for (Int_t ib = 0; ib<8; ib++) {
     fTestObjRBtBMW[ib]->SetBackgroundColor(grnback);
@@ -402,8 +450,8 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	case 1:
 	  {
 	    int command = 10,par_1 =1,par_2 =2, par_3 =3, command_type = 10;
-	    char *msgReq = "One";
-	    char *reply = "Y";
+	    char *msgReq =(char *)"One";
+	    char *reply =(char *)"Y";
 
 	    //junk = cfSockCommand(command,par_1,par_2,reply,msgReq);
 	    struct greenRequest gRequest;
@@ -445,14 +493,14 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	case KILL_SERVER_5:
 	  {
 	    int command = 10,par_1 =1,par_2 =2, par_3 =3, command_type = 10;
-	    char *msgReq = "Q";
-	    char *reply = "N";
+	    char *msgReq =(char *)"Q";
+	    char *reply =(char *)"N";
 	    junk = cfSockCommand(fCrateNumbers[parm1-KILL_SERVER_1],
 				 command_type,command,par_1,par_2,par_3,
 				 reply,msgReq);
 	    //	    printf ("cfSockCommand returned :  %d \n",junk);
-	    msgReq = "Q";
-	    reply = "N";
+	    msgReq = (char *)"Q";
+	    reply = (char *)"N";
 	    junk = cfSockCommand(fCrateNumbers[parm1-KILL_SERVER_1],
 				 command_type,command,par_1,par_2,par_3,
 				 reply,msgReq);
@@ -460,13 +508,13 @@ Bool_t GreenMonster::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	  }
 	case GM_BMW_CHANGE:
 	  {
-	    //	      printf("changing status of BMW \n");
+	    printf("changing status of BMW \n");
 	    BMWChangeStatus();
 	    break;
 	  }
 	case GM_BMW_CHECK:	
 	  {
-	    //	      printf("checking status of BMW \n");
+	    printf("checking status of BMW \n");
 	    BMWCheckStatus();
 	    BMWActiveProbe();
 	    break;
@@ -559,8 +607,8 @@ void GreenMonster::BMWDoRadio(Int_t id) {
 void GreenMonster::BMWStartTest() {    
   struct greenRequest gRequest;
   int command, command_type, par1, par2, par3;
-  char *msgReq = "BMW Start Test";
-  char *reply = "Y";
+  char *msgReq = (char *)"BMW Start Test";
+  char *reply = (char *)"Y";
 
   //
   command_type = COMMAND_BMW;    gRequest.command_type = command_type;
@@ -587,8 +635,8 @@ void GreenMonster::BMWTestStep() {
 
   struct greenRequest gRequest;
   int command, command_type, par1, par2, par3;
-  char *msgReq = "BW Test Set Data";
-  char *reply = "Y";
+  char *msgReq = (char *)"BW Test Set Data";
+  char *reply = (char *)"Y";
 
   //
   // get value from tent
@@ -648,23 +696,24 @@ void GreenMonster::BMWTestStep() {
   if (!kill_switch) {    
     TTimer* ctimer = new TTimer(4000,kTRUE);
     TQObject::Connect(ctimer, "Timeout()", "GreenMonster", this, 
-		      "BMWTestStep");
+		      "BMWTestStep()");
     ctimer->Start(4000, kTRUE);
   }
 
 }
 
-
-
 void GreenMonster::BMWChangeStatus() {
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "BMW Status Change";
-  char *reply = "Y";
+  char *msgReq = (char *)"BMW Status Change";
+  char *reply = (char *)"Y";
   // get bmw status
   Bool_t bmw_running = BMWCheckStatus();
 
   command_type = COMMAND_BMW;   gRequest.command_type = command_type;
+
+  printf("BMWChangeStatus():: bmw_running = %d\n", bmw_running);
+
   if (bmw_running) {
     // kill bmw
     command = BMW_KILL;          gRequest.command = command;
@@ -672,6 +721,7 @@ void GreenMonster::BMWChangeStatus() {
     // start bmw
     command = BMW_START;          gRequest.command = command;
   }
+  printf("BMWChangeStatus():: Setting command to %d\n", command);
   printf("changing status of bmw client\n");
   par1 = 0;                     gRequest.par1 = par1;
   par2 = 0;                     gRequest.par2 = par2;
@@ -686,14 +736,17 @@ void GreenMonster::BMWChangeStatus() {
   }
   // check bmw status
   BMWCheckStatus();
+  printf("BMWChangeStatus():: BMW_START = %d\n", BMW_START);
+  printf("BMWChangeStatus():: command = %d\n", command);
+  printf("BMWChangeStatus():: Exiting...\n");
 }
 
 
 void GreenMonster::BMWSetKill() {
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "BMW status check";
-  char *reply = "Y";
+  char *msgReq = (char *)"BMW status check";
+  char *reply = (char *)"Y";
   Bool_t bmw_running,kill_switch;
 
   // get bmw status
@@ -725,7 +778,7 @@ void GreenMonster::BMWSetKill() {
 
   if (!kill_switch) {
     command_type = COMMAND_BMW;   gRequest.command_type = command_type;
-    char *msgReq = "BMW set kill";
+    char *msgReq = (char *)"BMW set kill";
     command = BMW_KILL;          gRequest.command = command;
     printf("setting kill switch on bmw\n");
     par1 = 0;                     gRequest.par1 = par1;
@@ -741,7 +794,7 @@ void GreenMonster::BMWSetKill() {
     }
   } else {
     command_type = COMMAND_BMW;   gRequest.command_type = command_type;
-    char *msgReq = "BMW lift kill";
+    char *msgReq = (char *)"BMW lift kill";
     command = BMW_UNKILL;          gRequest.command = command;
     printf("lifting kill switch on bmw\n");
     par1 = 0;                     gRequest.par1 = par1;
@@ -764,11 +817,11 @@ Bool_t GreenMonster::BMWCheckStatus() {
   // get bmw status
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "BMW status check";
-  char *reply = "Y";
+  char *msgReq = (char *)"BMW status check";
+  char *reply = (char *)"Y";
   Bool_t bmw_running,kill_switch;
   
-  //  printf("BMW Status =");
+  //  printf("BMWCheckStatus():: \n");
   command_type = COMMAND_BMW;    gRequest.command_type = command_type;
   command = BMW_GET_STATUS;      gRequest.command = command;
   par1 = 0;                      gRequest.par1 = par1;
@@ -779,10 +832,15 @@ Bool_t GreenMonster::BMWCheckStatus() {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
+
+    printf("BMWCheckStatus()::\n  command = %d, \t par1 = %d, \t par2 = %d\n", command, par1, par2);
+
     if (par1 != 0) {
       bmw_running = kTRUE;
+      printf("BMWCheckStatus():: bmw_running = %d\n", bmw_running);
     } else { 
       bmw_running = kFALSE;
+      printf("BMWCheckStatus():: bmw_running = %d\n", bmw_running);
     }
     if (par2 != 0) {
       kill_switch = kTRUE;
@@ -806,7 +864,8 @@ Bool_t GreenMonster::BMWCheckStatus() {
     changeStatusBtBMW->SetText("Set Kill Switch");
     return kTRUE;
   } else {
-    statusLabelBMW->SetText("Beam Modulation is OFF");
+    //    statusLabelBMW->SetText("Beam Modulation is OFF");
+    statusLabelBMW->SetText("******************");
     changeStatusBtBMW->SetText("Start Beam Modulation");
     return kFALSE;
   }
@@ -825,7 +884,7 @@ void GreenMonster::BMWActiveProbe() {
   //    one must generate a dictionary using rootcint... 
   TTimer* ctimer = new TTimer(4000,kTRUE);
   TQObject::Connect(ctimer, "Timeout()", "GreenMonster", this, 
-		    "BMWDelayCheck");
+		    "BMWDelayCheck()");
   ctimer->Start(1000, kTRUE);
 }
 
@@ -833,8 +892,8 @@ void GreenMonster::BMWCheckActiveFlag() {
   // get bmw status
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "BMW status check";
-  char *reply = "Y";
+  char *msgReq = (char *)"BMW status check";
+  char *reply = (char *)"Y";
   Bool_t active=kFALSE;
   
   //  printf("BMWCheckActiveFlag has been called\n");
@@ -856,9 +915,11 @@ void GreenMonster::BMWCheckActiveFlag() {
   }
 
   if (active) {
-    activeLabelBMW->SetText("Beam Modulation script is ACTIVE");
+    //    activeLabelBMW->SetText("Beam Modulation script is ACTIVE");
+    activeLabelBMW->SetText("Beam Modulation script is *******");
   } else {
-    activeLabelBMW->SetText("Beam Modulation script is INACTIVE");
+    //    activeLabelBMW->SetText("Beam Modulation script is INACTIVE");
+    activeLabelBMW->SetText("Beam Modulation script is *******");
   }
   MapSubwindows();
 }
@@ -919,8 +980,8 @@ void GreenMonster::SCNUpdateStatus(Int_t id) {
 Bool_t GreenMonster::SCNCheckStatus() {
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "SCN status check";
-  char *reply = "Y";
+  char *msgReq = (char *)"SCN status check";
+  char *reply = (char *)"Y";
   Int_t iclean;
   
   //  printf("SCN Status =");
@@ -930,8 +991,10 @@ Bool_t GreenMonster::SCNCheckStatus() {
   par2 = 0;                      gRequest.par2 = par2;
   par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
-  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
-  //  if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
+  //if (GreenSockCommand(Crate_RightSpect,&gRequest) == SOCK_OK) {
+  
+      if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+    //  if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
@@ -954,8 +1017,8 @@ Bool_t GreenMonster::SCNCheckStatus() {
 void GreenMonster::SCNSetStatus(Int_t status) {
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "SCN Status Change";
-  char *reply = "Y";
+  char *msgReq = (char *)"SCN Status Change";
+  char *reply = (char *)"Y";
 
   command_type = COMMAND_SCAN;  gRequest.command_type = command_type;
   command = SCAN_SET_STATUS;    gRequest.command = command;
@@ -965,6 +1028,7 @@ void GreenMonster::SCNSetStatus(Int_t status) {
 
   cout << "Setting SCN status: " << par1 << endl;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
+  //if (GreenSockCommand(Crate_RightSpect,&gRequest) == SOCK_OK) {
   if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     printf("SCAN status change call is complete\n");
@@ -997,8 +1061,8 @@ void GreenMonster::SCNSetValues() {
 void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "Set SCN Data Value";
-  char *reply = "Y";
+  char *msgReq = (char *)"Set SCN Data Value";
+  char *reply = (char *)"Y";
   
   cout << " writing new SCAN set point " << value 
        << " to data" << which <<endl;
@@ -1012,7 +1076,8 @@ void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
   par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
-  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+  //if (GreenSockCommand(Crate_RightSpect,&gRequest) == SOCK_OK) {
+    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
@@ -1027,8 +1092,8 @@ void GreenMonster::SCNSetValue(Int_t which, Int_t value) {
 void GreenMonster::SCNCheckValues() {
   struct greenRequest gRequest;
   int command, par1, par2, par3, command_type;
-  char *msgReq = "Check SCN Data Value";
-  char *reply = "Y";
+  char *msgReq = (char *)"Check SCN Data Value";
+  char *reply = (char *)"Y";
   char buff[10];
   int value;
 
@@ -1040,7 +1105,8 @@ void GreenMonster::SCNCheckValues() {
   par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
-  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+  //if (GreenSockCommand(Crate_RightSpect,&gRequest) == SOCK_OK) {
+    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
@@ -1067,7 +1133,8 @@ void GreenMonster::SCNCheckValues() {
   par3 = 0;                      gRequest.par3 = par3;
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
 
-  if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
+  //if (GreenSockCommand(Crate_RightSpect,&gRequest) == SOCK_OK) {
+    if (GreenSockCommand(Crate_CountingHouse,&gRequest) == SOCK_OK) {
     //if (GreenSockCommand(Crate_Injector,&gRequest) == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;

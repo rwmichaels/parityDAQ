@@ -1,6 +1,7 @@
 #define MAXCRATES 5
 
-#include <iostream.h>
+#include <iostream>
+//CAP edit 11/02/2015
 
 #include "TGClient.h"
 #include "Rtypes.h"
@@ -30,11 +31,13 @@
 #include "RQ_OBJECT.h"
 
 #include "GreenTB.h"
-#include "GreenADC.h"
+#include "GreenADC.h" 
 #include "GreenADC18.h"
+#include "GreenVQWK.h" //Caryn add
 #include "../cfSock/cfSock_types.h"
 #include "../bmw/bmw_cf_commands.h"
 #include "../scan/SCAN_cf_commands.h"
+#include "../qweak/VQWK_cf_commands.h" //Caryn add
 //#include "GMSock.h"
 
 #define GM_LOCAL     201
@@ -94,11 +97,12 @@ private:
   Bool_t fUseCrate[MAXCRATES];
   Int_t fUseADC[MAXCRATES];
   Int_t fUseADCX[MAXCRATES];
+  Int_t fUsevqwk[MAXCRATES];
   TString* fCrateNames[MAXCRATES];
   Int_t fCrateNumbers[MAXCRATES];
 
   GreenTB* fTimeBoard[MAXCRATES];
-
+  GreenVQWK* fVQWK[MAXCRATES]; //Caryn add
   GreenADC* fADC[MAXCRATES];
   GreenADC18* fADC18[MAXCRATES];
 

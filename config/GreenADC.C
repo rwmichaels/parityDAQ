@@ -176,7 +176,7 @@ Bool_t GreenADC::ProcessMessage(Long_t msg, Long_t parm1, Long_t parm2)
 	  }
 	break;
       case kCM_RADIOBUTTON:
-	// cout << "Radio button pushed " << parm1 << endl;
+	// std::cout << "Radio button pushed " << parm1 << std::endl;
 	DoRadio(parm1);
 	break;
       default:
@@ -223,7 +223,7 @@ void GreenADC::DoRadio(Int_t id)
     if (id%2==0) {
       int i2 = (id - GAINRADIO -2) /2;
       if (fGainRB[1][i2]->WidgetId() != id) {
-	cout << "GreenADC::DoRadio: error in mapping IDs" << endl;
+	std::cout << "GreenADC::DoRadio: error in mapping IDs" << std::endl;
       } else {
 	fGainRB[0][i2]->SetState(kButtonUp);
 	fGainRB[1][i2]->SetState(kButtonDown);
@@ -232,7 +232,7 @@ void GreenADC::DoRadio(Int_t id)
     } else {
       int i2 = (id - GAINRADIO -1) /2;
       if (fGainRB[0][i2]->WidgetId() != id) {
-	cout << "GreenADC::DoRadio: error in mapping IDs" << endl;
+	std::cout << "GreenADC::DoRadio: error in mapping IDs" << std::endl;
       } else {
 	fGainRB[1][i2]->SetState(kButtonUp);
 	fGainRB[0][i2]->SetState(kButtonDown);
@@ -244,7 +244,7 @@ void GreenADC::DoRadio(Int_t id)
     if (id%2==0) {
       int i2 = (id - DACRADIO -2) /2;
       if (fDACRB[1][i2]->WidgetId() != id) {
-	cout << "GreenADC::DoRadio: error in mapping IDs" << endl;
+	std::cout << "GreenADC::DoRadio: error in mapping IDs" << std::endl;
       } else {
 	fDACRB[0][i2]->SetState(kButtonUp);
 	fDACRB[1][i2]->SetState(kButtonDown);
@@ -253,7 +253,7 @@ void GreenADC::DoRadio(Int_t id)
     } else {
       int i2 = (id - DACRADIO -1) /2;
       if (fDACRB[0][i2]->WidgetId() != id) {
-	cout << "GreenADC::DoRadio: error in mapping IDs" << endl;
+	std::cout << "GreenADC::DoRadio: error in mapping IDs" << std::endl;
       } else {
 	fDACRB[1][i2]->SetState(kButtonUp);
 	fDACRB[0][i2]->SetState(kButtonDown);
@@ -262,7 +262,7 @@ void GreenADC::DoRadio(Int_t id)
     }
     
   } else {
-    cout << "GreenADC::DoRadio: bad button ID" << endl;
+    std::cout << "GreenADC::DoRadio: bad button ID" << std::endl;
   }
 }
 
@@ -283,8 +283,8 @@ Bool_t GreenADC::getValADC(Int_t index) {
   struct greenRequest gRequest;
   int command, command_type;
   long par1, par2, par3;
-  char *msgReq = "ADC Get Data";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC Get Data";
+  char *reply = (char *)"Y";
   
   command_type = COMMAND_HAPADC;    gRequest.command_type = command_type;
   command = HAPADC_GET_CSR;        gRequest.command = command;
@@ -294,17 +294,17 @@ Bool_t GreenADC::getValADC(Int_t index) {
   strcpy(gRequest.message,msgReq);   gRequest.reply = reply;
   errFlag = GreenSockCommand(crateNumber,&gRequest);
   
-  //   cout << "GreenSockCommand returned " << gRequest.message << endl;
+  //   std::cout << "GreenSockCommand returned " << gRequest.message << std::endl;
   if (errFlag == SOCK_OK) {
     command = gRequest.command;
     par1 = gRequest.par1;
     par2 = gRequest.par2;
     par3 = 0;                        gRequest.par3 = par3;
-    //     cout << "Command: " << command << " par1: " 
-    //          << par1 << " par2: " << par2 << endl;
+    //     std::cout << "Command: " << command << " par1: " 
+    //          << par1 << " par2: " << par2 << std::endl;
     if (par2==-1) { 
       //       not inited
-      //       cout << "Board not initialized " << i << endl;
+      //       std::cout << "Board not initialized " << i << std::endl;
       fGain[index]=-1;
       fDAC[index]=-1;
       fSetLab[index]->SetText("ADC not initialized");
@@ -334,8 +334,8 @@ Int_t GreenADC::getNumADC() {
    int errFlag;
    struct greenRequest gRequest;
    int command, par1, par2, par3, command_type;
-   char *msgReq = "ADC Get Number";
-   char *reply = "Y";
+   char *msgReq = (char *)"ADC Get Number";
+   char *reply = (char *)"Y";
   
    command_type = COMMAND_HAPADC;    gRequest.command_type = command_type;
    command = HAPADC_GET_NUMADC;      gRequest.command = command;
@@ -362,8 +362,8 @@ Int_t GreenADC::getLabelADC(Int_t index) {
    int errFlag;
    struct greenRequest gRequest;
    int command, par1, par2, par3, command_type;
-   char *msgReq = "ADC Get Label";
-   char *reply = "Y";
+   char *msgReq = (char *)"ADC Get Label";
+   char *reply = (char *)"Y";
   
    command_type = COMMAND_HAPADC;    gRequest.command_type = command_type;
    command = HAPADC_GET_LABEL;       gRequest.command = command;
@@ -377,8 +377,8 @@ Int_t GreenADC::getLabelADC(Int_t index) {
      command = gRequest.command;
      par1 = gRequest.par1;
      par2 = gRequest.par2;
-     //     cout << "Command: " << command << " " << msgReq << " par1: " 
-     //	  << par1 << " par2: " << par2 << endl;
+     //     std::cout << "Command: " << command << " " << msgReq << " par1: " 
+     //	  << par1 << " par2: " << par2 << std::endl;
    } else {
      printf("ERROR accessing socket!");
      return -1;
@@ -401,8 +401,8 @@ Int_t GreenADC::setValADC(Int_t index) {
   int errFlag;
   struct greenRequest gRequest;
   int command, command_type, par1, par2, par3;
-  char *msgReq = "ADC Set Data";
-  char *reply = "Y";
+  char *msgReq = (char *)"ADC Set Data";
+  char *reply = (char *)"Y";
   Int_t replyFlag = 0;
 
   int value = 0;
@@ -445,7 +445,7 @@ Int_t GreenADC::setValADC(Int_t index) {
   }
   
   if (replyFlag ==0 ) {
-    if (par2 & 16 == 16) fGain[index]=GAINHI; // extract gain bit from csr
+    if ((par2 & 16) == 16) fGain[index]=GAINHI; // extract gain bit from csr
     else fGain[index] = GAINLO;
     fGain[index] = ( ((par2 & 16) == 16) ? GAINHI : GAINLO );
     fDAC[index] = ( ((par2 & 8)==8) ? DACON : DACOFF );
