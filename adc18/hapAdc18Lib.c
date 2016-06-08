@@ -17,6 +17,10 @@
      modify the alarm about ADC18 buff full in the
      case where csr = 0xffffffff.
 
+   Jan 4, 2016
+
+        Add adc18_getconv and adc18_getintconv
+
 
  */
 
@@ -857,15 +861,45 @@ int adc18_setconv(int id, long conv) {
   adc18p[id]->config = config;
   return 0;
 }
+int adc18_getconv(int id) {
+/* Get conversion gain present setting */
 
-int adc18_getconv(int id){
-  return ((adc18p[id]->config >> 4) & 0xF);
-}
- 
-int adc18_getintgain(int id){
-  return (( adc18p[id]->config >> 1) & 0x3);
+  long config;
+  int conv;
+
+  if (adc18_chkid(id) < 1) {
+    printf("adc18_getconv: undefined ADC %d \n",id);
+    return -1;
+  }
+
+  config = adc18p[id]->config;
+
+  conv = ((config >> 4) & 0xF);
+
+  printf("adc18_getconv  adc %d   conv = %d \n",id,conv);
+
+  return conv;
 }
 
+int adc18_getintgain(int id) {
+/* Get integrator gain present setting */
+
+  long config;
+  int intgain;
+
+  if (adc18_chkid(id) < 1) {
+    printf("adc18_getintgain: undefined ADC %d \n",id);
+    return -1;
+  }
+
+  config = adc18p[id]->config;
+
+  intgain = ((config >> 1) & 0x3);
+
+  printf("adc18_getintgain  adc %d   conv = %d \n",id,intgain);
+
+  return intgain;
+}
 
 int adc18_setsample(int id, int nsample) {
 /* Set # samples on baseline and peak */
