@@ -20,7 +20,7 @@
 
 /* number of HAPPEX 18-bit ADCs */
 #ifdef  TESTCRATE
-#define NADC 3   
+#define NADC 3  
 #endif
 // October 2015
 #ifdef  COUNTINGHOUSE
@@ -48,16 +48,19 @@
 
 #ifdef   TESTCRATE
 
-#define  ADC0 0xCE0000
-#define  ADC1 0x118000
-#define  ADC2 0xCC0000
-#define  ADC3 0xfff000
-#define  ADC4 0xfff000
-#define  ADC5 0xfff000
-#define  ADC6 0xfff000
-#define  ADC7 0xfff000   // Undefined.
-#define  ADC8 0xff0000
-#define  ADC9 0xff0000
+#define  ADC0 0x6d4000
+#define  ADC1 0x6a4000
+#define  ADC2 0xb48000
+
+#define  ADC3 0x218000
+#define  ADC4 0x3b8000
+#define  ADC5 0x4e4000
+
+#define  ADC6 0xb04000
+#define  ADC7 0xb24000
+#define  ADC8 0x22c000
+
+#define  ADC9 0x6a4000
 
 #define  ADCLAB0 17
 #define  ADCLAB1 12

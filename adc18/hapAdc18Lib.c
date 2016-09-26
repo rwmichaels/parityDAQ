@@ -41,6 +41,7 @@
 #include "hapAdc18Lib.h"
 #include "ADC18_cf_commands.h"
 
+
 /* default ADC config bits */
 #define DEFAULT_CONFIG_BITS 0xC00
 
@@ -635,14 +636,20 @@ int adc18_loaddac(int id, int type) {
   /* Load a pattern of 256K dac values */
   
   int i;
-  int dac_min = 20000;
-  int dac_max = 60000;
+  int dac_min = 10000;
+  int dac_max = 12000;
+  int small_min = 2000;
+  int small_max = 4000;
+  unsigned short tmp_rand;
+  float float_rand; 
+  int NREPEAT = 4;
   int ncnt = 256000;
   int sign = 1;
   int dac_value = 0;
   int TRIANGLE = 0;
   int SAWTOOTH = 1;
   int CONST = 2;
+  int RANDCONST = 3;
   int OFF = 3;
   
   int pattern = type;
@@ -656,13 +663,19 @@ int adc18_loaddac(int id, int type) {
   
   dac_value = dac_max;
 
+/* See the random number generator; may want to use system time, or ... */  
+/* srand and rand come from vxworks lib, see stdlib.h */
+  if (pattern==RANDCONST) srand(9421); 
+
   for (i = 0; i <= ncnt; i++) {  
     
     //for steady fluctuations
     if (pattern == TRIANGLE) {
-      if (dac_value > dac_max) sign = -1;
-      if (dac_value < dac_min) sign = 1;
-      dac_value = dac_value + sign*10;
+      if ((i%NREPEAT)==0) {
+	if (dac_value > dac_max) sign = -1;
+	if (dac_value < dac_min) sign = 1;
+	dac_value = dac_value + sign*4;
+      }
     } 
     else if (pattern == SAWTOOTH) {
       //for sawtooth fluctuations
@@ -673,12 +686,24 @@ int adc18_loaddac(int id, int type) {
       //constant value
       dac_value = 30000;
     }    
+    else if (pattern == RANDCONST) {
+ /* the values are random, but also constant for NREPEAT events */
+ /* err, not 100% sure about this yet (Sept 13, 2016) */
+      if ((i%NREPEAT)==0) {
+        tmp_rand = (unsigned short) rand();
+        float_rand = (float) tmp_rand/32768.;
+	dac_value = small_min + (int) (small_max-small_min)*float_rand;
+	/*   printf("loading dac %d %d %d \n",i,tmp_rand,dac_value); */
+      }
+    }    
+
     else {
       dac_value = 0;
     }
     
-    if (i == 0) dac_value |= 0x10000;
-    if (i == ncnt) dac_value |= 0x20000;
+    /*   DONT WANT, I think if (i == 0) dac_value |= 0x10000;
+	  if (i == ncnt) dac_value |= 0x20000; */
+
     adc18p[id]->dac_memory = dac_value;
     adc18p[id]->pattern = pattern;
       }
